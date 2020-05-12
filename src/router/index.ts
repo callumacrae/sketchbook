@@ -8,6 +8,11 @@ const routes: Array<RouteConfig> = [
     path: '/animated-blobs',
     component: () =>
       import(/* webpackChunkName: "triangles" */ '../views/AnimatedBlobs.vue')
+  },
+  {
+    path: '/triangles',
+    component: () =>
+      import(/* webpackChunkName: "triangles" */ '../views/Triangles.vue')
   }
 ];
 
