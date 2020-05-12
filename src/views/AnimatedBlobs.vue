@@ -21,7 +21,6 @@
         v-for="(shape, i) in shapes"
         v-bind="shape"
         :key="`shape-${i}`"
-        stroke-linejoin="round"
       />
     </svg>
   </div>
@@ -68,7 +67,7 @@ export default Vue.extend({
     this.paint();
 
     const frame = () => {
-      this.z += 0.01;
+      this.z += 0.005;
       this.paint();
 
       requestAnimationFrame(frame);
@@ -78,7 +77,6 @@ export default Vue.extend({
   },
   methods: {
     paint() {
-      console.log('PAINTING');
       const ctx = this.$refs.canvas.getContext('2d');
       ctx.clearRect(0, 0, 600, 600);
       this.shapes = [];
@@ -96,8 +94,8 @@ export default Vue.extend({
       const xScaleFactor = 1 / 80;
       const yScaleFactor = 1 / 80;
 
-      const width = 2;
-      const height = 2;
+      const width = 6;
+      const height = 6;
 
       // for (let x = 0; x < 600; x += width) {
       //   for (let y = 0; y < 600; y += height) {
@@ -120,10 +118,10 @@ export default Vue.extend({
       let hotspots = [];
 
       const isHotspot = (x, y) =>
-        simplex.noise3D(x * xScaleFactor, y * yScaleFactor, this.z) > 0.5;
+        simplex.noise3D(x * xScaleFactor, y * yScaleFactor, this.z) > 0.4;
 
-      for (let x = 0; x < 400; x += width) {
-        for (let y = 0; y < 400; y += height) {
+      for (let x = 0; x < 600; x += width) {
+        for (let y = 0; y < 600; y += height) {
           if (abortLoop('out hotspot loop')) return;
 
           if (isHotspot(x, y)) {
@@ -215,7 +213,7 @@ export default Vue.extend({
         this.shapes.push({
           d,
           stroke: 'orange',
-          'stroke-width': 1,
+          'stroke-width': 2,
           fill: 'none'
         });
       });
