@@ -13,6 +13,7 @@
     "normalize.css": "^8.0.1",
     "sass-loader": "^8.0.2",
     "simplex-noise": "^2.4.0",
+    "three": "^0.117.1",
     "vue": "^2.6.11",
     "vue-router": "^3.1.6"
   },

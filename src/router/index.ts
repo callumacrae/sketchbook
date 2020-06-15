@@ -22,6 +22,10 @@ const routes: Array<RouteConfig> = [
       import(
         /* webpackChunkName: "simplex-lines" */ '../views/SimplexLines.vue'
       )
+  },
+  {
+    path: '/3d-cube',
+    component: () => import('../views/3dCube.vue')
   }
 ];
 
