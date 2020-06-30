@@ -8,6 +8,11 @@
 import * as THREE from 'three';
 import SimplexNoise from 'simplex-noise';
 
+import chroma from 'chroma-js';
+import { schemePRGn } from 'd3-scale-chromatic';
+
+const colorScale = chroma.scale(schemePRGn[11]).domain([-1, 1]);
+
 const simplex = new SimplexNoise();
 
 export default {
@@ -98,11 +103,12 @@ export default {
 
         const x = i % textureWidth;
         const y = Math.floor(i / textureHeight);
-        const noise = (simplex.noise3D(x / 20, y / 20, z / 5) + 1) / 2;
+        const noise = simplex.noise3D(x / 20, y / 20, z / 5);
 
-        data[stride] = Math.floor(noise * 256);
-        data[stride + 1] = Math.floor(noise * 256);
-        data[stride + 2] = Math.floor(noise * 256);
+        const color = colorScale(noise).rgb();
+        data[stride] = color[0]
+        data[stride + 1] = color[1]
+        data[stride + 2] = color[2]
       }
 
       return new THREE.DataTexture(
