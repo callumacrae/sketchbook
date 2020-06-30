@@ -26,6 +26,10 @@ const routes: Array<RouteConfig> = [
   {
     path: '/3d-cube',
     component: () => import('../views/3dCube.vue')
+  },
+  {
+    path: '/light-tracing',
+    component: () => import('../views/LightTracing.vue')
   }
 ];
 
