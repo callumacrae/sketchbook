@@ -115,6 +115,7 @@ export default {
       for (let x = 0; x < this.width; x += resolution) {
         for (let y = 0; y < this.height; y += resolution) {
           // @TODO refactor so that this starts out in toSearch
+          // UPDATE ON @TODO: doing that makes it well slow.
           const horizontal = searchEdge(x, y, x + resolution, y);
           const vertical = searchEdge(x, y, x, y + resolution);
 
