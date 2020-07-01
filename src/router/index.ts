@@ -30,6 +30,10 @@ const routes: Array<RouteConfig> = [
   {
     path: '/light-tracing',
     component: () => import('../views/LightTracing.vue')
+  },
+  {
+    path: '/contour-texture',
+    component: () => import('../views/ContourTexture.vue')
   }
 ];
 
