@@ -115,107 +115,84 @@ export default {
       };
 
       let emergency = 1e7;
-      const toSearch = new Set()
+      const toSearch = new Set();
       const contours = [];
 
       for (let x = 0; x < this.width; x += resolution) {
         for (let y = 0; y < this.height; y += resolution) {
-          // @TODO refactor so that this starts out in toSearch
-          // UPDATE ON @TODO: doing that makes it well slow.
-          const horizontal = searchEdge(x, y, x + resolution, y);
-          const vertical = searchEdge(x, y, x, y + resolution);
+          const localToSearch = new Set();
+          const points = [];
 
-          if (horizontal || vertical) {
-            const localToSearch = new Set()
-            const points = [];
+          [
+            [x, y, x + resolution, y].join(','),
+            [x, y, x, y + resolution].join(',')
+          ].forEach(point => {
+            toSearch.add(point);
+            localToSearch.add(point);
+          });
 
-            const addPoint = (x1, y1, x2, y2, contourX, contourY) => {
-              points.push([x1, y1, x2, y2, contourX, contourY]);
+          const addPoint = (x1, y1, x2, y2, contourX, contourY) => {
+            points.push([x1, y1, x2, y2, contourX, contourY]);
 
-              const maybeToSearch = [
-                [x1, y1 - resolution, x1, y1],
-                [x1 - resolution, y1, x1, y1],
-                [x2, y2, x2, y2 + resolution],
-                [x2, y2, x2 + resolution, y2]
-              ];
+            const maybeToSearch = [
+              [x1, y1 - resolution, x1, y1],
+              [x1 - resolution, y1, x1, y1],
+              [x2, y2, x2, y2 + resolution],
+              [x2, y2, x2 + resolution, y2]
+            ];
 
-              const isVertical = x1 === x2;
-              if (isVertical) {
-                maybeToSearch.push(
-                  [x1, y1, x1 + resolution, y1],
-                  [x2 - resolution, y2, x2, y2],
-                  [x1 + resolution, y1, x2 + resolution, y2],
-                  [x1 - resolution, y1, x2 - resolution, y2]
-                );
-              } else {
-                maybeToSearch.push(
-                  [x1, y1, x1, y1 + resolution],
-                  [x2, y2 - resolution, x2, y2],
-                  [x1, y1 + resolution, x2, y2 + resolution],
-                  [x1, y1 - resolution, x2, y2 - resolution]
-                );
+            const isVertical = x1 === x2;
+            if (isVertical) {
+              maybeToSearch.push(
+                [x1, y1, x1 + resolution, y1],
+                [x2 - resolution, y2, x2, y2],
+                [x1 + resolution, y1, x2 + resolution, y2],
+                [x1 - resolution, y1, x2 - resolution, y2]
+              );
+            } else {
+              maybeToSearch.push(
+                [x1, y1, x1, y1 + resolution],
+                [x2, y2 - resolution, x2, y2],
+                [x1, y1 + resolution, x2, y2 + resolution],
+                [x1, y1 - resolution, x2, y2 - resolution]
+              );
+            }
+
+            const aryEqual = (ary1, ary2) =>
+              ary1.length === ary2.length &&
+              ary1.every((val, i) => val === ary2[i]);
+
+            maybeToSearch.forEach(edge => {
+              const edgeStr = edge.join(',');
+              if (toSearch.has(edgeStr)) {
+                return;
               }
 
-              const aryEqual = (ary1, ary2) =>
-                ary1.length === ary2.length &&
-                ary1.every((val, i) => val === ary2[i]);
+              // toSearch contains everything searched, localToSearch
+              // contains just the stuff searched this iteration
+              toSearch.add(edgeStr);
+              localToSearch.add(edgeStr);
+            });
+          };
 
-              maybeToSearch.forEach(edge => {
-                const edgeStr = edge.join(',')
-                if (toSearch.has(edgeStr)) {
-                  return;
-                }
-
-                // toSearch contains everything searched, localToSearch
-                // contains just the stuff searched this iteration
-                toSearch.add(edgeStr)
-                localToSearch.add(edgeStr)
-              });
-            };
-
-            if (horizontal) {
-              addPoint(x, y, x + resolution, y, ...horizontal);
-            }
-            if (vertical) {
-              addPoint(x, y, x, y + resolution, ...vertical);
+          // WARNING: localToSearch length changes while loop progresses
+          for (const searchStr of localToSearch) {
+            if (emergency-- < 0) {
+              throw new Error('Infinite loop!');
             }
 
-            // WARNING: localToSearch length changes while loop progresses
-            for (const searchStr of localToSearch) {
-              if (emergency-- < 0) {
-                throw new Error('Infinite loop!');
-              }
-
-              const search = searchStr.split(',').map(Number);
-              const contour = searchEdge(...search);
-              if (contour) {
-                addPoint(...search, ...contour);
-              }
+            const search = searchStr.split(',').map(Number);
+            const contour = searchEdge(...search);
+            if (contour) {
+              addPoint(...search, ...contour);
             }
+          }
 
-            if (points.length >= 3) {
-              // Check last 10 points - if they're not in order, remove
-              // const pointsToCheck = Math.min(10, points.length - 1);
-              // for (
-              //   let j = points.length - pointsToCheck;
-              //   j < points.length;
-              //   j++
-              // ) {
-              //   if (
-              //     Math.abs(points[j - 1][0] - points[j][0]) > 20 ||
-              //     Math.abs(points[j - 1][1] - points[j][1]) > 20
-              //   ) {
-              //     points.splice(j, 1);
-              //     j--;
-              //   }
-              // }
-
-              contours.push(points);
-            }
+          if (points.length >= 3) {
+            contours.push(points);
           }
         }
       }
-
 
       contours.forEach(points => {
         this.ctx.beginPath();
