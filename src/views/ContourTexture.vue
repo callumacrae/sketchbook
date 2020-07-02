@@ -7,6 +7,8 @@ import SimplexNoise from 'simplex-noise';
 
 const simplex = new SimplexNoise();
 
+const DEBUG = true;
+
 export default {
   data: () => ({
     i: 0
@@ -27,11 +29,17 @@ export default {
   methods: {
     frame() {
       this.i++;
-      const imageData = this.generateImageData();
-      this.ctx.putImageData(imageData, 0, 0);
+      this.ctx.clearRect(0, 0, this.width, this.height);
+      if (DEBUG) {
+        const imageData = this.generateImageData();
+        this.ctx.putImageData(imageData, 0, 0);
+      }
 
       this.drawContours();
-      // this.frameId = requestAnimationFrame(this.frame);
+
+      if (!DEBUG) {
+        this.frameId = requestAnimationFrame(this.frame);
+      }
     },
     generateImageData() {
       const colorGenerator = x => {
@@ -67,15 +75,13 @@ export default {
     noiseAt(x, y, z = this.i) {
       const xScale = 1 / 200;
       const yScale = 1 / 500;
-      const zScale = 1 / 10;
+      const zScale = 1 / 50;
 
       return simplex.noise3D(x * xScale, y * yScale, z * zScale);
     },
     drawContours() {
       // Resolution - grid height and width
-      const resolution = 10;
-
-      const DEBUG = false;
+      const resolution = 20;
 
       const hitsThreshold = value => value > 0.33;
 
@@ -184,30 +190,49 @@ export default {
             }
 
             if (points.length >= 3) {
+              // Check last 10 points - if they're not in order, remove
+              const pointsToCheck = Math.min(10, points.length - 1);
+              for (
+                let j = points.length - pointsToCheck;
+                j < points.length;
+                j++
+              ) {
+                if (
+                  Math.abs(points[j - 1][0] - points[j][0]) > 20 ||
+                  Math.abs(points[j - 1][1] - points[j][1]) > 20
+                ) {
+                  points.splice(j, 1);
+                  j--;
+                }
+              }
+
               contours.push(points);
             }
           }
         }
       }
 
-      if (DEBUG || true) {
-        contours.forEach(points => {
-          this.ctx.strokeStyle = 'blue';
-          this.ctx.beginPath();
-          points.forEach((point, i) => {
-            if (!i) {
-              this.ctx.moveTo(point[4] / 2, point[5] / 2);
-            } else {
-              this.ctx.lineTo(point[4] / 2, point[5] / 2);
-            }
-          });
-          // this.ctx.lineTo(points[0][4] / 2, points[0][5] / 2)
-          this.ctx.stroke();
-          this.ctx.fillStyle = 'red'
-          this.ctx.fillRect(points[0][4] / 2, points[0][5] / 2, 2, 2)
+      contours.forEach(points => {
+        this.ctx.beginPath();
+        points.forEach((point, i) => {
+          if (!i) {
+            this.ctx.moveTo(point[4] / 2, point[5] / 2);
+          } else {
+            this.ctx.lineTo(point[4] / 2, point[5] / 2);
+          }
         });
-      }
-      console.log(contours);
+        this.ctx.lineTo(points[0][4] / 2, points[0][5] / 2);
+
+        if (DEBUG) {
+          this.ctx.strokeStyle = 'blue';
+          this.ctx.stroke();
+        } else {
+          this.ctx.fillStyle = 'rgb(0, 20, 20, 0.8)';
+          this.ctx.fill();
+        }
+      });
+
+      // console.log(contours);
     }
   }
 };
