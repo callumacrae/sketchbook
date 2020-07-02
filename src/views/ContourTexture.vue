@@ -114,8 +114,8 @@ export default {
         }
       };
 
-      let emergency = 1e9;
-      const toSearch = [];
+      let emergency = 1e7;
+      const toSearch = new Set()
       const contours = [];
 
       for (let x = 0; x < this.width; x += resolution) {
@@ -126,8 +126,8 @@ export default {
           const vertical = searchEdge(x, y, x, y + resolution);
 
           if (horizontal || vertical) {
+            const localToSearch = new Set()
             const points = [];
-            let i = toSearch.length;
 
             const addPoint = (x1, y1, x2, y2, contourX, contourY) => {
               points.push([x1, y1, x2, y2, contourX, contourY]);
@@ -161,11 +161,15 @@ export default {
                 ary1.every((val, i) => val === ary2[i]);
 
               maybeToSearch.forEach(edge => {
-                if (toSearch.find(toSearch => aryEqual(toSearch, edge))) {
+                const edgeStr = edge.join(',')
+                if (toSearch.has(edgeStr)) {
                   return;
                 }
 
-                toSearch.splice(i + 1, 0, edge);
+                // toSearch contains everything searched, localToSearch
+                // contains just the stuff searched this iteration
+                toSearch.add(edgeStr)
+                localToSearch.add(edgeStr)
               });
             };
 
@@ -176,13 +180,13 @@ export default {
               addPoint(x, y, x, y + resolution, ...vertical);
             }
 
-            // WARNING: toSearch.length changes while loop progresses
-            for (; i < toSearch.length; i++) {
+            // WARNING: localToSearch length changes while loop progresses
+            for (const searchStr of localToSearch) {
               if (emergency-- < 0) {
                 throw new Error('Infinite loop!');
               }
 
-              const search = toSearch[i];
+              const search = searchStr.split(',').map(Number);
               const contour = searchEdge(...search);
               if (contour) {
                 addPoint(...search, ...contour);
@@ -191,26 +195,27 @@ export default {
 
             if (points.length >= 3) {
               // Check last 10 points - if they're not in order, remove
-              const pointsToCheck = Math.min(10, points.length - 1);
-              for (
-                let j = points.length - pointsToCheck;
-                j < points.length;
-                j++
-              ) {
-                if (
-                  Math.abs(points[j - 1][0] - points[j][0]) > 20 ||
-                  Math.abs(points[j - 1][1] - points[j][1]) > 20
-                ) {
-                  points.splice(j, 1);
-                  j--;
-                }
-              }
+              // const pointsToCheck = Math.min(10, points.length - 1);
+              // for (
+              //   let j = points.length - pointsToCheck;
+              //   j < points.length;
+              //   j++
+              // ) {
+              //   if (
+              //     Math.abs(points[j - 1][0] - points[j][0]) > 20 ||
+              //     Math.abs(points[j - 1][1] - points[j][1]) > 20
+              //   ) {
+              //     points.splice(j, 1);
+              //     j--;
+              //   }
+              // }
 
               contours.push(points);
             }
           }
         }
       }
+
 
       contours.forEach(points => {
         this.ctx.beginPath();
