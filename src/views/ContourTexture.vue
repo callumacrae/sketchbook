@@ -6,6 +6,7 @@
 import SimplexNoise from 'simplex-noise';
 
 const simplex = new SimplexNoise();
+const noiseCache = new Map()
 
 const DEBUG = false;
 
@@ -28,6 +29,7 @@ export default {
   },
   methods: {
     frame() {
+      noiseCache.clear()
       this.i++;
       this.ctx.clearRect(0, 0, this.width, this.height);
       if (DEBUG) {
@@ -73,11 +75,24 @@ export default {
       return imageData;
     },
     noiseAt(x, y, z = this.i) {
+      let innerCache = noiseCache.get(x)
+      if (!innerCache) {
+        innerCache = new Map()
+        noiseCache.set(x, innerCache)
+      }
+
+      const cacheItem = innerCache.get(y)
+      if (cacheItem) {
+        return cacheItem
+      }
+
       const xScale = 1 / 200;
       const yScale = 1 / 500;
       const zScale = 1 / 400;
 
-      return simplex.noise3D(x * xScale, y * yScale, z * zScale);
+      const noise = simplex.noise3D(x * xScale, y * yScale, z * zScale);
+      innerCache.set(y, noise)
+      return noise
     },
     drawContours() {
       // Resolution - grid height and width
@@ -186,7 +201,6 @@ export default {
                 throw new Error('Infinite loop!');
               }
 
-              // @todo - we can optimise here if it's < x and <y
               const contour = searchEdge(edge[0]);
               searched.add(edge[0].join(','));
 
