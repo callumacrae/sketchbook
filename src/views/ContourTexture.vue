@@ -7,7 +7,7 @@ import SimplexNoise from 'simplex-noise';
 
 const simplex = new SimplexNoise();
 
-const DEBUG = true;
+const DEBUG = false;
 
 export default {
   data: () => ({
@@ -75,7 +75,7 @@ export default {
     noiseAt(x, y, z = this.i) {
       const xScale = 1 / 200;
       const yScale = 1 / 500;
-      const zScale = 1 / 50;
+      const zScale = 1 / 400;
 
       return simplex.noise3D(x * xScale, y * yScale, z * zScale);
     },
@@ -85,7 +85,7 @@ export default {
 
       const hitsThreshold = value => value > 0.33;
 
-      const searchEdge = (x1, y1, x2, y2) => {
+      const searchEdge = ([x1, y1, x2, y2]) => {
         const noise1 = this.noiseAt(x1, y1);
         const noise2 = this.noiseAt(x2, y2);
         const changes = hitsThreshold(noise1) !== hitsThreshold(noise2);
@@ -114,82 +114,92 @@ export default {
         }
       };
 
-      let emergency = 1e7;
-      const toSearch = new Set();
+      let emergency = 1e5;
+      const searched = new Set();
       const contours = [];
 
       for (let x = 0; x < this.width; x += resolution) {
         for (let y = 0; y < this.height; y += resolution) {
-          const localToSearch = new Set();
-          const points = [];
+          const firstEdge = [[x, y, x + resolution, y], 'up'];
 
-          [
-            [x, y, x + resolution, y].join(','),
-            [x, y, x, y + resolution].join(',')
-          ].forEach(point => {
-            toSearch.add(point);
-            localToSearch.add(point);
-          });
-
-          const addPoint = (x1, y1, x2, y2, contourX, contourY) => {
-            points.push([x1, y1, x2, y2, contourX, contourY]);
-
-            const maybeToSearch = [
-              [x1, y1 - resolution, x1, y1],
-              [x1 - resolution, y1, x1, y1],
-              [x2, y2, x2, y2 + resolution],
-              [x2, y2, x2 + resolution, y2]
-            ];
-
-            const isVertical = x1 === x2;
-            if (isVertical) {
-              maybeToSearch.push(
-                [x1, y1, x1 + resolution, y1],
-                [x2 - resolution, y2, x2, y2],
-                [x1 + resolution, y1, x2 + resolution, y2],
-                [x1 - resolution, y1, x2 - resolution, y2]
-              );
-            } else {
-              maybeToSearch.push(
-                [x1, y1, x1, y1 + resolution],
-                [x2, y2 - resolution, x2, y2],
-                [x1, y1 + resolution, x2, y2 + resolution],
-                [x1, y1 - resolution, x2, y2 - resolution]
-              );
-            }
-
-            const aryEqual = (ary1, ary2) =>
-              ary1.length === ary2.length &&
-              ary1.every((val, i) => val === ary2[i]);
-
-            maybeToSearch.forEach(edge => {
-              const edgeStr = edge.join(',');
-              if (toSearch.has(edgeStr)) {
-                return;
-              }
-
-              // toSearch contains everything searched, localToSearch
-              // contains just the stuff searched this iteration
-              toSearch.add(edgeStr);
-              localToSearch.add(edgeStr);
-            });
-          };
-
-          // WARNING: localToSearch length changes while loop progresses
-          for (const searchStr of localToSearch) {
-            if (emergency-- < 0) {
-              throw new Error('Infinite loop!');
-            }
-
-            const search = searchStr.split(',').map(Number);
-            const contour = searchEdge(...search);
-            if (contour) {
-              addPoint(...search, ...contour);
-            }
+          // This means it's already in a shape
+          const alreadySearched = searched.has(firstEdge[0].join(','));
+          if (alreadySearched) {
+            continue;
           }
 
-          if (points.length >= 3) {
-            contours.push(points);
+          const contour = searchEdge(firstEdge[0]);
+
+          if (!contour) {
+            continue;
+          }
+
+          let currentEdge = firstEdge;
+          const edges = [];
+          edges.push([...currentEdge[0], ...contour]);
+
+          const aryEqual = (ary1, ary2) =>
+            ary1.length === ary2.length &&
+            ary1.every((val, i) => val === ary2[i]);
+
+          do {
+            const direction = currentEdge[1];
+
+            const edgesToSearch = (() => {
+              const [x1, y1, x2, y2] = currentEdge[0];
+
+              if (direction === 'up') {
+                return [
+                  [[x1, y1 - resolution, x1, y1], 'left'],
+                  [[x1, y1 - resolution, x2, y2 - resolution], 'up'],
+                  [[x2, y2 - resolution, x2, y2], 'right']
+                ];
+              }
+
+              if (direction === 'right') {
+                return [
+                  [[x1, y1, x1 + resolution, y1], 'up'],
+                  [[x1 + resolution, y1, x2 + resolution, y2], 'right'],
+                  [[x2, y2, x2 + resolution, y2], 'down']
+                ];
+              }
+
+              if (direction === 'down') {
+                return [
+                  [[x2, y2, x2, y2 + resolution], 'right'],
+                  [[x1, y1 + resolution, x2, y2 + resolution], 'down'],
+                  [[x1, y1, x1, y1 + resolution], 'left']
+                ];
+              }
+
+              if (direction === 'left') {
+                return [
+                  [[x2 - resolution, y2, x2, y2], 'down'],
+                  [[x1 - resolution, y1, x2 - resolution, y2], 'left'],
+                  [[x1 - resolution, y1, x1, y1], 'up']
+                ];
+              }
+            })();
+
+            for (const edge of edgesToSearch) {
+              if (emergency-- < 0) {
+                throw new Error('Infinite loop!');
+              }
+
+              // @todo - we can optimise here if it's < x and <y
+              const contour = searchEdge(edge[0]);
+              searched.add(edge[0].join(','));
+
+              if (contour) {
+                edges.push([...edge[0], ...contour]);
+                currentEdge = edge;
+                break;
+              }
+            }
+          } while (!aryEqual(currentEdge[0], firstEdge[0]));
+
+          if (edges.length >= 3) {
+            contours.push(edges);
           }
         }
       }
