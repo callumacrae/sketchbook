@@ -34,6 +34,10 @@ const routes: Array<RouteConfig> = [
   {
     path: '/contour-texture',
     component: () => import('../views/ContourTexture.vue')
+  },
+  {
+    path: '/animated-cow',
+    component: () => import('../views/AnimatedCow.vue')
   }
 ];
 
