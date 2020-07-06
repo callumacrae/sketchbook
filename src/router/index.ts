@@ -38,6 +38,10 @@ const routes: Array<RouteConfig> = [
   {
     path: '/animated-cow',
     component: () => import('../views/AnimatedCow.vue')
+  },
+  {
+    path: '/moving-light',
+    component: () => import('../views/MovingLight.vue')
   }
 ];
 
