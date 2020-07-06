@@ -50,8 +50,8 @@ export default {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambientLight);
 
-    this.camera = new THREE.PerspectiveCamera(100, width / height, 0.1, 1000);
-    this.camera.position.z = 5;
+    this.camera = new THREE.PerspectiveCamera(80, width / height, 0.1, 1000);
+    this.camera.position.z = 4;
 
     this.frameId = requestAnimationFrame(this.frame);
   },
