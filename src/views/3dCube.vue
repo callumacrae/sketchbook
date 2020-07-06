@@ -7,6 +7,7 @@
 <script>
 import * as THREE from 'three';
 import SimplexNoise from 'simplex-noise';
+import BlobCanvas from '../utils/textures/blobs';
 
 const simplex = new SimplexNoise();
 
@@ -28,6 +29,7 @@ export default {
     this.scene.background = new THREE.Color(0xefefef);
 
     const geometry = new THREE.BoxGeometry(2, 2, 2);
+
     const materials = this.generateMaterials();
     this.cube = new THREE.Mesh(geometry, materials);
     this.cube.rotation.x = Math.PI / 4;
@@ -65,6 +67,8 @@ export default {
       this.timestamp = timestamp;
       this.updateLightPosition();
 
+      // this.blobCanvas.frame(timestamp);
+      // @TODO don't create a bajillion canvas elements lol
       const newMaterial = this.generateMaterials();
       this.cube.material = newMaterial;
       this.cube.needsUpdate = true;
@@ -83,23 +87,23 @@ export default {
       this.directionalLight.lookAt(0, 0, 0);
     },
     generateMaterials() {
-      const size = 1;
+      const size = 1.5;
       return [
         new THREE.MeshPhongMaterial({ color: new THREE.Color('white') }),
         new THREE.MeshPhongMaterial({
-          map: this.generateTexture(0, size, 0, size, 0, 0, Math.PI / -2)
+          map: this.generateCanvasTexture(0, 0, 0, size, size, 0, Math.PI / -2)
         }),
         new THREE.MeshPhongMaterial({
-          map: this.generateTexture(0, size, 0, 0, 0, size, Math.PI / -2)
+          map: this.generateCanvasTexture(0, size, size, 0, 0, 0, Math.PI / -2)
         }),
         new THREE.MeshPhongMaterial({ color: new THREE.Color('white') }),
         new THREE.MeshPhongMaterial({
-          map: this.generateTexture(0, 0, 0, size, 0, size, Math.PI / -2)
+          map: this.generateCanvasTexture(0, 0, size, size, 0, 0, Math.PI / -2)
         }),
         new THREE.MeshPhongMaterial({ color: new THREE.Color('white') })
       ];
     },
-    generateTexture(x1, y1, z1, x2, y2, z2, rotation = 0) {
+    generateCanvasTexture(x1, y1, z1, x2, y2, z2, rotation = 0) {
       const xRange = x2 - x1;
       const yRange = y2 - y1;
       const zRange = z2 - z1;
@@ -121,44 +125,23 @@ export default {
       };
 
       // Generate texture for cube faces
-      const textureWidth = 100;
-      const textureHeight = 100;
-      const size = textureWidth * textureHeight;
-      const data = new Uint8Array(3 * size);
+      const textureWidth = 256;
+      const textureHeight = 256;
 
-      for (let i = 0; i < size; i++) {
-        const stride = i * 3;
+      const blobCanvas = new BlobCanvas({
+        customNoiseAt: (x, y, t) => {
+          return simplex.noise4D(
+            ...map(x / textureWidth, y / textureHeight),
+            time
+          );
+        },
+        width: textureWidth,
+        height: textureHeight,
+        dpr: 1
+      });
+      blobCanvas.frame()
 
-        const x = (i / textureWidth) % 1;
-        const y = Math.floor(i / textureHeight) / textureHeight;
-
-        if (false) {
-          const val = map(x, y);
-          data[stride] = val[0] * 256;
-          data[stride + 1] = val[1] * 256;
-          data[stride + 2] = val[2] * 256;
-          continue;
-        }
-
-        const noise = simplex.noise4D(...map(x, y), time);
-
-        const color =
-          noise < -0.33
-            ? [255, 0, 0]
-            : noise < 0.33
-            ? [0, 255, 0]
-            : [0, 0, 255];
-        data[stride] = color[0];
-        data[stride + 1] = color[1];
-        data[stride + 2] = color[2];
-      }
-
-      const texture = new THREE.DataTexture(
-        data,
-        textureWidth,
-        textureHeight,
-        THREE.RGBFormat
-      );
+      const texture = new THREE.CanvasTexture(blobCanvas.getCanvas());
 
       // @TODO pretty sure this is only required because i've put the faces in
       // the wrong order lol
