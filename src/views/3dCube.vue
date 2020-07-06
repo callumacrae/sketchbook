@@ -8,15 +8,11 @@
 import * as THREE from 'three';
 import SimplexNoise from 'simplex-noise';
 
-import chroma from 'chroma-js';
-import { schemePRGn } from 'd3-scale-chromatic';
-
-const colorScale = chroma.scale(schemePRGn[11]).domain([-1, 1]);
-
 const simplex = new SimplexNoise();
 
 export default {
   data: () => ({
+    timestamp: 0,
     frameId: undefined
   }),
   mounted() {
@@ -31,20 +27,15 @@ export default {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xefefef);
 
-    const texture = this.generateTexture();
     const geometry = new THREE.BoxGeometry(2, 2, 2);
-    const material = new THREE.MeshPhongMaterial({
-      map: texture,
-      shininess: 50
-    });
-    this.cube = new THREE.Mesh(geometry, material);
+    const materials = this.generateMaterials();
+    this.cube = new THREE.Mesh(geometry, materials);
     this.cube.rotation.x = Math.PI / 4;
     this.cube.rotation.y = Math.PI / 4;
     this.scene.add(this.cube);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
     this.directionalLight = directionalLight;
-    this.lightAngle = Math.PI / 2;
     this.updateLightPosition();
     directionalLight.target = this.cube;
     this.scene.add(directionalLight);
@@ -68,15 +59,15 @@ export default {
     cancelAnimationFrame(this.frameId);
   },
   methods: {
-    frame() {
-      this.cube.rotation.x += 0.01;
-      this.cube.rotation.y += 0.01;
-      this.lightAngle += 0.05;
+    frame(timestamp) {
+      // this.cube.rotation.x += 0.01;
+      // this.cube.rotation.y += 0.01;
+      this.timestamp = timestamp;
       this.updateLightPosition();
 
-      const newTexture = this.generateTexture();
-      this.cube.material.map = newTexture;
-      this.cube.material.needsUpdate = true;
+      const newMaterial = this.generateMaterials();
+      this.cube.material = newMaterial;
+      this.cube.needsUpdate = true;
 
       this.renderer.render(this.scene, this.camera);
       this.frameId = requestAnimationFrame(this.frame);
@@ -84,39 +75,99 @@ export default {
     updateLightPosition() {
       const distance = 1;
 
-      const x = distance * Math.cos(this.lightAngle);
-      const y = distance * Math.sin(this.lightAngle);
+      const lightAngle = this.timestamp / 1e3;
+      const x = distance * Math.cos(lightAngle);
+      const y = distance * Math.sin(lightAngle);
 
       this.directionalLight.position.set(x, y, 3);
       this.directionalLight.lookAt(0, 0, 0);
     },
-    generateTexture() {
+    generateMaterials() {
+      const size = 1;
+      return [
+        new THREE.MeshPhongMaterial({ color: new THREE.Color('white') }),
+        new THREE.MeshPhongMaterial({
+          map: this.generateTexture(0, size, 0, size, 0, 0, Math.PI / -2)
+        }),
+        new THREE.MeshPhongMaterial({
+          map: this.generateTexture(0, size, 0, 0, 0, size, Math.PI / -2)
+        }),
+        new THREE.MeshPhongMaterial({ color: new THREE.Color('white') }),
+        new THREE.MeshPhongMaterial({
+          map: this.generateTexture(0, 0, 0, size, 0, size, Math.PI / -2)
+        }),
+        new THREE.MeshPhongMaterial({ color: new THREE.Color('white') })
+      ];
+    },
+    generateTexture(x1, y1, z1, x2, y2, z2, rotation = 0) {
+      const xRange = x2 - x1;
+      const yRange = y2 - y1;
+      const zRange = z2 - z1;
+      const time = this.timestamp / 10000;
+
+      const plane = !xRange ? 'x' : !yRange ? 'y' : 'z';
+
+      // textureX and textureY are numbers between 0 and 1
+      const map = (textureX, textureY) => {
+        if (plane === 'z') {
+          return [x1 + xRange * textureX, y1 + yRange * textureY, z1];
+        }
+
+        if (plane === 'y') {
+          return [x1 + xRange * textureX, y1, z1 + zRange * textureY];
+        }
+
+        return [x1, y1 + yRange * textureX, z1 + zRange * textureY];
+      };
+
       // Generate texture for cube faces
       const textureWidth = 100;
       const textureHeight = 100;
       const size = textureWidth * textureHeight;
       const data = new Uint8Array(3 * size);
-      const z = this.lightAngle || 0;
 
       for (let i = 0; i < size; i++) {
         const stride = i * 3;
 
-        const x = i % textureWidth;
-        const y = Math.floor(i / textureHeight);
-        const noise = simplex.noise3D(x / 20, y / 20, z / 5);
+        const x = (i / textureWidth) % 1;
+        const y = Math.floor(i / textureHeight) / textureHeight;
 
-        const color = colorScale(noise).rgb();
-        data[stride] = color[0]
-        data[stride + 1] = color[1]
-        data[stride + 2] = color[2]
+        if (false) {
+          const val = map(x, y);
+          data[stride] = val[0] * 256;
+          data[stride + 1] = val[1] * 256;
+          data[stride + 2] = val[2] * 256;
+          continue;
+        }
+
+        const noise = simplex.noise4D(...map(x, y), time);
+
+        const color =
+          noise < -0.33
+            ? [255, 0, 0]
+            : noise < 0.33
+            ? [0, 255, 0]
+            : [0, 0, 255];
+        data[stride] = color[0];
+        data[stride + 1] = color[1];
+        data[stride + 2] = color[2];
       }
 
-      return new THREE.DataTexture(
+      const texture = new THREE.DataTexture(
         data,
         textureWidth,
         textureHeight,
         THREE.RGBFormat
       );
+
+      // @TODO pretty sure this is only required because i've put the faces in
+      // the wrong order lol
+      if (rotation) {
+        texture.center = new THREE.Vector2(0.5, 0.5);
+        texture.rotation = rotation;
+      }
+
+      return texture;
     }
   }
 };
