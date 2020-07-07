@@ -30,10 +30,15 @@ export default {
 
     const geometry = new THREE.BoxGeometry(2, 2, 2);
 
-    const materials = this.generateMaterials();
+    const { canvasTextures, materials } = this.generateMaterials();
+    this.canvasTextures = canvasTextures;
+    this.materials = materials;
     this.cube = new THREE.Mesh(geometry, materials);
     this.cube.rotation.x = Math.PI / 4;
     this.cube.rotation.y = Math.PI / 4;
+    this.cube.rotation.x = Math.PI / -4 * 3;
+    this.cube.rotation.y = Math.PI / 4;
+    // this.cube.rotation.z = Math.PI / 4
     this.scene.add(this.cube);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -62,16 +67,16 @@ export default {
   },
   methods: {
     frame(timestamp) {
-      // this.cube.rotation.x += 0.01;
-      // this.cube.rotation.y += 0.01;
+      this.cube.rotation.x = timestamp / 6e3
+      this.cube.rotation.y = timestamp / 6e3
       this.timestamp = timestamp;
       this.updateLightPosition();
 
-      // this.blobCanvas.frame(timestamp);
-      // @TODO don't create a bajillion canvas elements lol
-      const newMaterial = this.generateMaterials();
-      this.cube.material = newMaterial;
-      this.cube.needsUpdate = true;
+      // @TODO only update textures that are facing camera
+      this.canvasTextures.forEach(({ blobCanvas, texture }) => {
+        blobCanvas.frame(timestamp);
+        texture.needsUpdate = true;
+      });
 
       this.renderer.render(this.scene, this.camera);
       this.frameId = requestAnimationFrame(this.frame);
@@ -88,26 +93,31 @@ export default {
     },
     generateMaterials() {
       const size = 1.5;
-      return [
-        new THREE.MeshPhongMaterial({ color: new THREE.Color('white') }),
-        new THREE.MeshPhongMaterial({
-          map: this.generateCanvasTexture(0, 0, 0, size, size, 0, Math.PI / -2)
-        }),
-        new THREE.MeshPhongMaterial({
-          map: this.generateCanvasTexture(0, size, size, 0, 0, 0, Math.PI / -2)
-        }),
-        new THREE.MeshPhongMaterial({ color: new THREE.Color('white') }),
-        new THREE.MeshPhongMaterial({
-          map: this.generateCanvasTexture(0, 0, size, size, 0, 0, Math.PI / -2)
-        }),
-        new THREE.MeshPhongMaterial({ color: new THREE.Color('white') })
+
+      const canvasTextures = [
+        this.generateCanvasTexture(0, size, size, size, 0, size, Math.PI / -2),
+        this.generateCanvasTexture(0, 0, 0, size, size, 0, Math.PI / -2),
+        this.generateCanvasTexture(0, size, size, 0, 0, 0, Math.PI / -2),
+        this.generateCanvasTexture(size, 0, size, size, size, 0, Math.PI / -2),
+        this.generateCanvasTexture(0, 0, size, size, 0, 0, Math.PI / -2),
+        this.generateCanvasTexture(0, size, 0, size, size, size, Math.PI / -2)
       ];
+
+      const materials = [
+        new THREE.MeshPhongMaterial({ map: canvasTextures[0].texture }),
+        new THREE.MeshPhongMaterial({ map: canvasTextures[1].texture }),
+        new THREE.MeshPhongMaterial({ map: canvasTextures[2].texture }),
+        new THREE.MeshPhongMaterial({ map: canvasTextures[3].texture }),
+        new THREE.MeshPhongMaterial({ map: canvasTextures[4].texture }),
+        new THREE.MeshPhongMaterial({ map: canvasTextures[5].texture })
+      ];
+
+      return { canvasTextures, materials };
     },
     generateCanvasTexture(x1, y1, z1, x2, y2, z2, rotation = 0) {
       const xRange = x2 - x1;
       const yRange = y2 - y1;
       const zRange = z2 - z1;
-      const time = this.timestamp / 10000;
 
       const plane = !xRange ? 'x' : !yRange ? 'y' : 'z';
 
@@ -130,6 +140,7 @@ export default {
 
       const blobCanvas = new BlobCanvas({
         customNoiseAt: (x, y, t) => {
+          const time = this.timestamp / 10e3;
           return simplex.noise4D(
             ...map(x / textureWidth, y / textureHeight),
             time
@@ -139,7 +150,7 @@ export default {
         height: textureHeight,
         dpr: 1
       });
-      blobCanvas.frame()
+      blobCanvas.frame();
 
       const texture = new THREE.CanvasTexture(blobCanvas.getCanvas());
 
@@ -150,7 +161,7 @@ export default {
         texture.rotation = rotation;
       }
 
-      return texture;
+      return { blobCanvas, texture };
     }
   }
 };

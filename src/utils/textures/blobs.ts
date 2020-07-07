@@ -148,7 +148,8 @@ export default class BlobCanvas {
     // Resolution - grid height and width
     const resolution = 10;
 
-    const hitsThreshold = (value: number) => value > 0.33;
+    const threshold = 0.2
+    const hitsThreshold = (value: number) => value > threshold;
 
     type Point = [number, number];
     type Edge = [number, number, number, number];
@@ -164,7 +165,7 @@ export default class BlobCanvas {
       if (changes) {
         // Approximate position - efficiency is more important than accuracy
         // NOTE: this might break if noise algorithm changed or resolution too high
-        const distance = (0.33 - noise1) / (noise2 - noise1);
+        const distance = (threshold - noise1) / (noise2 - noise1);
         const positionX = (x2 - x1) * distance + x1;
         const positionY = (y2 - y1) * distance + y1;
 
