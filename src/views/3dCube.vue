@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div @click="status = status === 'playing' ? 'paused' : 'playing'">
     <canvas ref="canvas"></canvas>
   </div>
 </template>
@@ -13,6 +13,7 @@ const simplex = new SimplexNoise();
 
 export default {
   data: () => ({
+    status: 'playing',
     timestamp: 0,
     frameId: undefined
   }),
@@ -36,7 +37,7 @@ export default {
     this.cube = new THREE.Mesh(geometry, materials);
     this.cube.rotation.x = Math.PI / 4;
     this.cube.rotation.y = Math.PI / 4;
-    this.cube.rotation.x = Math.PI / -4 * 3;
+    this.cube.rotation.x = (Math.PI / -4) * 3;
     this.cube.rotation.y = Math.PI / 4;
     // this.cube.rotation.z = Math.PI / 4
     this.scene.add(this.cube);
@@ -67,8 +68,14 @@ export default {
   },
   methods: {
     frame(timestamp) {
-      this.cube.rotation.x = timestamp / 6e3
-      this.cube.rotation.y = timestamp / 6e3
+      this.frameId = requestAnimationFrame(this.frame);
+
+      if (this.status === 'paused') {
+        return;
+      }
+
+      this.cube.rotation.x = timestamp / 6e3;
+      this.cube.rotation.y = timestamp / 6e3;
       this.timestamp = timestamp;
       this.updateLightPosition();
 
@@ -79,7 +86,6 @@ export default {
       });
 
       this.renderer.render(this.scene, this.camera);
-      this.frameId = requestAnimationFrame(this.frame);
     },
     updateLightPosition() {
       const distance = 1;
