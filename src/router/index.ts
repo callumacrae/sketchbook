@@ -6,42 +6,53 @@ Vue.use(VueRouter);
 const routes: Array<RouteConfig> = [
   {
     path: '/animated-blobs',
-    component: () =>
-      import(
-        /* webpackChunkName: "animated-blobs" */ '../views/AnimatedBlobs.vue'
-      )
+    name: 'Animated blobs',
+    component: () => import('../views/AnimatedBlobs.vue')
   },
   {
     path: '/triangles',
-    component: () =>
-      import(/* webpackChunkName: "triangles" */ '../views/Triangles.vue')
+    name: 'Generative triangles',
+    component: () => import('../views/Triangles.vue'),
+    meta: {
+      favourite: true
+    }
   },
   {
     path: '/simplex-lines',
-    component: () =>
-      import(
-        /* webpackChunkName: "simplex-lines" */ '../views/SimplexLines.vue'
-      )
+    name: 'Simplex lines',
+    component: () => import('../views/SimplexLines.vue')
   },
   {
     path: '/3d-cube',
-    component: () => import('../views/3dCube.vue')
+    name: '3D cube',
+    component: () => import('../views/3dCube.vue'),
+    meta: {
+      favourite: true
+    }
   },
   {
     path: '/light-tracing',
+    name: 'Light tracing',
     component: () => import('../views/LightTracing.vue')
   },
   {
     path: '/contour-texture',
+    name: 'Contour texture',
     component: () => import('../views/ContourTexture.vue')
   },
   {
     path: '/animated-cow',
+    name: 'Shitty animated cow',
     component: () => import('../views/AnimatedCow.vue')
   },
   {
     path: '/moving-light',
+    name: 'Plant projection mapping',
     component: () => import('../views/MovingLight.vue')
+  },
+  {
+    path: '*',
+    component: () => import('../views/Index.vue')
   }
 ];
 
