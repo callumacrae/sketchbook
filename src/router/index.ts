@@ -51,6 +51,11 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/MovingLight.vue')
   },
   {
+    path: '/exploding-text',
+    name: 'Exploding text',
+    component: () => import('../views/ExplodingText.vue')
+  },
+  {
     path: '*',
     component: () => import('../views/Index.vue')
   }
