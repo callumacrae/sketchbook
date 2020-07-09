@@ -25,7 +25,7 @@ export default {
     mainCtx.canvas.width = this.width;
     mainCtx.canvas.height = this.height;
 
-    this.helloBlocks = this.generateBlocks('hello');
+    this.helloTiles = this.generateTiles('hello');
 
     this.frame();
   },
@@ -44,12 +44,12 @@ export default {
       this.mainCtx.save();
 
       const {
-        blocks,
-        blockWidth,
-        blockHeight,
+        tiles,
+        tileWidth,
+        tileHeight,
         textWidth,
         textHeight
-      } = this.helloBlocks;
+      } = this.helloTiles;
 
       const centerX = (this.width - textWidth) / 2;
       const centerY = (this.height - textHeight) / 2;
@@ -60,9 +60,9 @@ export default {
       // Adjusted t range
       const tRange = 0.6;
 
-      const maxDelay = Math.max(...blocks.map(({ delay }) => delay));
+      const maxDelay = Math.max(...tiles.map(({ delay }) => delay));
 
-      blocks.forEach(({ bitmap, coords, delay, rotate, translate }) => {
+      tiles.forEach(({ bitmap, coords, delay, rotate, translate }) => {
         const [topLeft] = coords;
 
         const offset = ((1 - tRange) * delay) / maxDelay;
@@ -72,8 +72,8 @@ export default {
         this.mainCtx.save();
 
         const origin = [
-          topLeft[0] + blockWidth / 2,
-          topLeft[1] + blockHeight / 2
+          topLeft[0] + tileWidth / 2,
+          topLeft[1] + tileHeight / 2
         ];
         // this.mainCtx.translate(origin[0], origin[1]);
         this.mainCtx.translate(
@@ -88,32 +88,32 @@ export default {
 
       this.mainCtx.restore();
     },
-    generateBlocks(text, blocksX = 15, blocksY = 7) {
+    generateTiles(text, tilesX = 15, tilesY = 7) {
       const textCanvas = new OffscreenCanvas(300, 75);
       const textCtx = textCanvas.getContext('2d');
 
       const textWidth = textCtx.canvas.width;
       const textHeight = textCtx.canvas.height;
 
-      const blockWidth = textWidth / blocksX;
-      const blockHeight = textHeight / blocksY;
+      const tileWidth = textWidth / tilesX;
+      const tileHeight = textHeight / tilesY;
 
       const verticalLines = [[0, 0]];
-      for (let i = 1; i < blocksX; i++) {
+      for (let i = 1; i < tilesX; i++) {
         const topX =
-          blockWidth * i + random.range(-0.5, 0.5) * blockWidth * 0.8;
+          tileWidth * i + random.range(-0.5, 0.5) * tileWidth * 0.8;
         const bottomX =
-          blockWidth * i + random.range(-0.5, 0.5) * blockWidth * 0.8;
+          tileWidth * i + random.range(-0.5, 0.5) * tileWidth * 0.8;
         verticalLines.push([topX, bottomX]);
       }
       verticalLines.push([textWidth, textWidth]);
 
       const horizontalLines = [[0, 0]];
-      for (let i = 1; i < blocksY; i++) {
+      for (let i = 1; i < tilesY; i++) {
         const leftY =
-          blockHeight * i + random.range(-0.5, 0.5) * blockHeight * 0.8;
+          tileHeight * i + random.range(-0.5, 0.5) * tileHeight * 0.8;
         const rightY =
-          blockHeight * i + random.range(-0.5, 0.5) * blockHeight * 0.8;
+          tileHeight * i + random.range(-0.5, 0.5) * tileHeight * 0.8;
         horizontalLines.push([leftY, rightY]);
       }
       horizontalLines.push([textHeight, textHeight]);
@@ -156,7 +156,7 @@ export default {
         return [x, y];
       };
 
-      const blocks = [];
+      const tiles = [];
       const maxDelay = verticalLines.length + horizontalLines.length - 4;
       verticalLines.slice(0, -1).forEach((verticalLine, i) => {
         const nextVerticalLine = verticalLines[i + 1];
@@ -183,7 +183,7 @@ export default {
             delay += random.range(-0.25, 0.25);
           }
 
-          blocks.push({
+          tiles.push({
             coords: [topLeft, topRight, bottomLeft, bottomRight],
             delay,
             translate: [random.range(-40, 40), random.range(140, 160) + j * 10],
@@ -197,7 +197,7 @@ export default {
       textCtx.textAlign = 'center';
       textCtx.textBaseline = 'middle';
 
-      blocks.forEach(({ coords }, i) => {
+      tiles.forEach(({ coords }, i) => {
         const [topLeft, topRight, bottomLeft, bottomRight] = coords;
 
         textCtx.clearRect(0, 0, textWidth, textHeight);
@@ -212,15 +212,15 @@ export default {
 
         textCtx.fillText('hello', textWidth / 2, textHeight / 2, textWidth);
 
-        blocks[i].bitmap = textCtx.canvas.transferToImageBitmap();
+        tiles[i].bitmap = textCtx.canvas.transferToImageBitmap();
 
         textCtx.restore();
       });
 
       return {
-        blocks,
-        blockWidth,
-        blockHeight,
+        tiles,
+        tileWidth,
+        tileHeight,
         textWidth,
         textHeight
       };
