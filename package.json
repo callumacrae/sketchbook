@@ -8,19 +8,23 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@types/eases": "^1.0.1",
     "chroma-js": "^2.1.0",
     "core-js": "^3.6.4",
     "d3-scale": "^3.2.1",
     "d3-scale-chromatic": "^1.5.0",
+    "eases": "^1.0.8",
     "node-sass": "^4.14.1",
     "normalize.css": "^8.0.1",
     "sass-loader": "^8.0.2",
+    "seed-random": "^2.2.0",
     "simplex-noise": "^2.4.0",
     "three": "^0.117.1",
     "vue": "^2.6.11",
     "vue-router": "^3.1.6"
   },
   "devDependencies": {
+    "@types/seed-random": "^2.2.0",
     "@typescript-eslint/eslint-plugin": "^2.26.0",
     "@typescript-eslint/parser": "^2.26.0",
     "@vue/cli-plugin-babel": "^4.3.0",

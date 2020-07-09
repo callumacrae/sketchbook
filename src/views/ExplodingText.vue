@@ -3,12 +3,16 @@
     class="main"
     @click="status = status === 'playing' ? 'paused' : 'playing'"
   >
-    <canvas width="160" height="75" ref="textCanvas"></canvas>
     <canvas width="500" height="500" ref="mainCanvas"></canvas>
   </div>
 </template>
 
 <script>
+import * as random from '../utils/random';
+import ease from 'eases/cubic-in-out';
+
+random.setSeed('test');
+
 export default {
   data: () => ({
     status: 'playing',
@@ -18,8 +22,8 @@ export default {
     blocks: []
   }),
   mounted() {
-    this.textCtx = this.$refs.textCanvas.getContext('2d');
-
+    const textCanvas = new OffscreenCanvas(160, 75);
+    this.textCtx = textCanvas.getContext('2d');
     const textCtx = this.textCtx;
 
     const width = textCtx.canvas.width;
@@ -40,17 +44,19 @@ export default {
 
     const verticalLines = [[0, 0]];
     for (let i = 1; i < blocksX; i++) {
-      const topX = blockWidth * i + (Math.random() - 0.5) * blockWidth * 0.8;
-      const bottomX = blockWidth * i + (Math.random() - 0.5) * blockWidth * 0.8;
+      const topX = blockWidth * i + random.range(-0.5, 0.5) * blockWidth * 0.8;
+      const bottomX =
+        blockWidth * i + random.range(-0.5, 0.5) * blockWidth * 0.8;
       verticalLines.push([topX, bottomX]);
     }
     verticalLines.push([width, width]);
 
     const horizontalLines = [[0, 0]];
     for (let i = 1; i < blocksY; i++) {
-      const leftY = blockHeight * i + (Math.random() - 0.5) * blockHeight * 0.8;
+      const leftY =
+        blockHeight * i + random.range(-0.5, 0.5) * blockHeight * 0.8;
       const rightY =
-        blockHeight * i + (Math.random() - 0.5) * blockHeight * 0.8;
+        blockHeight * i + random.range(-0.5, 0.5) * blockHeight * 0.8;
       horizontalLines.push([leftY, rightY]);
     }
     horizontalLines.push([height, height]);
@@ -84,11 +90,12 @@ export default {
     };
 
     this.blocks = [];
+    const maxDelay = verticalLines.length + horizontalLines.length - 4;
     verticalLines.slice(0, -1).forEach((verticalLine, i) => {
       const nextVerticalLine = verticalLines[i + 1];
 
-      horizontalLines.slice(0, -1).forEach((horizontalLine, i) => {
-        const nextHorizontalLine = horizontalLines[i + 1];
+      horizontalLines.slice(0, -1).forEach((horizontalLine, j) => {
+        const nextHorizontalLine = horizontalLines[j + 1];
 
         const topLeft = findIntersection(verticalLine, horizontalLine);
         const topRight = findIntersection(nextVerticalLine, horizontalLine);
@@ -98,64 +105,57 @@ export default {
           nextHorizontalLine
         );
 
-        this.blocks.push([topLeft, topRight, bottomLeft, bottomRight]);
+        topLeft[1] -= 0.5;
+        topRight[1] -= 0.5;
+        bottomLeft[1] += 0.5;
+        bottomRight[1] += 0.5;
+
+        let delay = maxDelay - i - j;
+
+        if (delay !== 0) {
+          delay += random.range(-0.25, 0.25);
+        }
+
+        this.blocks.push({
+          coords: [topLeft, topRight, bottomLeft, bottomRight],
+          delay,
+          translate: [random.range(-40, 40), random.range(100, 120)],
+          rotate: random.range(-Math.PI / 2, Math.PI / 2)
+        });
       });
     });
 
-    const DEBUG_BLOCKS = false;
-    if (DEBUG_BLOCKS) {
-      this.blocks.forEach(([topLeft, topRight, bottomLeft, bottomRight]) => {
-        textCtx.beginPath();
-        textCtx.moveTo(...topLeft);
-        textCtx.lineTo(...topRight);
-        textCtx.lineTo(...bottomRight);
-        textCtx.lineTo(...bottomLeft);
-        const randomHue = Math.floor(Math.random() * 256);
-        textCtx.fillStyle = `hsla(${randomHue}, 80%, 50%, 0.2)`;
-        textCtx.fill();
-      });
-      return;
-    }
-
-    this.mainCtx = this.$refs.mainCanvas.getContext('2d');
+    const mainCanvas = this.$refs.mainCanvas;
+    this.mainCtx = mainCanvas.getContext('2d');
     const mainCtx = this.mainCtx;
 
     this.width = mainCtx.canvas.width;
     this.height = mainCtx.canvas.height;
 
-    const DEBUG_EXPLODE = true;
-    if (DEBUG_EXPLODE) {
-      textCtx.fillStyle = 'black';
-      textCtx.font = '100px sans-serif';
-      textCtx.textAlign = 'center';
-      textCtx.textBaseline = 'middle';
+    textCtx.fillStyle = 'black';
+    textCtx.font = '100px sans-serif';
+    textCtx.textAlign = 'center';
+    textCtx.textBaseline = 'middle';
 
-      this.blocks.forEach(([topLeft, topRight, bottomLeft, bottomRight]) => {
-        textCtx.clearRect(0, 0, this.width, this.height);
-        textCtx.save();
-        textCtx.beginPath();
-        textCtx.moveTo(...topLeft);
-        textCtx.lineTo(...topRight);
-        textCtx.lineTo(...bottomRight);
-        textCtx.lineTo(...bottomLeft);
-        textCtx.clip();
+    this.blocks.forEach(({ coords }, i) => {
+      const [topLeft, topRight, bottomLeft, bottomRight] = coords;
+      textCtx.clearRect(0, 0, this.width, this.height);
+      textCtx.save();
+      textCtx.beginPath();
+      textCtx.moveTo(...topLeft);
+      textCtx.lineTo(...topRight);
+      textCtx.lineTo(...bottomRight);
+      textCtx.lineTo(...bottomLeft);
+      textCtx.clip();
 
-        textCtx.fillText('test', width / 2, height / 2);
+      textCtx.fillText('test', width / 2, height / 2);
 
-        this.mainCtx.drawImage(
-          this.textCtx.canvas,
-          topLeft[0],
-          topLeft[1],
-          width,
-          height
-        );
+      this.blocks[i].bitmap = this.textCtx.canvas.transferToImageBitmap();
 
-        textCtx.restore();
-      });
-      return;
-    }
+      textCtx.restore();
+    });
 
-    // this.frame();
+    this.frame();
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
@@ -169,23 +169,41 @@ export default {
       }
 
       this.mainCtx.clearRect(0, 0, this.width, this.height);
+      this.mainCtx.save();
 
-      const t = timestamp / 750;
-      const offset = Math.sin(t) + 2;
+      const width = this.textCtx.canvas.width;
+      const height = this.textCtx.canvas.height;
 
-      this.blocks.forEach(block => {
-        this.mainCtx.drawImage(
-          this.textCtx.canvas,
-          block.x,
-          block.y,
-          block.width,
-          block.height,
-          block.x * offset,
-          block.y * offset,
-          block.width,
-          block.height
+      const centerX = (this.width - width) / 2;
+      const centerY = (this.height - height) / 2;
+      this.mainCtx.translate(centerX, centerY);
+
+      // 0 <= t < 1
+      const t = ease(Math.sin(timestamp / 400) / 2 + 0.5);
+      // Adjusted t range
+      const tRange = 0.6;
+
+      const maxDelay = Math.max(...this.blocks.map(({ delay }) => delay));
+
+      this.blocks.forEach(({ bitmap, coords, delay, rotate, translate }) => {
+        const [topLeft] = coords;
+
+        const offset = ((1 - tRange) * delay) / maxDelay;
+        // adjustedT can actually be more than 1 but that's okay
+        const adjustedT = Math.max(0, t / tRange - offset);
+
+        this.mainCtx.save();
+        this.mainCtx.translate(
+          topLeft[0] + translate[0] * adjustedT,
+          topLeft[1] + translate[1] * adjustedT
         );
+        this.mainCtx.rotate(rotate * adjustedT);
+        this.mainCtx.translate(-topLeft[0], -topLeft[1]);
+        this.mainCtx.drawImage(bitmap, 0, 0, width, height);
+        this.mainCtx.restore();
       });
+
+      this.mainCtx.restore();
     }
   }
 };
