@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@types/eases": "^1.0.1",
+    "bezier-easing": "^2.1.0",
     "chroma-js": "^2.1.0",
     "core-js": "^3.6.4",
     "d3-scale": "^3.2.1",

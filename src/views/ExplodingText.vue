@@ -7,7 +7,10 @@
 
 <script>
 import * as random from '../utils/random';
-import ease from 'eases/cubic-in-out';
+import eases from 'eases';
+import BezierEasing from 'bezier-easing';
+
+const rotationEasing = BezierEasing(0.9, 0.25, 0.1, 0.75);
 
 export default {
   data: () => ({
@@ -17,15 +20,18 @@ export default {
     height: undefined
   }),
   mounted() {
-    this.mainCtx = this.$el.getContext('2d');
-    const mainCtx = this.mainCtx;
+    const canvas = this.$el;
+    this.ctx = canvas.getContext('2d');
 
-    this.width = mainCtx.canvas.clientWidth;
-    this.height = mainCtx.canvas.clientHeight;
-    mainCtx.canvas.width = this.width;
-    mainCtx.canvas.height = this.height;
+    this.width = canvas.clientWidth;
+    this.height = canvas.clientHeight;
+    canvas.width = this.width;
+    canvas.height = this.height;
 
     this.helloTiles = this.generateTiles('hello');
+    this.worldTiles = this.generateTiles('world', textCtx => {
+      textCtx.fillStyle = 'white';
+    });
 
     this.frame();
   },
@@ -40,55 +46,43 @@ export default {
         return;
       }
 
-      this.mainCtx.clearRect(0, 0, this.width, this.height);
-      this.mainCtx.save();
+      const ctx = this.ctx;
+      const t = timestamp / 400;
 
-      const {
-        tiles,
-        tileWidth,
-        tileHeight,
-        textWidth,
-        textHeight
-      } = this.helloTiles;
+      ctx.clearRect(0, 0, this.width, this.height);
+      ctx.save();
 
-      const centerX = (this.width - textWidth) / 2;
-      const centerY = (this.height - textHeight) / 2;
-      this.mainCtx.translate(centerX, centerY);
+      let rotationT = t % (Math.PI * 2);
+      const extra = rotationT > Math.PI ? Math.PI : 0;
+      rotationT =
+        rotationEasing((rotationT - extra) / Math.PI) * Math.PI + extra;
 
-      // 0 <= t < 1
-      const t = ease(Math.cos(timestamp / 400 - Math.PI) / 2 + 0.5);
-      // Adjusted t range
-      const tRange = 0.6;
+      ctx.translate(this.width / 2, this.height / 2);
+      ctx.rotate(rotationT);
+      ctx.translate(-this.width / 2, -this.height / 2);
 
-      const maxDelay = Math.max(...tiles.map(({ delay }) => delay));
+      ctx.fillStyle = 'black';
+      ctx.fillRect(
+        this.width / -2,
+        this.height / 2,
+        this.width * 2,
+        this.height
+      );
 
-      tiles.forEach(({ bitmap, coords, delay, rotate, translate }) => {
-        const [topLeft] = coords;
+      const helloT = eases.cubicInOut(Math.cos(t - Math.PI) / 2 + 0.5);
+      this.drawTiles(this.helloTiles, helloT);
 
-        const offset = ((1 - tRange) * delay) / maxDelay;
-        // adjustedT can actually be more than 1 but that's okay
-        const adjustedT = Math.max(0, t / tRange - offset);
+      ctx.save();
+      ctx.translate(this.width / 2, this.height / 2);
+      ctx.rotate(Math.PI);
+      ctx.translate(this.width / -2, this.height / -2);
+      const worldT = eases.cubicInOut(Math.cos(t) / 2 + 0.5);
+      this.drawTiles(this.worldTiles, worldT);
+      ctx.restore();
 
-        this.mainCtx.save();
-
-        const origin = [
-          topLeft[0] + tileWidth / 2,
-          topLeft[1] + tileHeight / 2
-        ];
-        // this.mainCtx.translate(origin[0], origin[1]);
-        this.mainCtx.translate(
-          topLeft[0] + translate[0] * adjustedT,
-          topLeft[1] + translate[1] * adjustedT
-        );
-        this.mainCtx.rotate(rotate * adjustedT);
-        this.mainCtx.translate(-origin[0], -origin[1]);
-        this.mainCtx.drawImage(bitmap, 0, 0, textWidth, textHeight);
-        this.mainCtx.restore();
-      });
-
-      this.mainCtx.restore();
+      ctx.restore();
     },
-    generateTiles(text, tilesX = 15, tilesY = 7) {
+    generateTiles(text, styleFn, tilesX = 15, tilesY = 7) {
       const textCanvas = new OffscreenCanvas(300, 75);
       const textCtx = textCanvas.getContext('2d');
 
@@ -100,8 +94,7 @@ export default {
 
       const verticalLines = [[0, 0]];
       for (let i = 1; i < tilesX; i++) {
-        const topX =
-          tileWidth * i + random.range(-0.5, 0.5) * tileWidth * 0.8;
+        const topX = tileWidth * i + random.range(-0.5, 0.5) * tileWidth * 0.8;
         const bottomX =
           tileWidth * i + random.range(-0.5, 0.5) * tileWidth * 0.8;
         verticalLines.push([topX, bottomX]);
@@ -172,9 +165,14 @@ export default {
             nextHorizontalLine
           );
 
+          // This is to make the tile overlap slightly, fixing a strange issue
+          topLeft[0] -= 0.5;
           topLeft[1] -= 0.5;
+          topRight[0] += 0.5;
           topRight[1] -= 0.5;
+          bottomLeft[0] -= 0.5;
           bottomLeft[1] += 0.5;
+          bottomRight[0] += 0.5;
           bottomRight[1] += 0.5;
 
           let delay = maxDelay - i - j;
@@ -197,6 +195,10 @@ export default {
       textCtx.textAlign = 'center';
       textCtx.textBaseline = 'middle';
 
+      if (typeof styleFn === 'function') {
+        styleFn(textCtx);
+      }
+
       tiles.forEach(({ coords }, i) => {
         const [topLeft, topRight, bottomLeft, bottomRight] = coords;
 
@@ -210,7 +212,7 @@ export default {
         textCtx.lineTo(...bottomLeft);
         textCtx.clip();
 
-        textCtx.fillText('hello', textWidth / 2, textHeight / 2, textWidth);
+        textCtx.fillText(text, textWidth / 2, textHeight / 2, textWidth);
 
         tiles[i].bitmap = textCtx.canvas.transferToImageBitmap();
 
@@ -224,6 +226,56 @@ export default {
         textWidth,
         textHeight
       };
+    },
+    drawTiles(tilesObj, t) {
+      const { tiles, tileWidth, tileHeight, textWidth, textHeight } = tilesObj;
+      const ctx = this.ctx;
+
+      ctx.save();
+
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(this.width, 0);
+      ctx.lineTo(this.width, this.height / 2);
+      ctx.lineTo(0, this.height / 2);
+      ctx.clip();
+
+      const offsetY = 250;
+      const centerX = (this.width - textWidth) / 2;
+      const centerY = (this.height - textHeight - offsetY) / 2;
+      ctx.translate(centerX, centerY);
+
+      // 0 <= t < 1
+      // Adjusted t range
+      const tRange = 0.6;
+
+      const maxDelay = Math.max(...tiles.map(({ delay }) => delay));
+
+      tiles.forEach(({ bitmap, coords, delay, rotate, translate }) => {
+        const [topLeft] = coords;
+
+        const offset = ((1 - tRange) * delay) / maxDelay;
+        // adjustedT can actually be more than 1 but that's okay
+        const adjustedT = Math.max(0, t / tRange - offset);
+
+        ctx.save();
+
+        const origin = [
+          topLeft[0] + tileWidth / 2,
+          topLeft[1] + tileHeight / 2
+        ];
+        // ctx.translate(origin[0], origin[1]);
+        ctx.translate(
+          topLeft[0] + translate[0] * adjustedT,
+          topLeft[1] + translate[1] * adjustedT
+        );
+        ctx.rotate(rotate * adjustedT);
+        ctx.translate(-origin[0], -origin[1]);
+        ctx.drawImage(bitmap, 0, 0, textWidth, textHeight);
+        ctx.restore();
+      });
+
+      ctx.restore();
     }
   }
 };
