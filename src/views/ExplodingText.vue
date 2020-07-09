@@ -1,10 +1,8 @@
 <template>
-  <div
-    class="main"
+  <canvas
+    ref="mainCanvas"
     @click="status = status === 'playing' ? 'paused' : 'playing'"
-  >
-    <canvas width="500" height="500" ref="mainCanvas"></canvas>
-  </div>
+  ></canvas>
 </template>
 
 <script>
@@ -125,12 +123,14 @@ export default {
       });
     });
 
-    const mainCanvas = this.$refs.mainCanvas;
-    this.mainCtx = mainCanvas.getContext('2d');
+    this.mainCtx = this.$el.getContext('2d');
     const mainCtx = this.mainCtx;
 
-    this.width = mainCtx.canvas.width;
-    this.height = mainCtx.canvas.height;
+    this.width = mainCtx.canvas.clientWidth
+    this.height = mainCtx.canvas.clientHeight
+    mainCtx.canvas.width = this.width
+    mainCtx.canvas.height = this.height
+    console.log(this.width)
 
     textCtx.fillStyle = 'black';
     textCtx.font = '100px sans-serif';
@@ -139,7 +139,7 @@ export default {
 
     this.blocks.forEach(({ coords }, i) => {
       const [topLeft, topRight, bottomLeft, bottomRight] = coords;
-      textCtx.clearRect(0, 0, this.width, this.height);
+      textCtx.clearRect(0, 0, width, height);
       textCtx.save();
       textCtx.beginPath();
       textCtx.moveTo(...topLeft);
@@ -210,12 +210,10 @@ export default {
 </script>
 
 <style scoped>
-.main {
-  margin-top: 100px;
-}
 canvas {
   display: block;
-  margin: 25px auto;
+  width: 100vw;
+  height: 100vh;
   border: 1px #efefef solid;
 }
 </style>
