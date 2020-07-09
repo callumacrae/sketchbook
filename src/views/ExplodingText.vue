@@ -1,5 +1,11 @@
 <template>
+  <p v-if="status === 'unsupported'">
+    The browser you're in doesn't support OffscreenCanvas yet, so this won't
+    work - sorry! Try
+    <a href="https://caniuse.com/#search=offscreencanvas">Chrome or Edge</a>.
+  </p>
   <canvas
+    v-else
     ref="mainCanvas"
     @click="status = status === 'playing' ? 'paused' : 'playing'"
   ></canvas>
@@ -14,7 +20,7 @@ const rotationEasing = BezierEasing(0.9, 0.25, 0.1, 0.75);
 
 export default {
   data: () => ({
-    status: 'playing',
+    status: typeof OffscreenCanvas === 'undefined' ? 'unsupported' : 'playing',
     frameId: undefined,
     width: undefined,
     height: undefined
