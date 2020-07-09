@@ -9,8 +9,6 @@
 import * as random from '../utils/random';
 import ease from 'eases/cubic-in-out';
 
-random.setSeed('test');
-
 export default {
   data: () => ({
     status: 'playing',
@@ -20,25 +18,35 @@ export default {
     blocks: []
   }),
   mounted() {
-    const textCanvas = new OffscreenCanvas(160, 75);
+    this.mainCtx = this.$el.getContext('2d');
+    const mainCtx = this.mainCtx;
+
+    this.width = mainCtx.canvas.clientWidth;
+    this.height = mainCtx.canvas.clientHeight;
+    mainCtx.canvas.width = this.width;
+    mainCtx.canvas.height = this.height;
+
+    const textCanvas = new OffscreenCanvas(300, 75);
     this.textCtx = textCanvas.getContext('2d');
     const textCtx = this.textCtx;
 
-    const width = textCtx.canvas.width;
-    const height = textCtx.canvas.height;
+    const textWidth = textCtx.canvas.width;
+    const textHeight = textCtx.canvas.height;
 
     textCtx.fillStyle = 'black';
     textCtx.font = '100px sans-serif';
     textCtx.textAlign = 'center';
     textCtx.textBaseline = 'middle';
-    textCtx.fillText('test', width / 2, height / 2);
+    textCtx.fillText('test', textWidth / 2, textHeight / 2);
 
     textCtx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
 
     const blocksX = 15;
     const blocksY = 7;
-    const blockWidth = width / blocksX;
-    const blockHeight = height / blocksY;
+    const blockWidth = textWidth / blocksX;
+    const blockHeight = textHeight / blocksY;
+    this.blockWidth = blockWidth;
+    this.blockHeight = blockHeight;
 
     const verticalLines = [[0, 0]];
     for (let i = 1; i < blocksX; i++) {
@@ -47,7 +55,7 @@ export default {
         blockWidth * i + random.range(-0.5, 0.5) * blockWidth * 0.8;
       verticalLines.push([topX, bottomX]);
     }
-    verticalLines.push([width, width]);
+    verticalLines.push([textWidth, textWidth]);
 
     const horizontalLines = [[0, 0]];
     for (let i = 1; i < blocksY; i++) {
@@ -57,7 +65,7 @@ export default {
         blockHeight * i + random.range(-0.5, 0.5) * blockHeight * 0.8;
       horizontalLines.push([leftY, rightY]);
     }
-    horizontalLines.push([height, height]);
+    horizontalLines.push([textHeight, textHeight]);
 
     // Given points (x1, y1) and (x2, y2), returns a and b where y = ax + b
     const solveLine = (x1, y1, x2, y2) => {
@@ -69,8 +77,13 @@ export default {
     };
 
     const findIntersection = (verticalLine, horizontalLine) => {
-      const [a, b] = solveLine(verticalLine[0], 0, verticalLine[1], height);
-      const [c, d] = solveLine(0, horizontalLine[0], width, horizontalLine[1]);
+      const [a, b] = solveLine(verticalLine[0], 0, verticalLine[1], textHeight);
+      const [c, d] = solveLine(
+        0,
+        horizontalLine[0],
+        textWidth,
+        horizontalLine[1]
+      );
 
       if (!isFinite(a)) {
         const x = verticalLine[0];
@@ -117,20 +130,11 @@ export default {
         this.blocks.push({
           coords: [topLeft, topRight, bottomLeft, bottomRight],
           delay,
-          translate: [random.range(-40, 40), random.range(100, 120)],
+          translate: [random.range(-40, 40), random.range(140, 160) + j * 10],
           rotate: random.range(-Math.PI / 2, Math.PI / 2)
         });
       });
     });
-
-    this.mainCtx = this.$el.getContext('2d');
-    const mainCtx = this.mainCtx;
-
-    this.width = mainCtx.canvas.clientWidth
-    this.height = mainCtx.canvas.clientHeight
-    mainCtx.canvas.width = this.width
-    mainCtx.canvas.height = this.height
-    console.log(this.width)
 
     textCtx.fillStyle = 'black';
     textCtx.font = '100px sans-serif';
@@ -139,7 +143,7 @@ export default {
 
     this.blocks.forEach(({ coords }, i) => {
       const [topLeft, topRight, bottomLeft, bottomRight] = coords;
-      textCtx.clearRect(0, 0, width, height);
+      textCtx.clearRect(0, 0, textWidth, textHeight);
       textCtx.save();
       textCtx.beginPath();
       textCtx.moveTo(...topLeft);
@@ -148,7 +152,7 @@ export default {
       textCtx.lineTo(...bottomLeft);
       textCtx.clip();
 
-      textCtx.fillText('test', width / 2, height / 2);
+      textCtx.fillText('hello', textWidth / 2, textHeight / 2, textWidth);
 
       this.blocks[i].bitmap = this.textCtx.canvas.transferToImageBitmap();
 
@@ -161,7 +165,7 @@ export default {
     cancelAnimationFrame(this.frameId);
   },
   methods: {
-    frame(timestamp) {
+    frame(timestamp = 0) {
       this.frameId = requestAnimationFrame(this.frame);
 
       if (this.status === 'paused') {
@@ -179,7 +183,7 @@ export default {
       this.mainCtx.translate(centerX, centerY);
 
       // 0 <= t < 1
-      const t = ease(Math.sin(timestamp / 400) / 2 + 0.5);
+      const t = ease(Math.cos(timestamp / 400 - Math.PI) / 2 + 0.5);
       // Adjusted t range
       const tRange = 0.6;
 
@@ -193,12 +197,18 @@ export default {
         const adjustedT = Math.max(0, t / tRange - offset);
 
         this.mainCtx.save();
+
+        const origin = [
+          topLeft[0] + this.blockWidth / 2,
+          topLeft[1] + this.blockHeight / 2
+        ];
+        // this.mainCtx.translate(origin[0], origin[1]);
         this.mainCtx.translate(
           topLeft[0] + translate[0] * adjustedT,
           topLeft[1] + translate[1] * adjustedT
         );
         this.mainCtx.rotate(rotate * adjustedT);
-        this.mainCtx.translate(-topLeft[0], -topLeft[1]);
+        this.mainCtx.translate(-origin[0], -origin[1]);
         this.mainCtx.drawImage(bitmap, 0, 0, width, height);
         this.mainCtx.restore();
       });
