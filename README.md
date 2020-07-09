@@ -1,5 +1,9 @@
 # vue-art
 
+i learn in this repository
+
+hosted version at <https://sketchbook.macr.ae/>
+
 ## Project setup
 ```
 npm install
