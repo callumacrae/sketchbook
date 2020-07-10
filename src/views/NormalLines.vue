@@ -9,6 +9,7 @@ import Vector from '../utils/vector';
 import generatePath from '../utils/shapes/wobbly-path';
 import * as random from '../utils/random';
 import wobblyPath from '../utils/shapes/wobbly-path';
+import { doWorkOffscreen } from '../utils/canvas';
 
 const opacity = 0.6;
 const config = {
@@ -77,26 +78,23 @@ export default {
     for (let i = 0; i < this.lines.length; i += config.GROUP_BY) {
       const linesGroup = this.lines.slice(i, i + config.GROUP_BY);
 
-      const offscreenCanvas = new OffscreenCanvas(width, height);
-      const groupCtx = offscreenCanvas.getContext('2d');
+      const bitmap = doWorkOffscreen(width, height, ctx => {
+        ctx.translate(origin[0], origin[1]);
 
-      groupCtx.translate(origin[0], origin[1]);
+        ctx.lineWidth = config.LINE_WIDTH * uvFactor;
 
-      groupCtx.lineWidth = config.LINE_WIDTH * uvFactor;
-
-      linesGroup.forEach(({ path, color }) => {
-        groupCtx.beginPath();
-        groupCtx.moveTo(path[0][0], path[0][1]);
-        path.slice(1).forEach(point => {
-          groupCtx.lineTo(point[0], point[1]);
+        linesGroup.forEach(({ path, color }) => {
+          ctx.beginPath();
+          ctx.moveTo(path[0][0], path[0][1]);
+          path.slice(1).forEach(point => {
+            ctx.lineTo(point[0], point[1]);
+          });
+          ctx.strokeStyle = color;
+          ctx.stroke();
         });
-        groupCtx.strokeStyle = color;
-        groupCtx.stroke();
       });
 
-      this.bitmaps.push(offscreenCanvas.transferToImageBitmap());
-
-      groupCtx.restore();
+      this.bitmaps.push(bitmap);
     }
 
     this.frame();
