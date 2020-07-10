@@ -11,14 +11,12 @@ import * as random from '../utils/random';
 import wobblyPath from '../utils/shapes/wobbly-path';
 import { doWorkOffscreen } from '../utils/canvas';
 
-random.setSeed('testa')
-
 const isMobile = window.innerWidth < 500;
 
 const opacity = 0.6;
 const config = {
   NUMBER_OF_LINES: isMobile ? 1000 : 2000,
-  GROUP_BY: 50,
+  GROUP_BY: 100,
   startLength: () => random.range(0.12, 0.35),
   endLength: () => random.range(0.39, 0.47),
   BACKGROUND_COLOR: '#262819',
