@@ -53,7 +53,15 @@ const routes: Array<RouteConfig> = [
   {
     path: '/exploding-text',
     name: 'Exploding text',
-    component: () => import('../views/ExplodingText.vue')
+    component: () => import('../views/ExplodingText.vue'),
+    meta: {
+      favourite: true
+    }
+  },
+  {
+    path: '/normal-lines',
+    name: 'Normal lines',
+    component: () => import('../views/NormalLines.vue')
   },
   {
     path: '*',

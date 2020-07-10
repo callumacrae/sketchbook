@@ -25,3 +25,18 @@ export function range(min: number, max: number) {
 export function floorRange(min: number, max: number) {
   return Math.floor(range(min, max));
 }
+
+export function pick(ary: any[]) {
+  return ary[floorRange(0, ary.length)];
+}
+
+// Lazy guassian approximation
+export function irwinHall(n = 12) {
+  let total = 0;
+
+  for (let i = 0; i < n; i++) {
+    total += range(-0.5, 0.5);
+  }
+
+  return total;
+}
