@@ -3,13 +3,15 @@ type WorkFn = (
 ) => ImageBitmap | HTMLCanvasElement;
 
 export function doWorkOffscreen(width: number, height: number, workFn: WorkFn) {
+  const useOffscreenCanvas = typeof OffscreenCanvas !== 'undefined';
+
   let canvas;
-  if (typeof OffscreenCanvas === 'undefined') {
+  if (useOffscreenCanvas) {
+    canvas = new OffscreenCanvas(width, height);
+  } else {
     canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-  } else {
-    canvas = new OffscreenCanvas(width, height);
   }
 
   const ctx = canvas.getContext('2d');
@@ -21,7 +23,7 @@ export function doWorkOffscreen(width: number, height: number, workFn: WorkFn) {
 
   workFn(ctx);
 
-  return canvas instanceof OffscreenCanvas
-    ? canvas.transferToImageBitmap()
+  return useOffscreenCanvas
+    ? (canvas as OffscreenCanvas).transferToImageBitmap()
     : canvas;
 }
