@@ -11,9 +11,11 @@ import * as random from '../utils/random';
 import wobblyPath from '../utils/shapes/wobbly-path';
 import { doWorkOffscreen } from '../utils/canvas';
 
+const isMobile = window.innerWidth < 500;
+
 const opacity = 0.6;
 const config = {
-  NUMBER_OF_LINES: 2000,
+  NUMBER_OF_LINES: isMobile ? 1000 : 2000,
   GROUP_BY: 50,
   startLength: () => random.range(0.12, 0.35),
   endLength: () => random.range(0.39, 0.47),
@@ -25,7 +27,7 @@ const config = {
     `rgba(159, 145, 124, ${opacity})`, // cream
     `rgba(142, 55, 48, ${opacity})` // red
   ],
-  LINE_WIDTH: 0.002,
+  LINE_WIDTH: isMobile ? 0.004 : 0.002,
   PATH: {
     SEGMENT_LENGTH: 10,
     BIAS_TO_PERFECT: 0.5,
