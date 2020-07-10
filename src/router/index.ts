@@ -6,7 +6,7 @@ Vue.use(VueRouter);
 const routes: Array<RouteConfig> = [
   {
     path: '/animated-blobs',
-    name: 'Animated blobs',
+    name: 'Contour texture v1',
     component: () => import('../views/AnimatedBlobs.vue')
   },
   {
@@ -23,21 +23,16 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/SimplexLines.vue')
   },
   {
-    path: '/3d-cube',
-    name: '3D cube',
-    component: () => import('../views/3dCube.vue'),
+    path: '/light-tracing',
+    name: 'Light tracing',
+    component: () => import('../views/LightTracing.vue'),
     meta: {
-      favourite: true
+      link: 'https://twitter.com/callumacrae/status/1272626085365264387'
     }
   },
   {
-    path: '/light-tracing',
-    name: 'Light tracing',
-    component: () => import('../views/LightTracing.vue')
-  },
-  {
     path: '/contour-texture',
-    name: 'Contour texture',
+    name: 'Contour texture v2',
     component: () => import('../views/ContourTexture.vue')
   },
   {
@@ -46,22 +41,37 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/AnimatedCow.vue')
   },
   {
+    path: '/3d-cube',
+    name: 'Contour texture on cube',
+    component: () => import('../views/3dCube.vue'),
+    meta: {
+      favourite: true
+    }
+  },
+  {
     path: '/moving-light',
     name: 'Plant projection mapping',
-    component: () => import('../views/MovingLight.vue')
+    component: () => import('../views/MovingLight.vue'),
+    meta: {
+      link: 'https://twitter.com/callumacrae/status/1279855080523563009'
+    }
   },
   {
     path: '/exploding-text',
     name: 'Exploding text',
     component: () => import('../views/ExplodingText.vue'),
     meta: {
-      favourite: true
+      favourite: true,
+      link: 'https://codepen.io/callumacrae/full/GRodzvO'
     }
   },
   {
     path: '/normal-lines',
     name: 'Normal lines',
-    component: () => import('../views/NormalLines.vue')
+    component: () => import('../views/NormalLines.vue'),
+    meta: {
+      favourite: true
+    }
   },
   {
     path: '*',
