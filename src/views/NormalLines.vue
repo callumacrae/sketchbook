@@ -13,13 +13,13 @@ import wobblyPath from '../utils/shapes/wobbly-path';
 const opacity = 0.6;
 const config = {
   NUMBER_OF_LINES: 2000,
-  GROUP_BY: 100,
+  GROUP_BY: 50,
   startLength: () => random.range(0.12, 0.35),
   endLength: () => random.range(0.39, 0.47),
   BACKGROUND_COLOR: '#262819',
   // https://color.adobe.com/Passado1-color-theme-8032401/
   COLORS: [
-    `rgba(83, 84, 115, ${opacity})`, // blue
+    `rgb(83, 84, 115, ${opacity})`, // blue
     `rgba(214, 216, 209, ${opacity})`, // white
     `rgba(159, 145, 124, ${opacity})`, // cream
     `rgba(142, 55, 48, ${opacity})` // red
@@ -38,6 +38,7 @@ export default {
     width: undefined,
     height: undefined,
     lines: [],
+    bitmaps: [],
     frameId: undefined
   }),
   mounted() {
@@ -70,6 +71,34 @@ export default {
       });
     }
 
+    const origin = [width / 2, height / 2];
+
+    // We have to predraw the lines in groups or it's like 15fps
+    for (let i = 0; i < this.lines.length; i += config.GROUP_BY) {
+      const linesGroup = this.lines.slice(i, i + config.GROUP_BY);
+
+      const offscreenCanvas = new OffscreenCanvas(width, height);
+      const groupCtx = offscreenCanvas.getContext('2d');
+
+      groupCtx.translate(origin[0], origin[1]);
+
+      groupCtx.lineWidth = config.LINE_WIDTH * uvFactor;
+
+      linesGroup.forEach(({ path, color }) => {
+        groupCtx.beginPath();
+        groupCtx.moveTo(path[0][0], path[0][1]);
+        path.slice(1).forEach(point => {
+          groupCtx.lineTo(point[0], point[1]);
+        });
+        groupCtx.strokeStyle = color;
+        groupCtx.stroke();
+      });
+
+      this.bitmaps.push(offscreenCanvas.transferToImageBitmap());
+
+      groupCtx.restore();
+    }
+
     this.frame();
   },
   beforeDestroy() {
@@ -77,11 +106,13 @@ export default {
   },
   methods: {
     frame(timestamp = 0) {
-      // this.frameId = requestAnimationFrame(this.frame);
+      this.frameId = requestAnimationFrame(this.frame);
 
       if (this.status !== 'playing') {
         return;
       }
+
+      const t = timestamp / 12e3;
 
       const ctx = this.ctx;
       const { width, height, lines } = this;
@@ -92,22 +123,14 @@ export default {
       ctx.fillStyle = config.BACKGROUND_COLOR;
       ctx.fillRect(0, 0, width, height);
 
-      ctx.save();
-      ctx.translate(origin[0], origin[1]);
-
-      ctx.lineWidth = config.LINE_WIDTH * uvFactor;
-
-      lines.forEach(({ path, color }) => {
-        ctx.beginPath();
-        ctx.moveTo(path[0][0], path[0][1]);
-        path.slice(1).forEach(point => {
-          ctx.lineTo(point[0], point[1]);
-        });
-        ctx.strokeStyle = color;
-        ctx.stroke();
+      this.bitmaps.forEach((bitmap, i) => {
+        const adjustedT = (t + i / this.bitmaps.length) % 1;
+        const alpha = adjustedT < 0.9 ? 1 : Math.abs(0.95 - adjustedT) * 20;
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(bitmap, 0, 0, width, height);
       });
 
-      ctx.restore();
+      ctx.globalAlpha = 1;
     }
   }
 };

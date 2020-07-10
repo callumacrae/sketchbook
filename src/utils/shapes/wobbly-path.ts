@@ -1,4 +1,5 @@
 import Vector from '../vector';
+import * as math from '../maths';
 
 type Coord = [number, number];
 
@@ -12,6 +13,7 @@ interface Config {
   SEGMENT_LENGTH: number;
   BIAS_TO_PERFECT: number;
   RANDOM_FACTOR: number;
+  ROUND_FACTOR?: number;
 }
 
 /**
@@ -49,8 +51,8 @@ export default function generatePath(start: Coord, end: Coord, config: Config) {
       .randomiseByFactor(config.RANDOM_FACTOR);
 
     const newPoint: Coord = [
-      currentPoint[0] + newDirection.ax,
-      currentPoint[1] + newDirection.ay
+      math.round(currentPoint[0] + newDirection.ax, config.ROUND_FACTOR),
+      math.round(currentPoint[1] + newDirection.ay, config.ROUND_FACTOR)
     ];
 
     path.push(newPoint);
