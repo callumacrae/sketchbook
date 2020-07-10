@@ -11,6 +11,8 @@ import * as random from '../utils/random';
 import wobblyPath from '../utils/shapes/wobbly-path';
 import { doWorkOffscreen } from '../utils/canvas';
 
+random.setSeed('testa')
+
 const isMobile = window.innerWidth < 500;
 
 const opacity = 0.6;
@@ -48,10 +50,10 @@ export default {
     const canvas = this.$el;
     const ctx = canvas.getContext('2d');
     this.ctx = ctx;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
+    const dpr = window.devicePixelRatio
+    const width = canvas.clientWidth * dpr;
+    const height = canvas.clientHeight * dpr;
     const uvFactor = Math.min(width, height);
     canvas.width = width;
     canvas.height = height;
