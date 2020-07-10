@@ -74,6 +74,11 @@ const routes: Array<RouteConfig> = [
     }
   },
   {
+    path: '/first-shader',
+    name: 'First shader',
+    component: () => import('../views/FirstShader.vue')
+  },
+  {
     path: '*',
     component: () => import('../views/Index.vue')
   }
