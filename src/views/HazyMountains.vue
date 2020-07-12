@@ -11,8 +11,6 @@ import generatePath from '../utils/shapes/wobbly-path';
 
 import fragmentShaderSource from './HazyMountains-fragment.glsl';
 
-random.setSeed('test');
-
 export default {
   mounted() {
     this.init();
