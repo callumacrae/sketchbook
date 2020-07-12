@@ -9,6 +9,8 @@ import * as PIXI from 'pixi.js';
 import * as random from '../utils/random';
 import generatePath from '../utils/shapes/wobbly-path';
 
+import fragmentShaderSource from './HazyMountains-fragment.glsl';
+
 // random.setSeed('test')
 
 export default {
@@ -29,7 +31,9 @@ export default {
         backgroundColor: 0xffffff
       });
 
-      const generatePeaks = (startY, endY, midPoints, variance) => {
+      const generatePeaks = (start, end, depth, midPoints, variance) => {
+        const startY = start * height;
+        const endY = end * height;
         const points = [[0, startY]];
         for (let i = 0; i < midPoints - 1; i++) {
           const averageY = startY + ((endY - startY) / midPoints) * (i + 1);
@@ -49,22 +53,36 @@ export default {
         const flatPath = path.flatMap(x => x);
         flatPath.push(width, height, 0, height);
 
+        const peaksContainer = new PIXI.Container();
+
         const peaks = new PIXI.Graphics();
         peaks.beginFill(random.value() * 0xffffff);
         peaks.drawPolygon(flatPath);
         peaks.endFill();
+        peaksContainer.addChild(peaks);
 
-        app.stage.addChild(peaks);
-        return peaks;
+        // We need the mask otherwise the filter affects too much
+        const mask = new PIXI.Graphics();
+        mask.beginFill(0xffffff, 1).drawPolygon(flatPath);
+        peaksContainer.mask = mask;
+
+        const filter = new PIXI.Filter(null, fragmentShaderSource, {
+          uDepth: depth
+        });
+        peaks.filters = [filter];
+
+        app.stage.addChild(peaksContainer);
+        return peaksContainer;
       };
 
-      generatePeaks(0.35 * height, 0.35 * height, 7, 45);
-      generatePeaks(0.35 * height, 0.35 * height, 11, 35);
-      generatePeaks(0.4 * height, 0.35 * height, 11, 35);
-      generatePeaks(0.45 * height, 0.4 * height, 10, 40);
-      generatePeaks(0.55 * height, 0.6 * height, 8, 50);
-      generatePeaks(0.7 * height, 0.55 * height, 6, 90);
-      generatePeaks(0.85 * height, 0.85 * height, 12, 30);
+      generatePeaks(0.25, 0.25, 0.9, 7, 45);
+      generatePeaks(0.24, 0.25, 0.7, 11, 35);
+      generatePeaks(0.31, 0.28, 0.5, 11, 35);
+      generatePeaks(0.35, 0.41, 0.35, 10, 40);
+      generatePeaks(0.45, 0.5, 0.2, 8, 80);
+      generatePeaks(0.62, 0.6, 0.1, 6, 120);
+      generatePeaks(0.79, 0.9, 0.02, 4, 60);
+      generatePeaks(0.85, 0.85, 0, 12, 30);
     }
   }
 };

@@ -34,7 +34,7 @@ export default function generatePath(points: Coord[], config: Config) {
   // Safety to avoid crashing browsers
   let maxRuns = 1000;
 
-  for (let nextPoint of points.slice(1)) {
+  for (const nextPoint of points.slice(1)) {
     do {
       // This is the perfect direction: also, a boring straight line
       const perfect = Vector.between(currentPoint, nextPoint);
