@@ -79,6 +79,11 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/FirstShader.vue')
   },
   {
+    path: '/hazy-mountains',
+    name: 'Hazy mountains',
+    component: () => import('../views/HazyMountains.vue')
+  },
+  {
     path: '*',
     component: () => import('../views/Index.vue')
   }

@@ -69,7 +69,7 @@ export default {
         .toArray();
 
       this.lines.push({
-        path: generatePath(start, end, config.PATH),
+        path: generatePath([start, end], config.PATH),
         color: random.pick(config.COLORS)
       });
     }
