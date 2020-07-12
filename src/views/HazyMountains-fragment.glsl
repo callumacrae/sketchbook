@@ -39,7 +39,7 @@ void main(void) {
 
   float aproxLightness = (color.r + color.g + color.b) / 3.0;
 
-  float noiseFactor = uBackground ? 0.2 : 0.4;
+  float noiseFactor = uBackground ? 0.2 : 0.35;
   float lightnessFactor = 0.3;
   float depthFactor = 0.4;
   float periodicNoiseFactor = 0.5;

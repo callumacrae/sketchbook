@@ -20,7 +20,7 @@ export default {
       const canvas = this.$refs.canvas;
       const width = canvas.clientWidth;
       const height = canvas.clientHeight;
-      const dpr = window.devicePixelRatio;
+      const dpr = 1;
       const app = new PIXI.Application({
         width,
         height,
