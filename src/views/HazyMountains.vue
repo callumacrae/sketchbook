@@ -98,6 +98,21 @@ export default {
       generatePeaks(0.62, 0.6, 0.15, 6, 90);
       generatePeaks(0.79, 0.9, 0.03, 4, 60);
       generatePeaks(0.85, 0.85, 0, 12, 30);
+
+      const passthroughShaderSource = `
+        precision mediump float;
+
+        varying vec2 vTextureCoord;
+        uniform sampler2D uSampler;
+         
+        void main(void) {
+          gl_FragColor = texture2D(uSampler, vTextureCoord);
+        }
+      `;
+
+      // This makes some stuff disappear?!
+      const passthroughFilter = new PIXI.Filter(null, passthroughShaderSource);
+      // app.stage.filters = [passthroughFilter];
     }
   }
 };
