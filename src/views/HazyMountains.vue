@@ -11,7 +11,7 @@ import generatePath from '../utils/shapes/wobbly-path';
 
 import fragmentShaderSource from './HazyMountains-fragment.glsl';
 
-// random.setSeed('test');
+random.setSeed('test');
 
 export default {
   mounted() {
@@ -31,6 +31,18 @@ export default {
         resolution: dpr,
         backgroundColor: 0xffffff
       });
+
+      const background = new PIXI.Graphics();
+      background.beginFill(0xffffff);
+      background.drawRect(0, 0, width, height);
+      background.endFill();
+      background.filters = [
+        new PIXI.Filter(null, fragmentShaderSource, {
+          uDepth: 0,
+          uBackground: true
+        })
+      ];
+      app.stage.addChild(background);
 
       const generatePeaks = (start, end, depth, midPoints, variance) => {
         const startY = start * height;
@@ -57,9 +69,7 @@ export default {
         const peaksContainer = new PIXI.Container();
 
         const peaks = new PIXI.Graphics();
-        peaks.beginFill(random.value() * 0xffffff);
         peaks.drawPolygon(flatPath);
-        peaks.endFill();
         peaksContainer.addChild(peaks);
 
         // We need the mask otherwise the filter affects too much
@@ -71,7 +81,8 @@ export default {
           uDepth: depth,
           // uStartY: Math.min(startY, endY)
           // @TODO why is this upside down???????
-          uStartY: (height - Math.min(...path.map(point => point[1]))) * dpr
+          uStartY: (height - Math.min(...path.map(point => point[1]))) * dpr,
+          uBackground: false
         });
         peaks.filters = [filter];
 
