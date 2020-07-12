@@ -90,13 +90,13 @@ export default {
         return peaksContainer;
       };
 
-      generatePeaks(0.28, 0.27, 0.9, 7, 55);
-      generatePeaks(0.27, 0.27, 0.7, 11, 35);
-      generatePeaks(0.31, 0.28, 0.5, 11, 35);
-      generatePeaks(0.35, 0.41, 0.35, 10, 40);
-      generatePeaks(0.45, 0.5, 0.2, 8, 80);
-      generatePeaks(0.62, 0.6, 0.07, 6, 90);
-      generatePeaks(0.79, 0.9, 0.02, 4, 60);
+      generatePeaks(0.28, 0.27, 0.92, 7, 55);
+      generatePeaks(0.27, 0.27, 0.86, 11, 35);
+      generatePeaks(0.31, 0.28, 0.64, 11, 35);
+      generatePeaks(0.35, 0.41, 0.5, 10, 40);
+      generatePeaks(0.45, 0.5, 0.35, 8, 80);
+      generatePeaks(0.62, 0.6, 0.15, 6, 90);
+      generatePeaks(0.79, 0.9, 0.03, 4, 60);
       generatePeaks(0.85, 0.85, 0, 12, 30);
     }
   }
