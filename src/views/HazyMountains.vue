@@ -11,7 +11,7 @@ import generatePath from '../utils/shapes/wobbly-path';
 
 import fragmentShaderSource from './HazyMountains-fragment.glsl';
 
-// random.setSeed('test')
+// random.setSeed('test');
 
 export default {
   mounted() {
@@ -22,12 +22,13 @@ export default {
       const canvas = this.$refs.canvas;
       const width = canvas.clientWidth;
       const height = canvas.clientHeight;
+      const dpr = window.devicePixelRatio;
       const app = new PIXI.Application({
         width,
         height,
         view: canvas,
         antialias: true,
-        resolution: window.devicePixelRatio,
+        resolution: dpr,
         backgroundColor: 0xffffff
       });
 
@@ -67,7 +68,10 @@ export default {
         peaksContainer.mask = mask;
 
         const filter = new PIXI.Filter(null, fragmentShaderSource, {
-          uDepth: depth
+          uDepth: depth,
+          // uStartY: Math.min(startY, endY)
+          // @TODO why is this upside down???????
+          uStartY: (height - Math.min(...path.map(point => point[1]))) * dpr
         });
         peaks.filters = [filter];
 
@@ -75,12 +79,12 @@ export default {
         return peaksContainer;
       };
 
-      generatePeaks(0.25, 0.25, 0.9, 7, 45);
-      generatePeaks(0.24, 0.25, 0.7, 11, 35);
+      generatePeaks(0.28, 0.27, 0.9, 7, 55);
+      generatePeaks(0.27, 0.27, 0.7, 11, 35);
       generatePeaks(0.31, 0.28, 0.5, 11, 35);
       generatePeaks(0.35, 0.41, 0.35, 10, 40);
       generatePeaks(0.45, 0.5, 0.2, 8, 80);
-      generatePeaks(0.62, 0.6, 0.1, 6, 120);
+      generatePeaks(0.62, 0.6, 0.07, 6, 90);
       generatePeaks(0.79, 0.9, 0.02, 4, 60);
       generatePeaks(0.85, 0.85, 0, 12, 30);
     }
