@@ -15,7 +15,8 @@
   "dependencies": {
     "@types/seed-random": "^2.2.0",
     "seed-random": "^2.2.0",
-    "simplex-noise": "^2.4.0"
+    "simplex-noise": "^2.4.0",
+    "tslib": "^2.0.3"
   },
   "devDependencies": {
     "typescript": "^4.0.5"
