@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "outDir": "built"
+  },
+  "include": ["**/*"],
+  "exclude": ["node_modules"]
+}
