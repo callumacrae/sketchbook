@@ -1,6 +1,6 @@
 {
   "name": "@callumacrae/utils",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Utils for creative dev",
   "scripts": {
     "build": "tsc",
