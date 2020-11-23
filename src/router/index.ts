@@ -70,7 +70,8 @@ const routes: Array<RouteConfig> = [
     name: 'Normal lines',
     component: () => import('../views/NormalLines.vue'),
     meta: {
-      favourite: true
+      favourite: true,
+      link: 'https://codepen.io/callumacrae/full/RwRmgog'
     }
   },
   {
@@ -82,6 +83,11 @@ const routes: Array<RouteConfig> = [
     path: '/hazy-mountains',
     name: 'Hazy mountains',
     component: () => import('../views/HazyMountains.vue')
+  },
+  {
+    path: '/perspective-lines',
+    name: 'Perspective lines',
+    component: () => import('../views/PerspectiveLines.vue')
   },
   {
     path: '*',
