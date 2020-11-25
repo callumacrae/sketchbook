@@ -10,7 +10,10 @@
 </template>
 
 <script>
+import recordMixin from '../mixins/record';
+
 export default {
+  mixins: [recordMixin],
   data: () => ({
     status: 'playing',
     windowWidth: undefined,
@@ -23,6 +26,16 @@ export default {
     this.setSize();
     this.init();
     this.frame();
+
+    if (false) {
+      this.record({
+        width: 1200,
+        height: 675,
+        fps: 50,
+        duration: 1e3,
+        directory: 'perspective-lines'
+      });
+    }
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
@@ -43,13 +56,15 @@ export default {
       this.windowHeight = window.innerHeight;
     },
     frame(timestamp = 0) {
-      this.frameId = requestAnimationFrame(this.frame);
+      if (this.status !== 'recording') {
+        this.frameId = requestAnimationFrame(this.frame);
+      }
 
-      if (this.status !== 'playing') {
+      if (this.status === 'paused') {
         return;
       }
 
-      const t = timestamp / 1e3;
+      const t = (timestamp / 1e3) % 1;
       const ctx = this.ctx;
       const {
         width,
@@ -66,6 +81,11 @@ export default {
 
       let xOffset = 0;
       let y = 0.5;
+
+      if (status === 'recording') {
+        mousePosition.x = undefined;
+        mousePosition.y = undefined;
+      }
 
       const mouseU =
         mousePosition.x === undefined ? 0.5 : mousePosition.x / windowWidth;

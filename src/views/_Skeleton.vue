@@ -9,7 +9,10 @@
 </template>
 
 <script>
+import recordMixin from '../mixins/record';
+
 export default {
+  mixins: [recordMixin],
   data: () => ({
     status: 'playing',
     width: undefined,

@@ -2,6 +2,7 @@
 node_modules
 /dist
 src/utils/built
+data/*
 
 # local env files
 .env.local
