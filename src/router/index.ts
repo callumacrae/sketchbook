@@ -90,6 +90,11 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/PerspectiveLines.vue')
   },
   {
+    path: '/moire-grid',
+    name: 'Moiré grid',
+    component: () => import('../views/MoireGrid.vue')
+  },
+  {
     path: '*',
     component: () => import('../views/Index.vue')
   }
