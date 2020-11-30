@@ -150,7 +150,7 @@ canvas {
 
 .options {
   position: fixed;
-  top: 15px;
+  bottom: 15px;
   right: 15px;
   padding: 10px 15px;
   background: rgba(255, 255, 255, 0.85);
