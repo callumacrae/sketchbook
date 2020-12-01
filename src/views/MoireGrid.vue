@@ -68,6 +68,7 @@
             <select v-model="options.grid">
               <option value="lines">Lines</option>
               <option value="grid">Grid</option>
+              <option value="circles">Circles</option>
             </select>
           </td>
         </tr>
@@ -85,6 +86,23 @@
               min="0.5"
               max="20"
               step="0.5"
+            />
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="circleRadius" @click="options.circleRadius = 8">
+              Circle radius:
+            </label>
+          </td>
+          <td>
+            <input
+              id="circleRadius"
+              type="range"
+              v-model.number="options.circleRadius"
+              min="0.5"
+              max="10"
+              step="0.25"
             />
           </td>
         </tr>
@@ -111,8 +129,9 @@ export default {
       rotation: 0.01,
       x: 0,
       y: 0,
-      grid: 'lines',
-      lineWidth: 8
+      grid: 'circles',
+      lineWidth: 8,
+      circleRadius: 8
     },
     gridTransform: {
       rotation: 0.2,
@@ -164,6 +183,16 @@ export default {
             ctx.stroke();
           }
         }
+
+        if (this.options.grid === 'circles') {
+          for (let x = 0; x < width; x += 20) {
+            for (let y = 0; y < height; y += 20) {
+              ctx.beginPath();
+              ctx.arc(x, y, this.options.circleRadius, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          }
+        }
       });
     },
     init() {
@@ -205,7 +234,8 @@ export default {
   },
   watch: {
     'options.grid': 'generateGrid',
-    'options.lineWidth': 'generateGrid'
+    'options.lineWidth': 'generateGrid',
+    'options.circleRadius': 'generateGrid'
   }
 };
 </script>
@@ -231,7 +261,8 @@ canvas {
   margin-top: 0;
 }
 
-.options input, .options select {
+.options input,
+.options select {
   vertical-align: middle;
   width: 100%;
 }
