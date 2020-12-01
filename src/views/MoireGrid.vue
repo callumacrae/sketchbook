@@ -90,7 +90,7 @@
             />
           </td>
         </tr>
-        <tr>
+        <tr v-if="options.grid === 'circles'">
           <td>
             <label for="circleRadius" @click="options.circleRadius = 8">
               Circle radius:
