@@ -37,7 +37,24 @@
           step="0.001"
         />
       </label>
-      <small>Click label to set value to 0.</small>
+      <label>
+        <span>Type:</span>
+        <select v-model="options.grid">
+          <option value="lines">Lines</option>
+          <option value="grid">Grid</option>
+        </select>
+      </label>
+      <label>
+        <span @click="options.lineWidth = 8">Line width:</span>
+        <input
+          type="range"
+          v-model.number="options.lineWidth"
+          min="0.5"
+          max="20"
+          step="0.5"
+        />
+      </label>
+      <small>Click label to reset value.</small>
     </div>
 
     <GlobalEvents target="window" @resize="init" />
@@ -57,7 +74,9 @@ export default {
     options: {
       rotation: 0.01,
       x: 0,
-      y: 0
+      y: 0,
+      grid: 'lines',
+      lineWidth: 8
     },
     gridTransform: {
       rotation: 0.2,
@@ -84,21 +103,35 @@ export default {
       canvas.width = this.width;
       canvas.height = this.height;
     },
-    init() {
+    generateGrid() {
       const { width, height } = this;
 
       const gridWidth = Math.max(width, height);
 
       this.gridBitmap = doWorkOffscreen(gridWidth, gridWidth, ctx => {
-        ctx.lineWidth = 12;
+        ctx.lineWidth = this.options.lineWidth;
 
-        for (let x = 0; x < width; x += 20) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, height);
-          ctx.stroke();
+        if (['lines', 'grid'].includes(this.options.grid)) {
+          for (let x = 0; x < width; x += 20) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+          }
+        }
+
+        if (this.options.grid === 'grid') {
+          for (let y = 0; y < height; y += 20) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+          }
         }
       });
+    },
+    init() {
+      this.generateGrid();
     },
     frame(timestamp = 0) {
       this.frameId = requestAnimationFrame(this.frame);
@@ -134,10 +167,9 @@ export default {
       ctx.restore();
     }
   },
-  computed: {
-    uvFactor() {
-      return Math.min(this.width, this.height);
-    }
+  watch: {
+    'options.grid': 'generateGrid',
+    'options.lineWidth': 'generateGrid'
   }
 };
 </script>
