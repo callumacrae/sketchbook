@@ -69,6 +69,7 @@
               <option value="lines">Lines</option>
               <option value="grid">Grid</option>
               <option value="circles">Circles</option>
+              <option value="hexagons">Hexagons</option>
             </select>
           </td>
         </tr>
@@ -129,7 +130,7 @@ export default {
       rotation: 0.01,
       x: 0,
       y: 0,
-      grid: 'circles',
+      grid: 'hexagons',
       lineWidth: 8,
       circleRadius: 8
     },
@@ -193,6 +194,38 @@ export default {
             }
           }
         }
+
+        if (this.options.grid === 'hexagons') {
+          const xOfAngledSegment = Math.tan(Math.PI / 6) * 10;
+
+          for (let y = 10; y < height; y += 10) {
+            const isOdd = y % 20 === 10;
+            
+            ctx.beginPath()
+            const oddY = isOdd ? y - 10 : y;
+            const evenY = isOdd ? y : y - 10;
+
+            for (let i = 0; i < 5000; i++) {
+              const flatSegments = Math.floor(i / 2)
+              const angledSegments = Math.ceil(i / 2)
+
+              const x = flatSegments * 10 + angledSegments * xOfAngledSegment;
+              const y = (i + 3) % 4 < 2 ? oddY : evenY;
+
+              if (x > width) {
+                break;
+              }
+
+              if (i === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            }
+
+            ctx.stroke();
+          }
+        }
       });
     },
     init() {
@@ -235,7 +268,7 @@ export default {
   watch: {
     'options.grid': 'generateGrid',
     'options.lineWidth': 'generateGrid',
-    'options.circleRadius': 'generateGrid'
+    'options.lineWidth': 'generateGrid'
   }
 };
 </script>
