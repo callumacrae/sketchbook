@@ -7,53 +7,89 @@
 
     <div class="options">
       <h2>Motion:</h2>
-      <label>
-        <span @click="options.rotation = 0">Rotation:</span>
-        <input
-          type="range"
-          v-model.number="options.rotation"
-          min="-0.02"
-          max="0.02"
-          step="0.001"
-        />
-      </label>
-      <label>
-        <span @click="options.x = 0">x:</span>
-        <input
-          type="range"
-          v-model.number="options.x"
-          min="-0.05"
-          max="0.05"
-          step="0.001"
-        />
-      </label>
-      <label>
-        <span @click="options.y = 0">y:</span>
-        <input
-          type="range"
-          v-model.number="options.y"
-          min="-0.05"
-          max="0.05"
-          step="0.001"
-        />
-      </label>
-      <label>
-        <span>Type:</span>
-        <select v-model="options.grid">
-          <option value="lines">Lines</option>
-          <option value="grid">Grid</option>
-        </select>
-      </label>
-      <label>
-        <span @click="options.lineWidth = 8">Line width:</span>
-        <input
-          type="range"
-          v-model.number="options.lineWidth"
-          min="0.5"
-          max="20"
-          step="0.5"
-        />
-      </label>
+
+      <table>
+        <tr>
+          <td>
+            <label for="rotation" @click="options.rotation = 0">
+              Rotation:
+            </label>
+          </td>
+          <td>
+            <input
+              id="rotation"
+              type="range"
+              v-model.number="options.rotation"
+              min="-0.02"
+              max="0.02"
+              step="0.001"
+            />
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="xValue" @click="options.x = 0">
+              x:
+            </label>
+          </td>
+          <td>
+            <input
+              id="xValue"
+              type="range"
+              v-model.number="options.x"
+              min="-0.05"
+              max="0.05"
+              step="0.001"
+            />
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="yValue" @click="options.y = 0">
+              y:
+            </label>
+          </td>
+          <td>
+            <input
+              id="yValue"
+              type="range"
+              v-model.number="options.y"
+              min="-0.05"
+              max="0.05"
+              step="0.001"
+            />
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="type">Type:</label>
+          </td>
+          <td>
+            <select v-model="options.grid">
+              <option value="lines">Lines</option>
+              <option value="grid">Grid</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="lineWidth" @click="options.lineWidth = 8">
+              Line width:
+            </label>
+          </td>
+          <td>
+            <input
+              id="lineWidth"
+              type="range"
+              v-model.number="options.lineWidth"
+              min="0.5"
+              max="20"
+              step="0.5"
+            />
+          </td>
+        </tr>
+      </table>
+
       <small>Click label to reset value.</small>
     </div>
 
@@ -186,6 +222,7 @@ canvas {
   right: 15px;
   padding: 10px 15px;
   background: rgba(255, 255, 255, 0.85);
+  border-radius: 3px;
 }
 
 .options h2 {
@@ -194,14 +231,9 @@ canvas {
   margin-top: 0;
 }
 
-.options label {
-  display: block;
-}
-
-.options input {
-  float: right;
-  margin-left: 4px;
+.options input, .options select {
   vertical-align: middle;
+  width: 100%;
 }
 
 .options small {
