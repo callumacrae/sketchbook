@@ -37,7 +37,7 @@
               id="xValue"
               type="range"
               v-model.number="options.x"
-              min="-0.05"
+              min="0"
               max="0.05"
               step="0.001"
             />
@@ -54,7 +54,7 @@
               id="yValue"
               type="range"
               v-model.number="options.y"
-              min="-0.05"
+              min="0"
               max="0.05"
               step="0.001"
             />
@@ -87,6 +87,23 @@
               min="0.5"
               max="20"
               step="0.5"
+            />
+          </td>
+        </tr>
+<tr v-if="options.grid === 'hexagons'">
+          <td>
+            <label for="hexagonRadius" @click="options.hexagonRadius = 10">
+              Hexagon radius:
+            </label>
+          </td>
+          <td>
+            <input
+              id="hexagonRadius"
+              type="range"
+              v-model.number="options.hexagonRadius"
+              min="2"
+              max="40"
+              step="0.25"
             />
           </td>
         </tr>
@@ -127,12 +144,13 @@ export default {
     width: undefined,
     height: undefined,
     options: {
-      rotation: 0.01,
+      rotation: 0.0075,
       x: 0,
       y: 0,
       grid: 'hexagons',
-      lineWidth: 8,
-      circleRadius: 8
+      lineWidth: 3,
+      circleRadius: 8,
+      hexagonRadius: 10
     },
     gridTransform: {
       rotation: 0.2,
@@ -196,20 +214,22 @@ export default {
         }
 
         if (this.options.grid === 'hexagons') {
-          const xOfAngledSegment = Math.tan(Math.PI / 6) * 10;
+          const radius = this.options.hexagonRadius;
+          console.log(radius)
+          const xOfAngledSegment = Math.tan(Math.PI / 6) * radius;
 
-          for (let y = 10; y < height; y += 10) {
-            const isOdd = y % 20 === 10;
+          for (let y = radius; y < height; y += radius) {
+            const isOdd = y % (radius * 2) === radius;
             
             ctx.beginPath()
-            const oddY = isOdd ? y - 10 : y;
-            const evenY = isOdd ? y : y - 10;
+            const oddY = isOdd ? y - radius : y;
+            const evenY = isOdd ? y : y - radius;
 
             for (let i = 0; i < 5000; i++) {
               const flatSegments = Math.floor(i / 2)
               const angledSegments = Math.ceil(i / 2)
 
-              const x = flatSegments * 10 + angledSegments * xOfAngledSegment;
+              const x = flatSegments * radius + angledSegments * xOfAngledSegment;
               const y = (i + 3) % 4 < 2 ? oddY : evenY;
 
               if (x > width) {
@@ -268,7 +288,9 @@ export default {
   watch: {
     'options.grid': 'generateGrid',
     'options.lineWidth': 'generateGrid',
-    'options.lineWidth': 'generateGrid'
+    'options.lineWidth': 'generateGrid',
+    'options.circleRadius': 'generateGrid',
+    'options.hexagonRadius': 'generateGrid'
   }
 };
 </script>
