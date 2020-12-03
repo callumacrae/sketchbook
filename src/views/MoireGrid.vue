@@ -70,6 +70,7 @@
               <option value="grid">Grid</option>
               <option value="circles">Circles</option>
               <option value="hexagons">Hexagons</option>
+              <option value="triangles">Triangles</option>
             </select>
           </td>
         </tr>
@@ -90,7 +91,7 @@
             />
           </td>
         </tr>
-<tr v-if="options.grid === 'hexagons'">
+        <tr v-if="options.grid === 'hexagons'">
           <td>
             <label for="hexagonRadius" @click="options.hexagonRadius = 10">
               Hexagon radius:
@@ -215,22 +216,55 @@ export default {
 
         if (this.options.grid === 'hexagons') {
           const radius = this.options.hexagonRadius;
-          console.log(radius)
           const xOfAngledSegment = Math.tan(Math.PI / 6) * radius;
 
           for (let y = radius; y < height; y += radius) {
             const isOdd = y % (radius * 2) === radius;
-            
-            ctx.beginPath()
+
+            ctx.beginPath();
             const oddY = isOdd ? y - radius : y;
             const evenY = isOdd ? y : y - radius;
 
             for (let i = 0; i < 5000; i++) {
-              const flatSegments = Math.floor(i / 2)
-              const angledSegments = Math.ceil(i / 2)
+              const flatSegments = Math.floor(i / 2);
+              const angledSegments = Math.ceil(i / 2);
 
-              const x = flatSegments * radius + angledSegments * xOfAngledSegment;
+              const x =
+                flatSegments * radius + angledSegments * xOfAngledSegment;
               const y = (i + 3) % 4 < 2 ? oddY : evenY;
+
+              if (x > width) {
+                break;
+              }
+
+              if (i === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            }
+
+            ctx.stroke();
+          }
+        }
+
+        if (this.options.grid === 'triangles') {
+          const triangleHeight = 20;
+          const xOfAngledSegment = Math.tan(Math.PI / 6) * triangleHeight;
+
+          for (let y = triangleHeight; y < height; y += triangleHeight) {
+            const isOdd = y % (triangleHeight * 2) === triangleHeight;
+
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+
+            const oddY = isOdd ? y - triangleHeight : y;
+            const evenY = isOdd ? y : y - triangleHeight;
+
+            for (let i = 0; i < 5000; i++) {
+              const x = i * xOfAngledSegment;
+              const y = i % 2 ? oddY : evenY;
 
               if (x > width) {
                 break;
