@@ -125,6 +125,20 @@
             />
           </td>
         </tr>
+        <tr>
+          <td>
+            <label for="blended" @click="options.blend = false">
+              Blended:
+            </label>
+          </td>
+          <td>
+            <input
+              id="blended"
+              type="checkbox"
+              v-model.number="options.blend"
+            />
+          </td>
+        </tr>
       </table>
 
       <small>Click label to reset value.</small>
@@ -151,7 +165,8 @@ export default {
       grid: 'hexagons',
       lineWidth: 3,
       circleRadius: 8,
-      hexagonRadius: 10
+      hexagonRadius: 10,
+      blend: false
     },
     gridTransform: {
       rotation: 0.2,
@@ -178,13 +193,22 @@ export default {
       canvas.width = this.width;
       canvas.height = this.height;
     },
-    generateGrid() {
+    setupGrid() {
+      if (this.options.blend) {
+        this.gridBitmapOne = this.generateGrid('red');
+        this.gridBitmapTwo = this.generateGrid('blue');
+      } else {
+        this.gridBitmapOne = this.gridBitmapTwo = this.generateGrid();
+      }
+    },
+    generateGrid(color = 'black') {
       const { width, height } = this;
 
       const gridWidth = Math.max(width, height);
 
-      this.gridBitmap = doWorkOffscreen(gridWidth, gridWidth, ctx => {
+      return doWorkOffscreen(gridWidth, gridWidth, ctx => {
         ctx.lineWidth = this.options.lineWidth;
+        ctx.strokeStyle = color;
 
         if (['lines', 'grid'].includes(this.options.grid)) {
           for (let x = 0; x < width; x += 20) {
@@ -283,7 +307,7 @@ export default {
       });
     },
     init() {
-      this.generateGrid();
+      this.setupGrid();
     },
     frame(timestamp = 0) {
       this.frameId = requestAnimationFrame(this.frame);
@@ -293,12 +317,14 @@ export default {
       }
 
       const t = timestamp / 1e3;
-      const { ctx, width, height, gridBitmap } = this;
+      const { ctx, width, height, gridBitmapOne, gridBitmapTwo } = this;
+
+      ctx.globalCompositeOperation = 'multiply';
 
       ctx.clearRect(0, 0, width, height);
 
       const gridWidth = Math.max(width, height);
-      ctx.drawImage(gridBitmap, 0, 0, gridWidth, gridWidth);
+      ctx.drawImage(gridBitmapOne, 0, 0, gridWidth, gridWidth);
 
       ctx.save();
 
@@ -314,17 +340,18 @@ export default {
       ctx.rotate(this.gridTransform.rotation);
       ctx.translate(width / -2, height / -2);
 
-      ctx.drawImage(gridBitmap, 0, 0, gridWidth, gridWidth);
+      ctx.drawImage(gridBitmapTwo, 0, 0, gridWidth, gridWidth);
 
       ctx.restore();
     }
   },
   watch: {
-    'options.grid': 'generateGrid',
-    'options.lineWidth': 'generateGrid',
-    'options.lineWidth': 'generateGrid',
-    'options.circleRadius': 'generateGrid',
-    'options.hexagonRadius': 'generateGrid'
+    'options.grid': 'setupGrid',
+    'options.lineWidth': 'setupGrid',
+    'options.lineWidth': 'setupGrid',
+    'options.circleRadius': 'setupGrid',
+    'options.hexagonRadius': 'setupGrid',
+    'options.blend': 'setupGrid'
   }
 };
 </script>
@@ -350,7 +377,7 @@ canvas {
   margin-top: 0;
 }
 
-.options input,
+.options input:not([type="checkbox"]),
 .options select {
   vertical-align: middle;
   width: 100%;
