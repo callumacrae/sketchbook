@@ -139,6 +139,16 @@
             />
           </td>
         </tr>
+        <tr>
+          <td>
+            <label for="fill" @click="options.fill = false">
+              Fill:
+            </label>
+          </td>
+          <td>
+            <input id="fill" type="checkbox" v-model.number="options.fill" />
+          </td>
+        </tr>
       </table>
 
       <small>Click label to reset value.</small>
@@ -166,7 +176,8 @@ export default {
       lineWidth: 3,
       circleRadius: 8,
       hexagonRadius: 10,
-      blend: false
+      blend: false,
+      fill: true
     },
     gridTransform: {
       rotation: 0.2,
@@ -178,6 +189,39 @@ export default {
     this.setSize();
     this.init();
     this.frame();
+
+    {
+      const isHole = ([x, y]) => {
+        const pixel = this.ctx.getImageData(x, y, 1, 1).data;
+        return pixel[3] < 100;
+      };
+
+      console.time('getImageData per pixel');
+
+      for (let i = 0; i < 1000; i++) {
+        isHole([100, 100]);
+      }
+
+      console.timeEnd('getImageData per pixel');
+    }
+
+    {
+      const { width, height } = this;
+      const imageData = this.ctx.getImageData(0, 0, width, height).data;
+
+      const isHole = ([x, y]) => {
+        const pixel = imageData[4 * (y * width + x) + 3];
+        return pixel < 100;
+      };
+
+      console.time('getImageData once');
+
+      for (let i = 0; i < 1000; i++) {
+        isHole([100, 100]);
+      }
+
+      console.timeEnd('getImageData once');
+    }
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
@@ -343,6 +387,53 @@ export default {
       ctx.drawImage(gridBitmapTwo, 0, 0, gridWidth, gridWidth);
 
       ctx.restore();
+
+      if (this.options.fill) {
+        // only search one atm:
+
+        const includes = (ary, [x1, y1]) => {
+          return ary.some(([x2, y2]) => (x1 === x2) & (y1 === y2));
+        };
+
+        const addIfNotAlready = (ary, coords) => {
+          if (!includes(ary, coords)) {
+            ary.push(coords);
+          }
+        };
+
+        const imageData = ctx.getImageData(0, 0, width, height).data;
+        const isHole = ([x, y]) => {
+          const pixel = imageData[4 * (y * width + x) + 3];
+          return pixel < 100;
+        };
+
+        const search = [[105, 110]];
+        const hole = [];
+
+        let bailAt = 1000;
+
+        for (let i = 0; i < search.length; i++) {
+          if (bailAt-- < 1) {
+            throw new Error('INFINITE LOOP');
+          }
+
+          if (isHole(search[i])) {
+            hole.push(search[i]);
+
+            const [x, y] = search[i];
+
+            addIfNotAlready(search, [x - 1, y]);
+            addIfNotAlready(search, [x + 1, y]);
+            addIfNotAlready(search, [x, y - 1]);
+            addIfNotAlready(search, [x, y + 1]);
+          }
+        }
+
+        ctx.fillStyle = 'red';
+        for (const [x, y] of hole) {
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
     }
   },
   watch: {
@@ -351,7 +442,8 @@ export default {
     'options.lineWidth': 'setupGrid',
     'options.circleRadius': 'setupGrid',
     'options.hexagonRadius': 'setupGrid',
-    'options.blend': 'setupGrid'
+    'options.blend': 'setupGrid',
+    'options.fill': 'setupGrid'
   }
 };
 </script>
@@ -377,7 +469,7 @@ canvas {
   margin-top: 0;
 }
 
-.options input:not([type="checkbox"]),
+.options input:not([type='checkbox']),
 .options select {
   vertical-align: middle;
   width: 100%;
