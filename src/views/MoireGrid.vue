@@ -189,39 +189,6 @@ export default {
     this.setSize();
     this.init();
     this.frame();
-
-    {
-      const isHole = ([x, y]) => {
-        const pixel = this.ctx.getImageData(x, y, 1, 1).data;
-        return pixel[3] < 100;
-      };
-
-      console.time('getImageData per pixel');
-
-      for (let i = 0; i < 1000; i++) {
-        isHole([100, 100]);
-      }
-
-      console.timeEnd('getImageData per pixel');
-    }
-
-    {
-      const { width, height } = this;
-      const imageData = this.ctx.getImageData(0, 0, width, height).data;
-
-      const isHole = ([x, y]) => {
-        const pixel = imageData[4 * (y * width + x) + 3];
-        return pixel < 100;
-      };
-
-      console.time('getImageData once');
-
-      for (let i = 0; i < 1000; i++) {
-        isHole([100, 100]);
-      }
-
-      console.timeEnd('getImageData once');
-    }
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
@@ -231,7 +198,8 @@ export default {
       const canvas = this.$refs.canvas;
       this.ctx = canvas.getContext('2d');
 
-      const dpr = window.devicePixelRatio;
+      // const dpr = window.devicePixelRatio;
+      const dpr = 1;
       this.width = canvas.clientWidth * dpr;
       this.height = canvas.clientHeight * dpr;
       canvas.width = this.width;
@@ -348,6 +316,8 @@ export default {
             ctx.stroke();
           }
         }
+
+        this.gridData = ctx.getImageData(0, 0, width, height).data;
       });
     },
     init() {
@@ -401,16 +371,49 @@ export default {
           }
         };
 
-        const imageData = ctx.getImageData(0, 0, width, height).data;
+        // Instead of calling getImageData every frame, this function
+        // calculates whether the given position is in a hole by looking at
+        // the single grid data twice - once untransformed, and once by
+        // calculating the location of the point using the inverse of the
+        // transform applied to the second grid.
         const isHole = ([x, y]) => {
-          const pixel = imageData[4 * (y * width + x) + 3];
-          return pixel < 100;
+          const pixelOne = this.gridData[4 * (y * width + x) + 3];
+
+          // We can avoid running the transform calculations if not in hole
+          if (pixelOne >= 100) {
+            return false;
+          }
+
+          const transformedX = Math.round(
+            (x - width / 2) * Math.cos(-this.gridTransform.rotation) -
+              (y - height / 2) * Math.sin(-this.gridTransform.rotation) +
+              width / 2
+          );
+
+          const transformedY = Math.round(
+            (x - width / 2) * Math.sin(-this.gridTransform.rotation) +
+              (y - height / 2) * Math.cos(-this.gridTransform.rotation) +
+              height / 2
+          );
+
+          if (
+            transformedX < 0 ||
+            transformedX > width ||
+            transformedY < 0 ||
+            transformedY > height
+          ) {
+            return true;
+          }
+
+          const pixelTwo =
+            this.gridData[4 * (transformedY * width + transformedX) + 3];
+          return pixelTwo < 100;
         };
 
         const search = [[105, 110]];
         const hole = [];
 
-        let bailAt = 1000;
+        let bailAt = 10000;
 
         for (let i = 0; i < search.length; i++) {
           if (bailAt-- < 1) {
