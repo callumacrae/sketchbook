@@ -95,6 +95,11 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/MoireGrid.vue')
   },
   {
+    path: '/connected-components',
+    name: 'Connected components',
+    component: () => import('../views/ConnectedComponents.vue')
+  },
+  {
     path: '*',
     component: () => import('../views/Index.vue')
   }
