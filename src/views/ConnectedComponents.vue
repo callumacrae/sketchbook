@@ -25,9 +25,6 @@ export default {
     status: 'playing',
     width: undefined,
     height: undefined,
-    options: {
-      antialias: false
-    }
   }),
   mounted() {
     this.setSize();
@@ -101,14 +98,6 @@ export default {
         ctx.stroke();
       }
 
-      let linesOnly;
-      if (this.options.antialias) {
-        linesOnly = document.createElement('canvas');
-        linesOnly.width = ctx.canvas.width;
-        linesOnly.height = ctx.canvas.height;
-        linesOnly.getContext('2d').drawImage(ctx.canvas, 0, 0);
-      }
-
       const imageData = ctx.getImageData(0, 0, width, height);
 
       // -1: not hole
@@ -178,7 +167,7 @@ export default {
       const maxGroupSize = Math.max(...groupSizesFlat);
 
       const groupColors = {
-        '-1': [0, 0, 0, this.options.antialias ? 0 : 255]
+        '-1': [0, 0, 0, 0]
       };
       for (let [label, value] of Object.entries(groupSizes)) {
         if (label === '-1') {
@@ -206,16 +195,6 @@ export default {
 
       const newImage = new ImageData(newImageData, width, height);
       ctx.putImageData(newImage, 0, 0);
-
-      if (this.options.antialias) {
-        ctx.drawImage(linesOnly, 0, 0);
-      }
-
-      // convert imageData to holeData
-      // first pass CCL
-      // second pass CCL
-      // calculate what to draw
-      // putImageData
     }
   },
   computed: {
