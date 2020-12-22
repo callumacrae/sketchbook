@@ -405,8 +405,9 @@ export default {
             return true;
           }
 
-          const pixelTwo =
-            this.gridData[4 * (transformedY * width + transformedX) + 3];
+          const pixelTwo = this.gridData[
+            4 * (transformedY * width + transformedX) + 3
+          ];
           return pixelTwo < 100;
         };
 

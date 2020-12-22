@@ -9,8 +9,15 @@
 </template>
 
 <script>
+import chroma from 'chroma-js';
+
 import * as random from '../utils/random';
 import recordMixin from '../mixins/record';
+
+const colorScale = chroma
+  .scale(['yellow', 'navy'])
+  .mode('lch')
+  .correctLightness();
 
 export default {
   mixins: [recordMixin],
@@ -178,8 +185,8 @@ export default {
           continue;
         }
 
-        const color = [255, 0, 0];
-        color.push((255 / maxGroupSize) * value);
+        const color = colorScale(value / maxGroupSize).rgba();
+        color[3] = 255;
 
         groupColors[label] = color;
       }
