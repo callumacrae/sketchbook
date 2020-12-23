@@ -12,6 +12,7 @@
 import chroma from 'chroma-js';
 
 import * as random from '../utils/random';
+import cclFill from '../utils/patterns/ccl-fill';
 import recordMixin from '../mixins/record';
 
 const colorScale = chroma
@@ -24,7 +25,7 @@ export default {
   data: () => ({
     status: 'playing',
     width: undefined,
-    height: undefined,
+    height: undefined
   }),
   mounted() {
     this.setSize();
@@ -65,23 +66,10 @@ export default {
         ['y', r(height), r(height)]
       ];
     },
-    frame(timestamp = 0) {
-      this.frameId = requestAnimationFrame(this.frame);
+    drawLines(timestamp) {
+      const { ctx, width, height, lines } = this;
 
-      if (this.status !== 'playing') {
-        return;
-      }
-
-      const t = timestamp / 1e3;
-      const ctx = this.ctx;
-      const { width, height, lines, uvFactor } = this;
-
-      ctx.clearRect(0, 0, width, height);
-
-      ctx.strokeStyle = 'black';
-      ctx.lineWidth = 1;
-
-      for (const line of this.lines) {
+      for (const line of lines) {
         ctx.beginPath();
 
         const calcVal = point =>
@@ -97,109 +85,31 @@ export default {
 
         ctx.stroke();
       }
+    },
+    frame(timestamp = 0) {
+      this.frameId = requestAnimationFrame(this.frame);
 
-      const imageData = ctx.getImageData(0, 0, width, height);
-
-      // -1: not hole
-      // 0: unlabelled
-      // 1+: labels
-      // maximum value is 32,767 - @todo check this is ok
-      const data = new Int16Array(width * height);
-
-      for (let i = 0; i < width * height; i++) {
-        data[i] = imageData.data[i * 4 + 3] < 100 ? 0 : -1;
+      if (this.status !== 'playing') {
+        return;
       }
 
-      let nextLabel = 1;
-      const equivalent = new Map();
+      const { ctx, width, height, lines } = this;
 
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const i = y * width + x;
+      ctx.clearRect(0, 0, width, height);
 
-          if (data[i] === -1) {
-            continue;
-          }
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 1;
+      this.drawLines(timestamp);
 
-          const leftLabel = x ? data[i - 1] : -1;
-          const aboveLabel = y ? data[i - width] : -1;
-
-          if (leftLabel === -1 && aboveLabel === -1) {
-            data[i] = nextLabel;
-            nextLabel++;
-          } else if (leftLabel === -1) {
-            data[i] = aboveLabel;
-          } else if (aboveLabel === -1) {
-            data[i] = leftLabel;
-          } else {
-            const label = Math.min(aboveLabel, leftLabel);
-            data[i] = label;
-
-            if (aboveLabel !== leftLabel) {
-              equivalent.set(
-                Math.max(aboveLabel, leftLabel),
-                equivalent.get(label) || label
-              );
-            }
-          }
-        }
-      }
-
-      for (let i = 0; i < width * height; i++) {
-        if (equivalent.has(data[i])) {
-          data[i] = equivalent.get(data[i]);
-        }
-      }
-
-      const groupSizes = {};
-      for (let i = 0; i < width * height; i++) {
-        if (!groupSizes[data[i]]) {
-          groupSizes[data[i]] = 0;
-        }
-
-        groupSizes[data[i]]++;
-      }
-
-      const groupSizesFlat = Object.entries(groupSizes)
-        .filter(([label]) => label !== -1)
-        .map(([key, value]) => value);
-
-      const maxGroupSize = Math.max(...groupSizesFlat);
-
-      const groupColors = {
-        '-1': [0, 0, 0, 0]
-      };
-      for (let [label, value] of Object.entries(groupSizes)) {
-        if (label === '-1') {
-          continue;
-        }
-
-        const color = colorScale(value / maxGroupSize).rgba();
+      const newImage = cclFill(ctx, val => {
+        const color = colorScale(val).rgba();
         color[3] = 255;
-
-        groupColors[label] = color;
-      }
-
-      const newImageData = new Uint8ClampedArray(width * height * 4);
-
-      for (let i = 0; i < data.length; i++) {
-        const label = data[i];
-
-        const color = groupColors[label];
-
-        newImageData[i * 4] = color[0];
-        newImageData[i * 4 + 1] = color[1];
-        newImageData[i * 4 + 2] = color[2];
-        newImageData[i * 4 + 3] = color[3];
-      }
-
-      const newImage = new ImageData(newImageData, width, height);
+        return color;
+      });
       ctx.putImageData(newImage, 0, 0);
-    }
-  },
-  computed: {
-    uvFactor() {
-      return Math.min(this.width, this.height);
+
+      ctx.lineWidth = 1.5;
+      this.drawLines(timestamp);
     }
   }
 };
