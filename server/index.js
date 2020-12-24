@@ -13,7 +13,7 @@ app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
-app.post('/save-images', bodyParser.json({ limit: '50mb' }), (req, res) => {
+app.post('/save-images', bodyParser.json({ limit: '500mb' }), (req, res) => {
   const { options, framesData } = req.body;
 
   const directory = `data/${options.directory}`;

@@ -190,7 +190,7 @@ export default {
     width: undefined,
     height: undefined,
     options: {
-      rotation: 0.0075,
+      rotation: Math.PI / 60 / 20,
       x: 0,
       y: 0,
       grid: 'hexagons',
@@ -201,7 +201,7 @@ export default {
       fill: false
     },
     gridTransform: {
-      rotation: 0.2,
+      rotation: Math.PI / -2,
       x: 0,
       y: 0
     },
@@ -210,6 +210,17 @@ export default {
   mounted() {
     this.init();
     this.frame();
+
+    if (false) {
+      this.record({
+        width: 512,
+        height: 512,
+        fps: 60,
+        duration: 20e3,
+        background: 'white',
+        directory: 'moire-grid'
+      });
+    }
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
@@ -230,7 +241,9 @@ export default {
         this.gridBitmapOne = this.generateGrid('red');
         this.gridBitmapTwo = this.generateGrid('blue');
       } else {
-        this.gridBitmapOne = this.gridBitmapTwo = this.generateGrid();
+        this.gridBitmapOne = this.gridBitmapTwo = this.generateGrid(
+          this.options.fill ? 'white' : 'black'
+        );
       }
     },
     generateGrid(color = 'black') {
@@ -349,25 +362,11 @@ export default {
       this.setSize();
       this.setupGrid();
     },
-    frame(timestamp = 0) {
-      this.frameId = requestAnimationFrame(this.frame);
-
-      if (this.status !== 'playing') {
-        return;
-      }
-
+    drawGrid(timestamp) {
       const t = timestamp / 1e3;
-      const { ctx, gridBitmapOne, gridBitmapTwo } = this;
-      let { width, height } = this;
-
-      if (this.options.fill) {
-        width = 512;
-        height = 512;
-      }
+      const { ctx, width, height, gridBitmapOne, gridBitmapTwo } = this;
 
       ctx.globalCompositeOperation = 'multiply';
-
-      ctx.clearRect(0, 0, width, height);
 
       const gridWidth = Math.max(width, height);
       ctx.drawImage(gridBitmapOne, 0, 0, gridWidth, gridWidth);
@@ -389,6 +388,19 @@ export default {
       ctx.drawImage(gridBitmapTwo, 0, 0, gridWidth, gridWidth);
 
       ctx.restore();
+    },
+    frame(timestamp = 0) {
+      this.frameId = requestAnimationFrame(this.frame);
+
+      if (this.status === 'paused') {
+        return;
+      }
+
+      const { ctx, width, height } = this;
+
+      ctx.clearRect(0, 0, width, height);
+
+      this.drawGrid(timestamp);
 
       if (this.options.fill) {
         const newImage = cclFill(ctx, val => {
@@ -397,6 +409,8 @@ export default {
           return color;
         });
         ctx.putImageData(newImage, 0, 0);
+
+        this.drawGrid(timestamp);
       }
     }
   },
