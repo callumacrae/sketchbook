@@ -1,7 +1,8 @@
 <template>
-  <div>
+  <div class="wrapper">
     <canvas
       ref="canvas"
+      :class="{ small: options.fill }"
       @click="status = status === 'playing' ? 'paused' : 'playing'"
     ></canvas>
 
@@ -139,6 +140,11 @@
             />
           </td>
         </tr>
+        <tr v-show="fillWarning">
+          <td colspan="2">
+            Filling is computationally expensive<br />and performs very badly!
+          </td>
+        </tr>
         <tr>
           <td>
             <label for="fill" @click="options.fill = false">
@@ -146,7 +152,14 @@
             </label>
           </td>
           <td>
-            <input id="fill" type="checkbox" v-model.number="options.fill" />
+            <span
+              @mouseover="fillWarning = true"
+              @mouseout="fillWarning = false"
+            >
+              ⚠️
+              <input id="fill" type="checkbox" v-model.number="options.fill" />
+              ⚠️
+            </span>
           </td>
         </tr>
       </table>
@@ -159,8 +172,16 @@
 </template>
 
 <script>
+import chroma from 'chroma-js';
+
 import recordMixin from '../mixins/record';
 import { doWorkOffscreen } from '../utils/canvas';
+import cclFill from '../utils/patterns/ccl-fill';
+
+const colorScale = chroma
+  .scale(['yellow', 'navy'])
+  .mode('lch')
+  .correctLightness();
 
 export default {
   mixins: [recordMixin],
@@ -177,16 +198,16 @@ export default {
       circleRadius: 8,
       hexagonRadius: 10,
       blend: false,
-      fill: true
+      fill: false
     },
     gridTransform: {
       rotation: 0.2,
       x: 0,
       y: 0
-    }
+    },
+    fillWarning: false
   }),
   mounted() {
-    this.setSize();
     this.init();
     this.frame();
   },
@@ -198,10 +219,9 @@ export default {
       const canvas = this.$refs.canvas;
       this.ctx = canvas.getContext('2d');
 
-      // const dpr = window.devicePixelRatio;
-      const dpr = 1;
-      this.width = canvas.clientWidth * dpr;
-      this.height = canvas.clientHeight * dpr;
+      const dpr = window.devicePixelRatio;
+      this.width = this.options.fill ? 512 : canvas.clientWidth * dpr;
+      this.height = this.options.fill ? 512 : canvas.clientHeight * dpr;
       canvas.width = this.width;
       canvas.height = this.height;
     },
@@ -214,7 +234,12 @@ export default {
       }
     },
     generateGrid(color = 'black') {
-      const { width, height } = this;
+      let { width, height } = this;
+
+      if (this.options.fill) {
+        width = 512;
+        height = 512;
+      }
 
       const gridWidth = Math.max(width, height);
 
@@ -321,6 +346,7 @@ export default {
       });
     },
     init() {
+      this.setSize();
       this.setupGrid();
     },
     frame(timestamp = 0) {
@@ -331,7 +357,13 @@ export default {
       }
 
       const t = timestamp / 1e3;
-      const { ctx, width, height, gridBitmapOne, gridBitmapTwo } = this;
+      const { ctx, gridBitmapOne, gridBitmapTwo } = this;
+      let { width, height } = this;
+
+      if (this.options.fill) {
+        width = 512;
+        height = 512;
+      }
 
       ctx.globalCompositeOperation = 'multiply';
 
@@ -359,84 +391,12 @@ export default {
       ctx.restore();
 
       if (this.options.fill) {
-        // only search one atm:
-
-        const includes = (ary, [x1, y1]) => {
-          return ary.some(([x2, y2]) => (x1 === x2) & (y1 === y2));
-        };
-
-        const addIfNotAlready = (ary, coords) => {
-          if (!includes(ary, coords)) {
-            ary.push(coords);
-          }
-        };
-
-        // Instead of calling getImageData every frame, this function
-        // calculates whether the given position is in a hole by looking at
-        // the single grid data twice - once untransformed, and once by
-        // calculating the location of the point using the inverse of the
-        // transform applied to the second grid.
-        const isHole = ([x, y]) => {
-          const pixelOne = this.gridData[4 * (y * width + x) + 3];
-
-          // We can avoid running the transform calculations if not in hole
-          if (pixelOne >= 100) {
-            return false;
-          }
-
-          const transformedX = Math.round(
-            (x - width / 2) * Math.cos(-this.gridTransform.rotation) -
-              (y - height / 2) * Math.sin(-this.gridTransform.rotation) +
-              width / 2
-          );
-
-          const transformedY = Math.round(
-            (x - width / 2) * Math.sin(-this.gridTransform.rotation) +
-              (y - height / 2) * Math.cos(-this.gridTransform.rotation) +
-              height / 2
-          );
-
-          if (
-            transformedX < 0 ||
-            transformedX > width ||
-            transformedY < 0 ||
-            transformedY > height
-          ) {
-            return true;
-          }
-
-          const pixelTwo = this.gridData[
-            4 * (transformedY * width + transformedX) + 3
-          ];
-          return pixelTwo < 100;
-        };
-
-        const search = [[105, 110]];
-        const hole = [];
-
-        let bailAt = 10000;
-
-        for (let i = 0; i < search.length; i++) {
-          if (bailAt-- < 1) {
-            throw new Error('INFINITE LOOP');
-          }
-
-          if (isHole(search[i])) {
-            hole.push(search[i]);
-
-            const [x, y] = search[i];
-
-            addIfNotAlready(search, [x - 1, y]);
-            addIfNotAlready(search, [x + 1, y]);
-            addIfNotAlready(search, [x, y - 1]);
-            addIfNotAlready(search, [x, y + 1]);
-          }
-        }
-
-        ctx.fillStyle = 'red';
-        for (const [x, y] of hole) {
-          ctx.fillRect(x, y, 1, 1);
-        }
+        const newImage = cclFill(ctx, val => {
+          const color = colorScale(val).rgba();
+          color[3] = 255;
+          return color;
+        });
+        ctx.putImageData(newImage, 0, 0);
       }
     }
   },
@@ -447,15 +407,33 @@ export default {
     'options.circleRadius': 'setupGrid',
     'options.hexagonRadius': 'setupGrid',
     'options.blend': 'setupGrid',
-    'options.fill': 'setupGrid'
+    'options.fill'() {
+      this.$nextTick(() => {
+        this.setSize();
+        this.setupGrid();
+      });
+    }
   }
 };
 </script>
 
 <style scoped>
+.wrapper {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 canvas {
   width: 100vw;
   height: 100vh;
+}
+
+canvas.small {
+  width: 512px;
+  height: 512px;
 }
 
 .options {
