@@ -43,7 +43,7 @@ export default {
     },
     init() {},
     frame(timestamp = 0) {
-      // this.frameId = requestAnimationFrame(this.frame);
+      this.frameId = requestAnimationFrame(this.frame);
 
       if (this.status === 'paused') {
         return;

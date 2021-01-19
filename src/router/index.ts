@@ -100,9 +100,9 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/ConnectedComponents.vue')
   },
   {
-    path: '/warped-grid',
-    name: 'Warped grid',
-    component: () => import('../views/WarpedGrid.vue')
+    path: '/warped-grid-bad',
+    name: 'Warped grid (bad attempt)',
+    component: () => import('../views/WarpedGridBad.vue')
   },
   {
     path: '*',
