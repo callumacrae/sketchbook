@@ -10,6 +10,10 @@
 
 <script>
 import recordMixin from '../mixins/record';
+import SimplexNoise from 'simplex-noise';
+
+const simplexX = new SimplexNoise('a');
+const simplexY = new SimplexNoise('b');
 
 export default {
   mixins: [recordMixin],
@@ -31,7 +35,7 @@ export default {
       const canvas = this.$refs.canvas;
       this.ctx = canvas.getContext('2d');
 
-      const dpr = window.devicePixelRatio;
+      const dpr = 1; // window.devicePixelRatio;
       this.width = canvas.clientWidth * dpr;
       this.height = canvas.clientHeight * dpr;
       canvas.width = this.width;
@@ -39,15 +43,14 @@ export default {
     },
     init() {},
     frame(timestamp = 0) {
-      this.frameId = requestAnimationFrame(this.frame);
+      // this.frameId = requestAnimationFrame(this.frame);
 
       if (this.status === 'paused') {
         return;
       }
 
-      const t = timestamp / 1e3;
       const ctx = this.ctx;
-      const { width, height, lines, uvFactor } = this;
+      const { width, height } = this;
 
       ctx.clearRect(0, 0, width, height);
 
@@ -58,8 +61,14 @@ export default {
 
       for (let x = 0; x < width; x++) {
         for (let y = 0; y < height; y++) {
-          const cellOddX = Math.floor(x / cellWidth) % 2 === 0;
-          const cellOddY = Math.floor(y / cellHeight) % 2 === 0;
+          const xFactor = 400;
+          const yFactor = 400;
+          const t = timestamp / 1e3;
+          const noiseX = simplexX.noise3D(x / xFactor, y / yFactor, t) * 10;
+          const noiseY = simplexY.noise3D(x / xFactor, y / yFactor, t) * 10;
+
+          const cellOddX = Math.floor((x + noiseX) / cellWidth) % 2 === 0;
+          const cellOddY = Math.floor((y + noiseY) / cellHeight) % 2 === 0;
 
           const startIndex = (y * width + x) * 4;
 
