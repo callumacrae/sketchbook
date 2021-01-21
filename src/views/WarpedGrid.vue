@@ -13,8 +13,8 @@ import recordMixin from '../mixins/record';
 import SimplexNoise from 'simplex-noise';
 import * as dat from 'dat.gui';
 
-const simplexX = new SimplexNoise('a');
-const simplexY = new SimplexNoise('b');
+const simplexX = new SimplexNoise();
+const simplexY = new SimplexNoise();
 
 export default {
   mixins: [recordMixin],
