@@ -39,6 +39,17 @@ export default {
     this.init();
     this.frame();
 
+    if (false) {
+      this.record({
+        width: 1024,
+        height: 512,
+        fps: 50,
+        duration: 5e3,
+        background: 'white',
+        directory: 'warped-grid'
+      });
+    }
+
     const gui = new dat.GUI();
     this.gui = gui;
 
