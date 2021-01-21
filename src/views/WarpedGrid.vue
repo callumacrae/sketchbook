@@ -66,103 +66,55 @@ export default {
       const yNoiseFactor = 10;
 
       ctx.lineWidth = 2;
-      ctx.strokeStyle = 'black';
+      ctx.fillStyle = 'black';
 
-      const horizontalLines = [];
+      const cellsX = Math.ceil(width / cellWidth);
+      const cellsY = Math.ceil(height / cellHeight);
 
-      for (let i = 0; i < width + cellWidth; i += cellWidth) {
-        const line = [];
+      const warp = ([x, y]) => {
+        const xFactor = 400;
+        const yFactor = 400;
+        const t = timestamp / 1e3;
+        const noiseX = simplexX.noise3D(x / xFactor, y / yFactor, t) * 10;
+        const noiseY = simplexY.noise3D(x / xFactor, y / yFactor, t) * 10;
 
-        for (let y = -10; y < height + 10; y += 10) {
-          const noiseX =
-            simplexX.noise3D(i / xFactor, y / yFactor, t) * xNoiseFactor;
-          const x = i + noiseX;
+        return [x + noiseX, y + noiseY];
+      };
 
-          line.push([x, y]);
-        }
+      const lineBetween = (a, b) => {
+        const divisions = 5;
+        const offset = [(b[0] - a[0]) / divisions, (b[1] - a[1]) / divisions];
 
-        horizontalLines.push(line);
-      }
-
-      const verticalLines = [];
-
-      for (let i = 0; i < height + cellHeight; i += cellHeight) {
-        const line = [];
-
-        for (let x = -10; x < width + 10; x += 10) {
-          const noiseY =
-            simplexX.noise3D(x / xFactor, i / yFactor, t) * yNoiseFactor;
-          const y = i + noiseY;
-
-          line.push([x, y]);
-        }
-
-        verticalLines.push(line);
-      }
-
-      const previewLines = lines => {
-        for (const line of lines) {
-          ctx.beginPath();
-
-          for (let i = 0; i < line.length; i++) {
-            const [x, y] = line[i];
-
-            if (i === 0) {
-              ctx.moveTo(x, y);
-            } else {
-              ctx.lineTo(x, y);
-            }
-          }
-
-          ctx.stroke();
+        for (let i = 0; i <= divisions; i++) {
+          ctx.lineTo(...warp([a[0] + offset[0] * i, a[1] + offset[1] * i]));
         }
       };
-      previewLines(horizontalLines);
-      previewLines(verticalLines);
 
-      horizontalLines.forEach((horizontal) => {
-        verticalLines.forEach(vertical => {
-          // const possiblePointsHorizontal = horizontal.filter(point => {
-          //   const vI = 200;
-          //   return Math.abs(point[1] - vI) <= xNoiseFactor;
-          // });
+      for (let i = -1; i <= cellsX; i++) {
+        for (let j = -1; j <= cellsY; j++) {
+          // Only draw every other rectangle
+          if (Math.abs(i % 2) !== Math.abs(j % 2)) {
+            continue;
+          }
 
-          // const possiblePointsVertical = vertical.filter(point => {
-          //   const hI = 280;
-          //   return Math.abs(point[0] - hI) <= yNoiseFactor;
-          // });
+          const startX = i * cellWidth;
+          const startY = j * cellHeight;
 
-          const possiblePointsHorizontal = horizontal;
-          const possiblePointsVertical = vertical;
-
-          const within = (val, a, b) => {
-            return val >= Math.min(a, b) && val < Math.max(a, b);
-          };
-
-          possiblePointsHorizontal.slice(1).forEach((pointAB, i) => {
-            const pointAA = possiblePointsHorizontal[i];
-            const lineA = [pointAA, pointAB];
-
-            possiblePointsVertical.slice(1).forEach((pointBB, j) => {
-              const pointBA = possiblePointsVertical[j];
-              const lineB = [pointBA, pointBB];
-
-              const intersection = lines.findIntersection(lineA, lineB);
-
-              const doesIntersect =
-                within(intersection[0], pointAA[0], pointAB[0]) &&
-                within(intersection[0], pointBA[0], pointBB[0]);
-
-              if (doesIntersect) {
-                ctx.fillStyle = 'red';
-                ctx.beginPath();
-                ctx.arc(intersection[0], intersection[1], 2, 0, Math.PI * 2);
-                ctx.fill();
-              }
-            });
-          });
-        });
-      });
+          ctx.beginPath();
+          ctx.moveTo(...warp([startX, startY]));
+          lineBetween([startX, startY], [startX + cellWidth, startY]);
+          lineBetween(
+            [startX + cellWidth, startY],
+            [startX + cellWidth, startY + cellHeight]
+          );
+          lineBetween(
+            [startX + cellWidth, startY + cellHeight],
+            [startX, startY + cellHeight]
+          );
+          lineBetween([startX, startY + cellHeight], [startX, startY]);
+          ctx.fill();
+        }
+      }
     }
   },
   computed: {
