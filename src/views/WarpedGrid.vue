@@ -9,7 +9,6 @@
 </template>
 
 <script>
-import * as lines from '../utils/lines';
 import recordMixin from '../mixins/record';
 import SimplexNoise from 'simplex-noise';
 import * as dat from 'dat.gui';
@@ -36,6 +35,7 @@ export default {
     }
   }),
   mounted() {
+    this.setSize();
     this.init();
     this.frame();
 
@@ -71,7 +71,7 @@ export default {
       canvas.height = this.height;
     },
     init() {
-      this.setSize();
+    this.setSize()
     },
     frame(timestamp = 0) {
       this.frameId = requestAnimationFrame(this.frame);
@@ -154,11 +154,6 @@ export default {
           ctx.fill();
         }
       }
-    }
-  },
-  computed: {
-    uvFactor() {
-      return Math.min(this.width, this.height);
     }
   }
 };
