@@ -36,7 +36,6 @@ export default {
     }
   }),
   mounted() {
-    this.setSize();
     this.init();
     this.frame();
 
@@ -71,7 +70,9 @@ export default {
       canvas.width = this.width;
       canvas.height = this.height;
     },
-    init() {},
+    init() {
+      this.setSize();
+    },
     frame(timestamp = 0) {
       this.frameId = requestAnimationFrame(this.frame);
 
