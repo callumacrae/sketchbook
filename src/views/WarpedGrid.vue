@@ -50,23 +50,29 @@ export default {
         return;
       }
 
-      const ctx = this.ctx;
-      const { width, height } = this;
+      const { ctx, width, height } = this;
 
       ctx.clearRect(0, 0, width, height);
+
+      ctx.globalCompositeOperation = 'multiply'
+
+      ctx.fillStyle = 'red';
+      this.drawGrid(timestamp / 2e3);
+
+      ctx.fillStyle = 'blue';
+      this.drawGrid(timestamp / 2e3 + 0.1);
+    },
+    drawGrid(t) {
+      const { ctx, width, height } = this;
 
       const cellWidth = 50;
       const cellHeight = 70;
 
       const xFactor = 400;
       const yFactor = 400;
-      const t = timestamp / 2e3;
 
       const xNoiseFactor = 10;
       const yNoiseFactor = 10;
-
-      ctx.lineWidth = 2;
-      ctx.fillStyle = 'black';
 
       const cellsX = Math.ceil(width / cellWidth);
       const cellsY = Math.ceil(height / cellHeight);
@@ -74,7 +80,6 @@ export default {
       const warp = ([x, y]) => {
         const xFactor = 400;
         const yFactor = 400;
-        const t = timestamp / 1e3;
         const noiseX = simplexX.noise3D(x / xFactor, y / yFactor, t) * 10;
         const noiseY = simplexY.noise3D(x / xFactor, y / yFactor, t) * 10;
 
