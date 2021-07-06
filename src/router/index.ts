@@ -92,7 +92,10 @@ const routes: Array<RouteConfig> = [
   {
     path: '/moire-grid',
     name: 'Moiré grid',
-    component: () => import('../views/MoireGrid.vue')
+    component: () => import('../views/MoireGrid.vue'),
+    meta: {
+      favourite: true
+    }
   },
   {
     path: '/connected-components',
@@ -112,7 +115,15 @@ const routes: Array<RouteConfig> = [
   {
     path: '/warped-grid',
     name: 'Warped grid',
-    component: () => import('../views/WarpedGrid.vue')
+    component: () => import('../views/WarpedGrid.vue'),
+    meta: {
+      favourite: true
+    }
+  },
+  {
+    path: '/noisy-circle',
+    name: 'Noisy circle (broken)',
+    component: () => import('../views/NoisyCircle.vue')
   },
   {
     path: '*',
