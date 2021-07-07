@@ -47,15 +47,9 @@ export default {
       }
 
       const t = timestamp / 1e3;
-      const ctx = this.ctx;
-      const { width, height, lines, uvFactor } = this;
+      const { width, height, ctx } = this;
 
       ctx.clearRect(0, 0, width, height);
-    }
-  },
-  computed: {
-    uvFactor() {
-      return Math.min(this.width, this.height);
     }
   }
 };

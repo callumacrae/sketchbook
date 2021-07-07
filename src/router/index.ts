@@ -126,6 +126,11 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/NoisyCircle.vue')
   },
   {
+    path: '/particle-photo',
+    name: 'Particle photo',
+    component: () => import('../views/ParticlePhoto.vue')
+  },
+  {
     path: '*',
     component: () => import('../views/Index.vue')
   }
