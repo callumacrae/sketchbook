@@ -126,8 +126,13 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/NoisyCircle.vue')
   },
   {
+    path: '/particles-rising',
+    name: 'Rising particles',
+    component: () => import('../views/ParticlesRising.vue')
+  },
+  {
     path: '/particle-photo',
-    name: 'Particle photo',
+    name: 'Particle photo (canvas 2d)',
     component: () => import('../views/ParticlePhoto.vue')
   },
   {
