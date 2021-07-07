@@ -21,7 +21,7 @@ export default {
     config: {
       particles: 2000,
       particleBaseSpeed: -10,
-      algo: 'cheap' // expensive uses noise to vary the speed, cheap does not
+      quality: 0 // 0 = no randomness, 1 = noisy direction, 2 = noisy speed + direction
     }
   }),
   mounted() {
@@ -46,18 +46,19 @@ export default {
     init() {
       const { config } = this;
 
-      if (config.algo === 'cheap') {
-        const particleSpeeds = [];
+      if (config.quality < 2) {
+        const particleData = [];
 
         for (let i = 0; i < config.particles; i++) {
-          // The 0.5s prevent banding (idk why)
-          particleSpeeds.push({
+          // The 0.5s prevents banding (idk why)
+          particleData.push({
             initialOffset: (simplex.noise2D(i + 0.5, 0) + 1) * 1e5,
-            speed: (simplex.noise2D(0, i + 0.5) + 0.8) * config.particleBaseSpeed
+            speed:
+              (simplex.noise2D(0, i + 0.5) + 0.8) * config.particleBaseSpeed
           });
         }
 
-        this.particleSpeeds = particleSpeeds;
+        this.particleData = particleData;
       }
     },
     frame(timestamp = 0) {
@@ -68,7 +69,7 @@ export default {
       }
 
       const t = timestamp / 1e3;
-      const { width, height, ctx, config, particleSpeeds } = this;
+      const { width, height, ctx, config, particleData } = this;
 
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, width, height);
@@ -80,9 +81,9 @@ export default {
         ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
 
         let y;
-        if (config.algo === 'cheap') {
-          const speed = particleSpeeds[i];
-          y = (speed.initialOffset + speed.speed * t) % height;
+        if (config.quality < 2) {
+          const { initialOffset, speed } = particleData[i];
+          y = (initialOffset + speed * t) % height;
         } else {
           const offset = (simplex.noise2D(i, t / 5e4) + 1) * 1e5;
           y = (offset + config.particleBaseSpeed * t) % height;
@@ -94,6 +95,9 @@ export default {
       }
     },
     transformPoint([x, y]) {
+      if (this.config.quality === 0) {
+        return [x, y];
+      }
       const noise = simplex.noise2D(x / 750, y / 200);
       return [x + noise * 40, y];
     }
