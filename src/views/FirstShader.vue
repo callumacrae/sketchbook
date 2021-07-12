@@ -9,7 +9,6 @@
 </template>
 
 <script>
-import glsl from 'glslify';
 import fragmentShaderSource from './FirstShader-fragment.glsl';
 import vertexShaderSource from './FirstShader-vertex.glsl'
 
