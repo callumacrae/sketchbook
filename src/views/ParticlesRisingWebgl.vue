@@ -23,9 +23,9 @@ export default {
     width: undefined,
     height: undefined,
     config: {
-      particles: 1000,
-      particleSegments: 20,
-      particleBaseSpeed: 10
+      particles: 2000,
+      particleSegments: 10,
+      particleBaseSpeed: 5
     }
   }),
   mounted() {
@@ -49,6 +49,13 @@ export default {
     },
     init() {
       const { gl, config } = this;
+
+      const ext = gl.getExtension('ANGLE_instanced_arrays');
+      if (!ext) {
+        throw new Error('need ANGLE_instanced_arrays');
+      }
+      this.ext = ext;
+      twgl.addExtensionsToContext(gl);
 
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -74,25 +81,45 @@ export default {
         data.push(0, 0, ...pointA, ...pointB);
       }
 
+      const particleData = {
+        xs: [],
+        initialOffsets: [],
+        speeds: []
+      };
+      for (let i = 0; i < config.particles; i++) {
+        // The 0.5s prevents banding (idk why)
+        particleData.xs.push(i / config.particles);
+        particleData.initialOffsets.push(simplex.noise2D(i + 0.5, 0));
+        particleData.speeds.push(
+          (simplex.noise2D(0, i + 0.5) + 0.8) * config.particleBaseSpeed
+        );
+      }
+
+      this.particleData = particleData;
+
       twgl.setAttributePrefix('a_');
       this.bufferInfo = twgl.createBufferInfoFromArrays(gl, {
         circle_positions: {
           numComponents: 2,
           data: data
+        },
+        x: {
+          numComponents: 1,
+          data: particleData.xs,
+          divisor: 1
+        },
+        initial_offset: {
+          numComponents: 1,
+          data: particleData.initialOffsets,
+          divisor: 1
+        },
+        speed: {
+          numComponents: 1,
+          data: particleData.speeds,
+          divisor: 1
         }
       });
       twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
-
-      const particleData = [];
-      for (let i = 0; i < config.particles; i++) {
-        // The 0.5s prevents banding (idk why)
-        particleData.push({
-          initialOffset: simplex.noise2D(i + 0.5, 0),
-          speed: (simplex.noise2D(0, i + 0.5) + 0.8) * config.particleBaseSpeed
-        });
-      }
-
-      this.particleData = particleData;
     },
     frame(timestamp = 0) {
       this.frameId = requestAnimationFrame(this.frame);
@@ -101,23 +128,25 @@ export default {
         return;
       }
 
-      const { gl, programInfo, width, height, config, particleData } = this;
+      const { gl, programInfo, bufferInfo, width, height, config } = this;
 
       gl.viewport(0, 0, width, height);
       gl.useProgram(programInfo.program);
 
-      for (let i = 0; i < config.particles; i++) {
-        const uniforms = {
-          u_aspect: width / height,
-          u_x: i / config.particles,
-          u_time: timestamp,
-          u_initial_offset: particleData[i].initialOffset,
-          u_speed: particleData[i].speed,
-        };
+      const uniforms = {
+        u_aspect: width / height,
+        u_time: timestamp
+      };
 
-        twgl.setUniforms(programInfo, uniforms);
-        twgl.drawBufferInfo(gl, this.bufferInfo);
-      }
+      twgl.setUniforms(programInfo, uniforms);
+      twgl.drawBufferInfo(
+        gl,
+        bufferInfo,
+        gl.TRIANGLES,
+        bufferInfo.numElements,
+        0,
+        config.particles
+      );
     }
   }
 };
@@ -127,6 +156,6 @@ export default {
 canvas {
   width: 100vw;
   height: 100vh;
-  background-color: rgba(255, 0, 0, 0.1);
+  background-color: black;
 }
 </style>
