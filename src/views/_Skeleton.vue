@@ -4,7 +4,7 @@
       ref="canvas"
       @click="status = status === 'playing' ? 'paused' : 'playing'"
     ></canvas>
-    <GlobalEvents target="window" @resize="init" />
+    <GlobalEvents target="window" @resize="setSize" />
   </div>
 </template>
 

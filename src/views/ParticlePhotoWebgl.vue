@@ -4,13 +4,13 @@
       ref="canvas"
       @click="status = status === 'playing' ? 'paused' : 'playing'"
     ></canvas>
-    <GlobalEvents target="window" @resize="init" />
+    <GlobalEvents target="window" @resize="setSize" />
   </div>
 </template>
 
 <script>
-import fragmentShaderSource from './ParticlesRising-fragment.glsl';
-import vertexShaderSource from './ParticlesRising-vertex.glsl';
+import fragmentShaderSource from './ParticlePhoto-fragment.glsl';
+import vertexShaderSource from './ParticlePhoto-vertex.glsl';
 
 import * as twgl from 'twgl.js/dist/4.x/twgl-full.module';
 
@@ -25,13 +25,15 @@ export default {
     config: {
       particles: 10e3,
       particleSegments: 10,
-      particleBaseSpeed: 5
+      particleBaseSpeed: 5,
+
+      imageSrc:
+        '/assets/particle-photos/frida-bredesen-c_cPNXlovvY-unsplash-small.png'
     }
   }),
   mounted() {
     this.setSize();
-    this.init();
-    this.frame();
+    this.init().then(() => this.frame());
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
@@ -117,6 +119,14 @@ export default {
         }
       });
       twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+
+      return new Promise(resolve => {
+        this.imageTexture = twgl.createTexture(
+          gl,
+          { src: config.imageSrc },
+          resolve
+        );
+      });
     },
     frame(timestamp = 0) {
       this.frameId = requestAnimationFrame(this.frame);
@@ -132,7 +142,8 @@ export default {
 
       const uniforms = {
         u_aspect: width / height,
-        u_time: timestamp
+        u_time: timestamp,
+        u_image_texture: this.imageTexture
       };
 
       twgl.setUniforms(programInfo, uniforms);
@@ -151,8 +162,10 @@ export default {
 
 <style scoped>
 canvas {
-  width: 100vw;
-  height: 100vh;
+  /* width: 100vw; */
+  /* height: 100vh; */
+  width: 1000px;
+  height: 1000px;
   background-color: black;
 }
 </style>

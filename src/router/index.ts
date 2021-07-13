@@ -141,6 +141,11 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/ParticlesRisingWebgl.vue')
   },
   {
+    path: '/particle-photo-webgl',
+    name: 'Particle photo (webgl)',
+    component: () => import('../views/ParticlePhotoWebgl.vue')
+  },
+  {
     path: '*',
     component: () => import('../views/Index.vue')
   }
