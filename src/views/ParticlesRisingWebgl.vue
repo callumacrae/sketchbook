@@ -15,7 +15,8 @@ import vertexShaderSource from './ParticlesRising-vertex.glsl';
 import SimplexNoise from 'simplex-noise';
 import * as twgl from 'twgl.js/dist/4.x/twgl-full.module';
 
-const simplex = new SimplexNoise('setseed');
+import * as random from '../utils/random';
+random.setSeed('setseed');
 
 export default {
   data: () => ({
@@ -23,7 +24,7 @@ export default {
     width: undefined,
     height: undefined,
     config: {
-      particles: 2000,
+      particles: 10e3,
       particleSegments: 10,
       particleBaseSpeed: 5
     }
@@ -87,12 +88,9 @@ export default {
         speeds: []
       };
       for (let i = 0; i < config.particles; i++) {
-        // The 0.5s prevents banding (idk why)
         particleData.xs.push(i / config.particles);
-        particleData.initialOffsets.push(simplex.noise2D(i + 0.5, 0));
-        particleData.speeds.push(
-          (simplex.noise2D(0, i + 0.5) + 0.8) * config.particleBaseSpeed
-        );
+        particleData.initialOffsets.push(random.range(-1, 1));
+        particleData.speeds.push(random.range(0, config.particleBaseSpeed));
       }
 
       this.particleData = particleData;
