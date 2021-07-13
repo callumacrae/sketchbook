@@ -12,13 +12,21 @@
 import fragmentShaderSource from './ParticlesRising-fragment.glsl';
 import vertexShaderSource from './ParticlesRising-vertex.glsl';
 
+import SimplexNoise from 'simplex-noise';
 import * as twgl from 'twgl.js/dist/4.x/twgl-full.module';
+
+const simplex = new SimplexNoise('setseed');
 
 export default {
   data: () => ({
     status: 'playing',
     width: undefined,
-    height: undefined
+    height: undefined,
+    config: {
+      particles: 1000,
+      particleSegments: 20,
+      particleBaseSpeed: 10
+    }
   }),
   mounted() {
     this.setSize();
@@ -40,7 +48,7 @@ export default {
       canvas.height = this.height;
     },
     init() {
-      const { gl } = this;
+      const { gl, config } = this;
 
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -51,12 +59,11 @@ export default {
       ]);
 
       const circlePoints = [];
-      const r = 1;
-      const segments = 100;
+      const segments = this.config.particleSegments;
       for (let i = 0; i < segments; i++) {
         circlePoints.push([
-          r * Math.cos(((2 * Math.PI) / segments) * i),
-          r * Math.sin(((2 * Math.PI) / segments) * i)
+          Math.cos(((2 * Math.PI) / segments) * i),
+          Math.sin(((2 * Math.PI) / segments) * i)
         ]);
       }
 
@@ -67,34 +74,45 @@ export default {
         data.push(0, 0, ...pointA, ...pointB);
       }
 
-      const arrays = {
-        a_position: {
+      twgl.setAttributePrefix('a_');
+      this.bufferInfo = twgl.createBufferInfoFromArrays(gl, {
+        circle_positions: {
           numComponents: 2,
           data: data
         }
-      };
-
-      this.bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
+      });
       twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+
+      const particleData = [];
+      for (let i = 0; i < config.particles; i++) {
+        // The 0.5s prevents banding (idk why)
+        particleData.push({
+          initialOffset: simplex.noise2D(i + 0.5, 0),
+          speed: (simplex.noise2D(0, i + 0.5) + 0.8) * config.particleBaseSpeed
+        });
+      }
+
+      this.particleData = particleData;
     },
     frame(timestamp = 0) {
-      // this.frameId = requestAnimationFrame(this.frame);
+      this.frameId = requestAnimationFrame(this.frame);
 
       if (this.status !== 'playing') {
         return;
       }
 
-      const { gl, programInfo, width, height } = this;
+      const { gl, programInfo, width, height, config, particleData } = this;
 
       gl.viewport(0, 0, width, height);
       gl.useProgram(programInfo.program);
-      gl.disable(gl.DEPTH_TEST);
 
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < config.particles; i++) {
         const uniforms = {
           u_aspect: width / height,
-          u_id: i / 15,
-          u_scale: 0.1,
+          u_x: i / config.particles,
+          u_time: timestamp,
+          u_initial_offset: particleData[i].initialOffset,
+          u_speed: particleData[i].speed,
         };
 
         twgl.setUniforms(programInfo, uniforms);
