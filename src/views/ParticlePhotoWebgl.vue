@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="canvas-container">
     <canvas
       ref="canvas"
       @click="status = status === 'playing' ? 'paused' : 'playing'"
@@ -52,13 +52,6 @@ export default {
     init() {
       const { gl, config } = this;
 
-      const ext = gl.getExtension('ANGLE_instanced_arrays');
-      if (!ext) {
-        throw new Error('need ANGLE_instanced_arrays');
-      }
-      this.ext = ext;
-      twgl.addExtensionsToContext(gl);
-
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
@@ -66,22 +59,6 @@ export default {
         vertexShaderSource,
         fragmentShaderSource
       ]);
-
-      const circlePoints = [];
-      const segments = this.config.particleSegments;
-      for (let i = 0; i < segments; i++) {
-        circlePoints.push([
-          Math.cos(((2 * Math.PI) / segments) * i),
-          Math.sin(((2 * Math.PI) / segments) * i)
-        ]);
-      }
-
-      const data = [];
-      for (let i = 0; i < circlePoints.length; i++) {
-        const pointA = circlePoints[i];
-        const pointB = circlePoints[i + 1] || circlePoints[0];
-        data.push(0, 0, ...pointA, ...pointB);
-      }
 
       const particleData = {
         xs: [],
@@ -98,24 +75,17 @@ export default {
 
       twgl.setAttributePrefix('a_');
       this.bufferInfo = twgl.createBufferInfoFromArrays(gl, {
-        circle_positions: {
-          numComponents: 2,
-          data: data
-        },
         x: {
           numComponents: 1,
-          data: particleData.xs,
-          divisor: 1
+          data: particleData.xs
         },
         initial_offset: {
           numComponents: 1,
-          data: particleData.initialOffsets,
-          divisor: 1
+          data: particleData.initialOffsets
         },
         speed: {
           numComponents: 1,
-          data: particleData.speeds,
-          divisor: 1
+          data: particleData.speeds
         }
       });
       twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
@@ -135,37 +105,38 @@ export default {
         return;
       }
 
-      const { gl, programInfo, bufferInfo, width, height, config } = this;
+      const { gl, programInfo, bufferInfo, width, height } = this;
 
       gl.viewport(0, 0, width, height);
       gl.useProgram(programInfo.program);
 
       const uniforms = {
-        u_aspect: width / height,
         u_time: timestamp,
         u_image_texture: this.imageTexture
       };
 
       twgl.setUniforms(programInfo, uniforms);
-      twgl.drawBufferInfo(
-        gl,
-        bufferInfo,
-        gl.TRIANGLES,
-        bufferInfo.numElements,
-        0,
-        config.particles
-      );
+      twgl.drawBufferInfo(gl, bufferInfo, gl.POINTS);
     }
   }
 };
 </script>
 
 <style scoped>
+.canvas-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: black;
+}
+
 canvas {
   /* width: 100vw; */
   /* height: 100vh; */
-  width: 1000px;
-  height: 1000px;
-  background-color: black;
+  width: 600px;
+  height: 600px;
 }
 </style>
