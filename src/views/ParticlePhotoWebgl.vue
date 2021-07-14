@@ -23,12 +23,14 @@ export default {
     width: undefined,
     height: undefined,
     config: {
-      particles: 10e3,
+      particles: 15e3,
       particleSegments: 10,
       particleBaseSpeed: 5,
 
+      // Use a blurred image instead of sampling an area of more than one pixel
+      // in the fragment shader - do the work ahead of time!
       imageSrc:
-        '/assets/particle-photos/frida-bredesen-c_cPNXlovvY-unsplash-small.png'
+        '/assets/particle-photos/frida-bredesen-c_cPNXlovvY-unsplash-small-blurred.png'
     }
   }),
   mounted() {
