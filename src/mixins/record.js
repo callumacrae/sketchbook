@@ -4,7 +4,7 @@ export default {
       cancelAnimationFrame(this.frameId);
       this.status = 'recording';
 
-      const canvas = this.ctx.canvas;
+      const canvas = (this.ctx || this.gl).canvas;
 
       this.width = options.width;
       this.height = options.height;

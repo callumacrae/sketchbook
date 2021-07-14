@@ -14,16 +14,18 @@ import vertexShaderSource from './ParticlePhoto-vertex.glsl';
 
 import * as twgl from 'twgl.js/dist/4.x/twgl-full.module';
 
+import recordMixin from '../mixins/record';
 import * as random from '../utils/random';
 random.setSeed('setseed');
 
 export default {
+  mixins: [recordMixin],
   data: () => ({
     status: 'playing',
     width: undefined,
     height: undefined,
     config: {
-      particles: 15e3,
+      particles: 30e3,
       particleSegments: 10,
       particleBaseSpeed: 5,
 
@@ -35,7 +37,20 @@ export default {
   }),
   mounted() {
     this.setSize();
-    this.init().then(() => this.frame());
+    this.init().then(() => {
+      this.frame();
+
+      if (false) {
+        this.record({
+          width: 1000,
+          height: 1000,
+          fps: 25,
+          duration: 10e3,
+          directory: 'particle-photo-zebra',
+          background: 'black'
+        });
+      }
+    });
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
@@ -43,7 +58,7 @@ export default {
   methods: {
     setSize() {
       const canvas = this.$refs.canvas;
-      this.gl = canvas.getContext('webgl');
+      this.gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
 
       const dpr = window.devicePixelRatio;
       this.width = canvas.clientWidth * dpr;
@@ -101,9 +116,11 @@ export default {
       });
     },
     frame(timestamp = 0) {
-      this.frameId = requestAnimationFrame(this.frame);
+      if (this.status !== 'recording') {
+        this.frameId = requestAnimationFrame(this.frame);
+      }
 
-      if (this.status !== 'playing') {
+      if (this.status === 'paused') {
         return;
       }
 
@@ -111,6 +128,7 @@ export default {
 
       gl.viewport(0, 0, width, height);
       gl.useProgram(programInfo.program);
+      gl.clear(gl.COLOR_BUFFER_BIT);
 
       const uniforms = {
         u_time: timestamp,
