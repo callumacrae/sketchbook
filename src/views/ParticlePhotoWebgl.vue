@@ -62,7 +62,7 @@ const imageData = {
       color: true,
       radiusValExponent: 0.7,
       alphaValExponent: 0.7,
-      alphaValmultiplier: 1,
+      alphaValMultiplier: 1,
       pointSizeMultiplier: 7
     }
   }
@@ -265,7 +265,7 @@ export default {
           this.userTexture = { texture, ratio: img.width / img.height };
           this.config.image = 'user';
 
-          if (img.width > 500 || img.height > 500) {
+          if (img.width > 500 && img.height > 500) {
             setTimeout(() => {
               alert(
                 'Heads up, this works better with low resolution images: see the help for more info'
