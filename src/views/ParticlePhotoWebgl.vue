@@ -9,6 +9,55 @@
       @drop.prevent="handleDrop"
     ></canvas>
     <GlobalEvents target="window" @resize="setSize" />
+
+    <div class="help-container" v-show="showHelp">
+      <div class="help">
+        <h2>Instructions</h2>
+
+        <p>
+          This experiment visualises images as collections of animated coloured
+          particles.
+        </p>
+
+        <p>
+          In addition to providing a few images (selectable on the configuration
+          in the top right of the screen), it also allows you to upload your own
+          by dragging and dropping them onto the canvas.
+        </p>
+
+        <p>
+          Through a bit of experimentation, I've found the following makes the
+          best images:
+        </p>
+
+        <ul>
+          <li>
+            Lower resolution images or blurred images work better as it prevents
+            the particles from changing size and colour too quickly as they move
+            about. Most of the demo images are lower than 500px wide.
+          </li>
+
+          <li>
+            Images with lots of contrast between lighter and darker areas make
+            more effective graphics. Similarly, images where the details are on
+            the lighter parts of the images and the backgrounds are dark also
+            look better.
+          </li>
+
+          <li>
+            Some images, especially images with finer details, look better with
+            a high number of smaller points (adjust pointSizeMultiplier), while
+            others look better with a low number of larger points.
+          </li>
+        </ul>
+
+        <p>To export high quality videos from this you'll need to <a href="https://github.com/callumacrae/sketchbook">clone the repo</a> and look for the <code>this.record</code> call in ParticlePhotoWebgl.vue (or ask me for help on Twitter!)</p>
+      </div>
+    </div>
+
+    <a class="toggle-help-link" href @click.prevent="showHelp = !showHelp">
+      toggle help
+    </a>
   </div>
 </template>
 
@@ -77,6 +126,7 @@ export default {
       status: 'playing',
       width: undefined,
       height: undefined,
+      showHelp: false,
       config: {
         // Init config
         particles: 40e3,
@@ -322,5 +372,48 @@ export default {
 canvas {
   max-height: 100vh;
   max-width: 100vw;
+}
+
+.toggle-help-link {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+
+  font-family: sans-serif;
+  font-size: 12px;
+  text-decoration: none;
+
+  color: lightgrey;
+}
+
+.help-container {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: rgba(0, 0, 0, 0.4);
+  color: white;
+  backdrop-filter: blur(3px);
+}
+
+.help-container .help {
+  width: 90%;
+  max-width: 500px;
+
+  font-family: sans-serif;
+}
+
+.help li {
+  margin-bottom: 1em;
+}
+
+.help a {
+  color: inherit;
 }
 </style>
