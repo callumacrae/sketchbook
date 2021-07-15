@@ -25,14 +25,14 @@ export default {
     width: undefined,
     height: undefined,
     config: {
-      particles: 30e3,
+      particles: 40e3,
       particleSegments: 10,
       particleBaseSpeed: 5,
 
       // Use a blurred image instead of sampling an area of more than one pixel
       // in the fragment shader - do the work ahead of time!
       imageSrc:
-        '/assets/particle-photos/thea-hoyer-CrJyu9HoeBg-unsplash-small-blurred.jpg'
+        '/assets/particle-photos/leo-nagle-TLuNQu-5xP4-unsplash-small-blurred.jpg'
     }
   }),
   mounted() {
@@ -46,7 +46,7 @@ export default {
           height: 1500,
           fps: 25,
           duration: 10e3,
-          directory: 'particle-photo-woman',
+          directory: 'particle-photo-sunset',
           background: 'black'
         });
       }
@@ -60,9 +60,9 @@ export default {
       const canvas = this.$refs.canvas;
       this.gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
 
-      const dpr = 1;
-      this.width = canvas.clientWidth * dpr;
-      this.height = canvas.clientHeight * dpr;
+      this.dpr = window.devicePixelRatio;
+      this.width = canvas.clientWidth * this.dpr;
+      this.height = canvas.clientHeight * this.dpr;
       canvas.width = this.width;
       canvas.height = this.height;
     },
@@ -132,7 +132,8 @@ export default {
 
       const uniforms = {
         u_time: timestamp,
-        u_image_texture: this.imageTexture
+        u_image_texture: this.imageTexture,
+        u_dpr: this.dpr
       };
 
       twgl.setUniforms(programInfo, uniforms);

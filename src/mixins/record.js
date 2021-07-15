@@ -8,6 +8,7 @@ export default {
 
       this.width = options.width;
       this.height = options.height;
+      this.dpr = 1;
       canvas.width = options.width;
       canvas.height = options.height;
 
