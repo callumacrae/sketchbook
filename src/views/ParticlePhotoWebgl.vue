@@ -3,6 +3,10 @@
     <canvas
       ref="canvas"
       @click="status = status === 'playing' ? 'paused' : 'playing'"
+      @dragenter.prevent
+      @dragleave.prevent
+      @dragover.prevent
+      @drop.prevent="handleDrop"
     ></canvas>
     <GlobalEvents target="window" @resize="setSize" />
   </div>
@@ -49,6 +53,17 @@ const imageData = {
     ratio: 1,
     configPreset: {
       color: false
+    }
+  },
+  'bucket hat': {
+    src: '/assets/particle-photos/brandon-webb-FwjkcL9Hpx8-unsplash-small.jpg',
+    ratio: 3 / 2,
+    configPreset: {
+      color: true,
+      radiusValExponent: 0.7,
+      alphaValExponent: 0.7,
+      alphaValmultiplier: 1,
+      pointSizeMultiplier: 7
     }
   }
 };
@@ -103,7 +118,9 @@ export default {
     const gui = new dat.GUI();
     this.gui = gui;
 
-    gui.add(this.config, 'image', ['sunset', 'woman', 'zebra']).listen();
+    gui
+      .add(this.config, 'image', Object.keys(imageData).concat('user'))
+      .listen();
     gui.add(this.config, 'particles', 5000, 100000, 1000).listen();
     gui.add(this.config, 'particleBaseSpeed', 0, 50).listen();
     gui.add(this.config, 'radiusValExponent', 0.1, 10).listen();
@@ -210,7 +227,10 @@ export default {
 
       const uniforms = {
         u_time: timestamp,
-        u_image_texture: this.images[config.image],
+        u_image_texture:
+          config.image === 'user'
+            ? this.userTexture.texture
+            : this.images[config.image],
         u_width: width,
         u_height: height,
         u_dpr: this.dpr,
@@ -229,21 +249,59 @@ export default {
       twgl.drawBufferInfo(gl, bufferInfo, gl.POINTS);
 
       this.stats.end();
+    },
+    handleDrop(e) {
+      const image = e.dataTransfer.files[0];
+      if (!image.type.startsWith('image/')) {
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = document.createElement('img');
+
+        img.onload = () => {
+          const texture = twgl.createTexture(this.gl, { src: img });
+          this.userTexture = { texture, ratio: img.width / img.height };
+          this.config.image = 'user';
+
+          if (img.width > 500 || img.height > 500) {
+            setTimeout(() => {
+              alert(
+                'Heads up, this works better with low resolution images: see the help for more info'
+              );
+            });
+          }
+        };
+
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(image);
     }
   },
   computed: {
     imageData() {
-      return imageData[this.config.image];
+      return this.config.image === 'user'
+        ? this.userTexture
+        : imageData[this.config.image];
     }
   },
   watch: {
     'config.particles': 'init',
     'config.particleBaseSpeed': 'init',
-    'config.image'() {
+    'config.image'(image, oldImage) {
+      if (image === 'user' && !this.userTexture) {
+        alert('Drag and drop an image onto this window to test your own image');
+        this.config.image = oldImage;
+        return;
+      }
+
       this.setSize();
 
-      for (let [key, value] of Object.entries(this.imageData.configPreset)) {
-        this.config[key] = value;
+      if (this.imageData.configPreset) {
+        for (let [key, value] of Object.entries(this.imageData.configPreset)) {
+          this.config[key] = value;
+        }
       }
     }
   }
