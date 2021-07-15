@@ -32,7 +32,7 @@ export default {
       // Use a blurred image instead of sampling an area of more than one pixel
       // in the fragment shader - do the work ahead of time!
       imageSrc:
-        '/assets/particle-photos/frida-bredesen-c_cPNXlovvY-unsplash-small-blurred.png'
+        '/assets/particle-photos/thea-hoyer-CrJyu9HoeBg-unsplash-small-blurred.jpg'
     }
   }),
   mounted() {
@@ -43,10 +43,10 @@ export default {
       if (false) {
         this.record({
           width: 1000,
-          height: 1000,
+          height: 1500,
           fps: 25,
           duration: 10e3,
-          directory: 'particle-photo-zebra',
+          directory: 'particle-photo-woman',
           background: 'black'
         });
       }
@@ -60,7 +60,7 @@ export default {
       const canvas = this.$refs.canvas;
       this.gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
 
-      const dpr = window.devicePixelRatio;
+      const dpr = 1;
       this.width = canvas.clientWidth * dpr;
       this.height = canvas.clientHeight * dpr;
       canvas.width = this.width;
@@ -156,7 +156,7 @@ export default {
 canvas {
   /* width: 100vw; */
   /* height: 100vh; */
-  width: 600px;
-  height: 600px;
+  width: 666px;
+  height: 1000px;
 }
 </style>

@@ -14,8 +14,8 @@ void main() {
   // The alpha multiplication stops random transparent white pixels from ruining everything
   float intensity = (0.21 * texture_color.r + 0.71 * texture_color.g + 0.07 * texture_color.b) * texture_color.a;
 
-  float radius_val = pow(intensity, 7.0);
-  float alpha_val = pow(intensity, 5.0) * 0.9;
+  float radius_val = pow(intensity, 2.0);
+  float alpha_val = pow(intensity, 1.5) * 0.8;
 
   vec2 pc = (gl_PointCoord - 0.5) * 2.0;
   float dist = sqrt(pc.x * pc.x + pc.y * pc.y);
