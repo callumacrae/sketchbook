@@ -1,6 +1,10 @@
 precision mediump float;
 
 uniform sampler2D u_image_texture;
+uniform float u_radius_val_exponent;
+uniform float u_alpha_val_exponent;
+uniform float u_alpha_val_multiplier;
+uniform bool u_color;
 
 varying vec2 v_position;
 
@@ -14,12 +18,12 @@ void main() {
   // The alpha multiplication stops random transparent white pixels from ruining everything
   float intensity = (0.21 * texture_color.r + 0.71 * texture_color.g + 0.07 * texture_color.b) * texture_color.a;
 
-  float radius_val = pow(intensity, 1.5);
-  float alpha_val = pow(intensity, 1.2) * 0.9;
+  float radius_val = pow(intensity, u_radius_val_exponent);
+  float alpha_val = pow(intensity, u_alpha_val_exponent) * u_alpha_val_multiplier;
 
   vec2 pc = (gl_PointCoord - 0.5) * 2.0;
   float dist = sqrt(pc.x * pc.x + pc.y * pc.y);
   float alpha = alpha_val * smoothstep(radius_val, radius_val - 0.1, dist);
 
-  gl_FragColor = vec4(texture_color.rgb, alpha);
+  gl_FragColor = vec4(u_color ? texture_color.rgb : vec3(1.0), alpha);
 }

@@ -13,28 +13,76 @@ import fragmentShaderSource from './ParticlePhoto-fragment.glsl';
 import vertexShaderSource from './ParticlePhoto-vertex.glsl';
 
 import * as twgl from 'twgl.js/dist/4.x/twgl-full.module';
+import * as dat from 'dat.gui';
+import Stats from 'stats.js';
 
 import recordMixin from '../mixins/record';
 import * as random from '../utils/random';
-random.setSeed('setseed');
+random.setSeed('set seed');
+
+const imageData = {
+  sunset: {
+    src:
+      '/assets/particle-photos/leo-nagle-TLuNQu-5xP4-unsplash-small-blurred.jpg',
+    ratio: 2 / 3,
+    configPreset: {
+      particles: 40e3,
+      color: true,
+      radiusValExponent: 1.5,
+      alphaValExponent: 1.2
+    }
+  },
+  woman: {
+    src:
+      '/assets/particle-photos/thea-hoyer-CrJyu9HoeBg-unsplash-small-blurred.jpg',
+    ratio: 2 / 3,
+    configPreset: {
+      color: false,
+      particles: 30e3,
+      radiusValExponent: 2,
+      alphaValExponent: 1.5
+    }
+  },
+  zebra: {
+    src:
+      '/assets/particle-photos/frida-bredesen-c_cPNXlovvY-unsplash-small-blurred.png',
+    ratio: 1,
+    configPreset: {
+      color: false
+    }
+  }
+};
 
 export default {
   mixins: [recordMixin],
-  data: () => ({
-    status: 'playing',
-    width: undefined,
-    height: undefined,
-    config: {
-      particles: 40e3,
-      particleSegments: 10,
-      particleBaseSpeed: 5,
+  data: () => {
+    const image = 'sunset';
 
-      // Use a blurred image instead of sampling an area of more than one pixel
-      // in the fragment shader - do the work ahead of time!
-      imageSrc:
-        '/assets/particle-photos/leo-nagle-TLuNQu-5xP4-unsplash-small-blurred.jpg'
-    }
-  }),
+    return {
+      status: 'playing',
+      width: undefined,
+      height: undefined,
+      config: {
+        // Init config
+        particles: 40e3,
+        particleBaseSpeed: 5,
+
+        // Shader config
+        radiusValExponent: 1.5,
+        alphaValExponent: 1.2,
+        alphaValMultiplier: 0.85,
+        color: true,
+        xInNoiseMultiplier: 200, // Not user configurable, bit buggy
+        xOutNoiseMultiplier: 0.2,
+        yInNoiseMultiplier: 1234, // Not user configurable, pointless
+        yOutNoiseMultiplier: 0.002,
+        pointSizeMultiplier: 10,
+
+        image,
+        ...imageData[image].configPreset
+      }
+    };
+  },
   mounted() {
     this.setSize();
     this.init().then(() => {
@@ -51,9 +99,35 @@ export default {
         });
       }
     });
+
+    const gui = new dat.GUI();
+    this.gui = gui;
+
+    gui.add(this.config, 'image', ['sunset', 'woman', 'zebra']).listen();
+    gui.add(this.config, 'particles', 5000, 100000, 1000).listen();
+    gui.add(this.config, 'particleBaseSpeed', 0, 50).listen();
+    gui.add(this.config, 'radiusValExponent', 0.1, 10).listen();
+    gui.add(this.config, 'alphaValExponent', 0.1, 10).listen();
+    gui.add(this.config, 'alphaValMultiplier', 0.1, 1).listen();
+    gui.add(this.config, 'color').listen();
+    gui.add(this.config, 'xOutNoiseMultiplier', 0, 1).listen();
+    gui.add(this.config, 'yOutNoiseMultiplier', 0, 0.1).listen();
+    gui.add(this.config, 'pointSizeMultiplier', 1, 30).listen();
+
+    this.stats = new Stats();
+    this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+    document.body.appendChild(this.stats.dom);
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
+
+    if (this.gui) {
+      this.gui.destroy();
+    }
+    if (this.stats) {
+      this.stats.dom.remove();
+      delete this.stats;
+    }
   },
   methods: {
     setSize() {
@@ -61,8 +135,8 @@ export default {
       this.gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
 
       this.dpr = window.devicePixelRatio;
-      this.width = canvas.clientWidth * this.dpr;
-      this.height = canvas.clientHeight * this.dpr;
+      this.width = 666 * this.dpr;
+      this.height = (666 / this.imageData.ratio) * this.dpr;
       canvas.width = this.width;
       canvas.height = this.height;
     },
@@ -107,12 +181,14 @@ export default {
       });
       twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
+      if (this.images) {
+        return Promise.resolve();
+      }
+
       return new Promise(resolve => {
-        this.imageTexture = twgl.createTexture(
-          gl,
-          { src: config.imageSrc },
-          resolve
-        );
+        // Use a blurred image instead of sampling an area of more than one pixel
+        // in the fragment shader - do the work ahead of time!
+        this.images = twgl.createTextures(gl, imageData, resolve);
       });
     },
     frame(timestamp = 0) {
@@ -124,7 +200,9 @@ export default {
         return;
       }
 
-      const { gl, programInfo, bufferInfo, width, height } = this;
+      this.stats.begin();
+
+      const { gl, programInfo, bufferInfo, width, height, config } = this;
 
       gl.viewport(0, 0, width, height);
       gl.useProgram(programInfo.program);
@@ -132,12 +210,41 @@ export default {
 
       const uniforms = {
         u_time: timestamp,
-        u_image_texture: this.imageTexture,
-        u_dpr: this.dpr
+        u_image_texture: this.images[config.image],
+        u_width: width,
+        u_height: height,
+        u_dpr: this.dpr,
+        u_radius_val_exponent: config.radiusValExponent,
+        u_alpha_val_exponent: config.alphaValExponent,
+        u_alpha_val_multiplier: config.alphaValMultiplier,
+        u_color: config.color,
+        u_x_in_noise_multiplier: config.xInNoiseMultiplier,
+        u_x_out_noise_multiplier: config.xOutNoiseMultiplier,
+        u_y_in_noise_multiplier: config.yInNoiseMultiplier,
+        u_y_out_noise_multiplier: config.yOutNoiseMultiplier,
+        u_point_size_multiplier: config.pointSizeMultiplier
       };
 
       twgl.setUniforms(programInfo, uniforms);
       twgl.drawBufferInfo(gl, bufferInfo, gl.POINTS);
+
+      this.stats.end();
+    }
+  },
+  computed: {
+    imageData() {
+      return imageData[this.config.image];
+    }
+  },
+  watch: {
+    'config.particles': 'init',
+    'config.particleBaseSpeed': 'init',
+    'config.image'() {
+      this.setSize();
+
+      for (let [key, value] of Object.entries(this.imageData.configPreset)) {
+        this.config[key] = value;
+      }
     }
   }
 };
@@ -155,9 +262,7 @@ export default {
 }
 
 canvas {
-  /* width: 100vw; */
-  /* height: 100vh; */
-  width: 666px;
-  height: 1000px;
+  max-height: 100vh;
+  max-width: 100vw;
 }
 </style>

@@ -8,7 +8,12 @@ attribute float a_speed;
 
 uniform float u_time;
 uniform sampler2D u_image_texture;
-uniform float u_dpr;
+uniform float u_width;
+uniform float u_x_in_noise_multiplier;
+uniform float u_x_out_noise_multiplier;
+uniform float u_y_in_noise_multiplier;
+uniform float u_y_out_noise_multiplier;
+uniform float u_point_size_multiplier;
 
 varying vec2 v_position;
 
@@ -17,13 +22,17 @@ void main() {
 
   float offset_y = mod(a_initial_offset + 1.0 + a_speed * u_time / 500000.0, 2.0) - 1.0;
 
-  position.x += noise2d(vec2(a_x * 100.0 + 123.4, offset_y * 0.5 + u_time / 100000.0)) / 5.0;
-  position.y += offset_y + noise2d(vec2(a_x * 1234.0, u_time / 10000.0 + 100.0)) / 50.0;
+  position.x += noise2d(
+      vec2(a_x * u_x_in_noise_multiplier + 123.4, offset_y * 0.5 + u_time / 100000.0)
+    ) * u_x_out_noise_multiplier;
+  position.y += offset_y + noise2d(
+      vec2(a_x * u_y_in_noise_multiplier, u_time / 10000.0 + 100.0)
+    ) * u_y_out_noise_multiplier;
 
   position.y *= 1.1;
 
   v_position = position;
 
   gl_Position = vec4(position, 0.0, 1.0);
-  gl_PointSize = 10.0 * u_dpr;
+  gl_PointSize = u_width / 660.0 * u_point_size_multiplier;
 }
