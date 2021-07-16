@@ -88,9 +88,10 @@
     </p>
 
     <a
+      v-if="!showIosWarning"
       class="toggle-help-link"
       href
-      @click.prevent="showHelp = !showHelp && !showIosWarning"
+      @click.prevent="showHelp = !showHelp"
     >
       toggle help
     </a>
