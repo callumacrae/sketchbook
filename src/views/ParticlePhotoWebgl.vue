@@ -10,8 +10,31 @@
     ></canvas>
     <GlobalEvents target="window" @resize="setSize" />
 
-    <div class="help-container" v-show="showHelp">
-      <div class="help">
+    <div class="help-container" v-show="showHelp || showIosWarning">
+      <div class="help" v-show="showIosWarning">
+        <h2 style="color: red">WARNING</h2>
+        <p>
+          Due to a bug in how iOS handles webgl instancing, this animation
+          performs incredibly poorly on iOS—to the point where it doesn't really
+          work at all. On my phone, it runs at 0.0075 fps and makes my phone
+          heat up to the temperature of the sun.
+        </p>
+
+        <p>
+          I'd recommend trying this on desktop (it also just looks better), but
+          if you really want to see what happens on iOS, you can
+          <a
+            href
+            @click.prevent="
+              showIosWarning = false;
+              status = 'playing';
+            "
+          >
+            proceed anyway</a
+          >.
+        </p>
+      </div>
+      <div class="help" v-show="showHelp">
         <h2>Instructions</h2>
 
         <p>
@@ -51,9 +74,18 @@
           </li>
         </ul>
 
-        <p>To export high quality videos from this you'll need to <a href="https://github.com/callumacrae/sketchbook">clone the repo</a> and look for the <code>this.record</code> call in ParticlePhotoWebgl.vue (or ask me for help on Twitter!)</p>
+        <p>
+          To export high quality videos from this you'll need to
+          <a href="https://github.com/callumacrae/sketchbook">clone the repo</a>
+          and look for the <code>this.record</code> call in
+          ParticlePhotoWebgl.vue (or ask me for help on Twitter!)
+        </p>
       </div>
     </div>
+
+    <p class="status" v-show="status === 'paused'">
+      paused, click to resume
+    </p>
 
     <a class="toggle-help-link" href @click.prevent="showHelp = !showHelp">
       toggle help
@@ -73,16 +105,21 @@ import recordMixin from '../mixins/record';
 import * as random from '../utils/random';
 random.setSeed('set seed');
 
+const isAndroid = /android/i.test(navigator.userAgent);
+const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isMobile = isAndroid || isIos;
+
 const imageData = {
   sunset: {
     src:
       '/assets/particle-photos/leo-nagle-TLuNQu-5xP4-unsplash-small-blurred.jpg',
     ratio: 2 / 3,
     configPreset: {
-      particles: 40e3,
+      particles: isMobile ? 20e3 : 40e3,
       color: true,
       radiusValExponent: 1.5,
-      alphaValExponent: 1.2
+      alphaValExponent: 1.2,
+      pointSizeMultiplier: isMobile ? 20 : 10
     }
   },
   woman: {
@@ -93,7 +130,8 @@ const imageData = {
       color: false,
       particles: 30e3,
       radiusValExponent: 2,
-      alphaValExponent: 1.5
+      alphaValExponent: 1.5,
+      pointSizeMultiplier: 10
     }
   },
   zebra: {
@@ -101,7 +139,11 @@ const imageData = {
       '/assets/particle-photos/frida-bredesen-c_cPNXlovvY-unsplash-small-blurred.png',
     ratio: 1,
     configPreset: {
-      color: false
+      color: false,
+      particles: 30e3,
+      radiusValExponent: 2,
+      alphaValExponent: 1.5,
+      pointSizeMultiplier: 10
     }
   },
   'bucket hat': {
@@ -127,10 +169,11 @@ export default {
       width: undefined,
       height: undefined,
       showHelp: false,
+      showIosWarning: false,
       config: {
         // Init config
         particles: 40e3,
-        particleBaseSpeed: 5,
+        particleBaseSpeed: isMobile ? 8 : 5,
 
         // Shader config
         radiusValExponent: 1.5,
@@ -138,9 +181,9 @@ export default {
         alphaValMultiplier: 0.85,
         color: true,
         xInNoiseMultiplier: 200, // Not user configurable, bit buggy
-        xOutNoiseMultiplier: 0.2,
+        xOutNoiseMultiplier: isMobile ? 0.4 : 0.2,
         yInNoiseMultiplier: 1234, // Not user configurable, pointless
-        yOutNoiseMultiplier: 0.002,
+        yOutNoiseMultiplier: isMobile ? 0.004 : 0.002,
         pointSizeMultiplier: 10,
 
         image,
@@ -184,6 +227,12 @@ export default {
     this.stats = new Stats();
     this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
     document.body.appendChild(this.stats.dom);
+
+    if (isIos) {
+      this.status = 'paused';
+      this.showIosWarning = true;
+      gui.close();
+    }
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
@@ -366,6 +415,8 @@ export default {
   align-items: center;
   justify-content: center;
 
+  font-family: sans-serif;
+
   background-color: black;
 }
 
@@ -379,9 +430,18 @@ canvas {
   bottom: 10px;
   right: 10px;
 
-  font-family: sans-serif;
   font-size: 12px;
   text-decoration: none;
+
+  color: lightgrey;
+}
+
+.status {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+
+  font-size: 12px;
 
   color: lightgrey;
 }
@@ -405,8 +465,6 @@ canvas {
 .help-container .help {
   width: 90%;
   max-width: 500px;
-
-  font-family: sans-serif;
 }
 
 .help li {
