@@ -83,7 +83,11 @@
       </div>
     </div>
 
-    <p class="status" v-show="status === 'paused' && !showIosWarning">
+    <p
+      class="status"
+      v-show="status === 'paused' && !showIosWarning"
+      @click="status = 'playing'"
+    >
       paused, click to resume
     </p>
 
