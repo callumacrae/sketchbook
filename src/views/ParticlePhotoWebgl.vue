@@ -83,11 +83,15 @@
       </div>
     </div>
 
-    <p class="status" v-show="status === 'paused'">
+    <p class="status" v-show="status === 'paused' && !showIosWarning">
       paused, click to resume
     </p>
 
-    <a class="toggle-help-link" href @click.prevent="showHelp = !showHelp">
+    <a
+      class="toggle-help-link"
+      href
+      @click.prevent="showHelp = !showHelp && !showIosWarning"
+    >
       toggle help
     </a>
   </div>
