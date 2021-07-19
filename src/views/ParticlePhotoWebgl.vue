@@ -290,8 +290,14 @@ export default {
       this.gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
 
       this.dpr = window.devicePixelRatio;
-      this.width = 666 * this.dpr;
-      this.height = (666 / this.imageData.ratio) * this.dpr;
+      if (window.innerWidth < window.innerHeight * this.imageData.ratio) {
+        this.width = window.innerWidth * this.dpr;
+        this.height = (window.innerWidth / this.imageData.ratio) * this.dpr;
+      } else {
+        this.height = window.innerHeight * this.dpr;
+        this.width = window.innerHeight * this.imageData.ratio * this.dpr;
+      }
+
       canvas.width = this.width;
       canvas.height = this.height;
     },
