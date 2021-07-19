@@ -247,6 +247,10 @@ export default {
     const gui = new dat.GUI();
     this.gui = gui;
 
+    if (window.frameElement) {
+      gui.close();
+    }
+
     gui
       .add(this.config, 'image', Object.keys(imageData).concat('user'))
       .listen();
@@ -287,7 +291,7 @@ export default {
   methods: {
     setSize() {
       const canvas = this.$refs.canvas;
-      this.gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
+      this.gl = canvas.getContext('webgl');
 
       this.dpr = window.devicePixelRatio;
       if (window.innerWidth < window.innerHeight * this.imageData.ratio) {
@@ -367,7 +371,6 @@ export default {
 
       gl.viewport(0, 0, width, height);
       gl.useProgram(programInfo.program);
-      gl.clear(gl.COLOR_BUFFER_BIT);
 
       const uniforms = {
         u_time: timestamp,

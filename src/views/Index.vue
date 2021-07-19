@@ -1,8 +1,6 @@
 <template>
   <div class="main">
     <div class="index">
-      <h1>Sketches</h1>
-
       <ul>
         <li v-for="route in routes" :key="route.path">
           <i v-if="route.meta && route.meta.favourite" class="fav-icon">⭐️</i>
@@ -20,6 +18,13 @@
       :class="{ 'preview--has-link': preview.meta && preview.meta.link }"
       @transitionend="handleTransitionEnd"
     >
+      <h1>Sketches</h1>
+      <p>
+        Disclaimer: this is called sketchbook for a reason - this is public to
+        demonstrate my learning process, not my ability. A lot of this stuff is
+        very bad!
+      </p>
+
       <!-- Added to the DOM even when empty for the transition -->
       <a :href="previewLink" target="_blank">{{ previewLink }}</a>
       <iframe :src="preview.path"></iframe>
@@ -89,13 +94,12 @@ li:last-child {
   position: relative;
 
   width: 50vw;
-
-  text-align: center;
 }
 
 .preview iframe {
   width: 50vw;
   height: calc(50vw / 16 * 9);
+  margin-top: 2em;
 
   background-color: white;
   border: 1px hsl(0, 0%, 80%) solid;
@@ -110,6 +114,8 @@ li:last-child {
 
   display: block;
   width: 100%;
+
+  text-align: center;
 }
 
 .preview--has-link iframe {

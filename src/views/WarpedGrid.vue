@@ -53,6 +53,10 @@ export default {
     const gui = new dat.GUI();
     this.gui = gui;
 
+    if (window.frameElement) {
+      gui.close();
+    }
+
     gui.add(this.options, 'resolution', 1, 3, 1);
     gui.add(this.options, 'cellWidth', 30, 200);
     gui.add(this.options, 'cellHeight', 30, 200);

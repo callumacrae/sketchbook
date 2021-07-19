@@ -9,6 +9,9 @@
 </template>
 
 <script>
+import * as dat from 'dat.gui';
+import Stats from 'stats.js';
+
 import recordMixin from '../mixins/record';
 
 export default {
@@ -16,15 +19,49 @@ export default {
   data: () => ({
     status: 'playing',
     width: undefined,
-    height: undefined
+    height: undefined,
+    config: {}
   }),
   mounted() {
     this.setSize();
-    this.init();
-    this.frame();
+    this.init().then(() => {
+      this.frame();
+
+      if (false) {
+        this.record({
+          width: 1000,
+          height: 1000,
+          fps: 25,
+          duration: 10e3,
+          directory: '',
+          background: 'black'
+        });
+      }
+    });
+
+    const gui = new dat.GUI();
+    this.gui = gui;
+
+    if (window.frameElement) {
+      gui.close();
+    }
+
+    gui.add(this.config, 'particles', 5000, 100000, 1000).listen();
+
+    this.stats = new Stats();
+    this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+    document.body.appendChild(this.stats.dom);
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
+
+    if (this.gui) {
+      this.gui.destroy();
+    }
+    if (this.stats) {
+      this.stats.dom.remove();
+      delete this.stats;
+    }
   },
   methods: {
     setSize() {
@@ -38,6 +75,7 @@ export default {
       canvas.height = this.height;
     },
     init() {
+      return Promise.resolve();
     },
     frame(timestamp = 0) {
       if (this.status !== 'recording') {

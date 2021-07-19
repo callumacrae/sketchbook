@@ -117,7 +117,8 @@ const routes: Array<RouteConfig> = [
     name: 'Warped grid',
     component: () => import('../views/WarpedGrid.vue'),
     meta: {
-      favourite: true
+      favourite: true,
+      link: 'https://codepen.io/callumacrae/full/poEBdYW'
     }
   },
   {
@@ -143,7 +144,11 @@ const routes: Array<RouteConfig> = [
   {
     path: '/particle-photo-webgl',
     name: 'Particle photo (webgl)',
-    component: () => import('../views/ParticlePhotoWebgl.vue')
+    component: () => import('../views/ParticlePhotoWebgl.vue'),
+    meta: {
+      favourite: true,
+      link: 'https://codepen.io/callumacrae/full/eYWWmXv'
+    }
   },
   {
     path: '*',
