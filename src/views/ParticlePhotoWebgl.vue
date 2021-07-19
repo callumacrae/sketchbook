@@ -127,8 +127,10 @@ const imageData = {
       particles: isMobile ? 20e3 : 40e3,
       color: true,
       radiusValExponent: 1.5,
+      alphaValMultiplier: 0.85,
       alphaValExponent: 1.2,
-      pointSizeMultiplier: isMobile ? 20 : 10
+      pointSizeMultiplier: isMobile ? 20 : 10,
+      twinkleFactor: 0
     }
   },
   woman: {
@@ -140,7 +142,9 @@ const imageData = {
       particles: 30e3,
       radiusValExponent: 2,
       alphaValExponent: 1.5,
-      pointSizeMultiplier: 10
+      alphaValMultiplier: 0.85,
+      pointSizeMultiplier: 10,
+      twinkleFactor: 0
     }
   },
   zebra: {
@@ -152,7 +156,11 @@ const imageData = {
       particles: 30e3,
       radiusValExponent: 2,
       alphaValExponent: 1.5,
-      pointSizeMultiplier: 10
+      alphaValMultiplier: 1,
+      pointSizeMultiplier: 10,
+      twinkleFrequency: 12,
+      twinkleIntensity: 25,
+      twinkleFactor: 0.7
     }
   },
   'bucket hat': {
@@ -160,10 +168,25 @@ const imageData = {
     ratio: 3 / 2,
     configPreset: {
       color: true,
+      particles: 40e3,
       radiusValExponent: 0.7,
       alphaValExponent: 0.7,
       alphaValMultiplier: 1,
-      pointSizeMultiplier: 7
+      pointSizeMultiplier: 7,
+      twinkleFactor: 0
+    }
+  },
+  rhino: {
+    src: '/assets/particle-photos/rhino.jpeg',
+    ratio: 422 / 222,
+    configPreset: {
+      particles: 50e3,
+      radiusValExponent: 1.3,
+      alphaValExponent: 0.1,
+      alphaValMultiplier: 1,
+      color: true,
+      pointSizeMultiplier: 8,
+      twinkleFactor: 0.8
     }
   }
 };
@@ -171,7 +194,7 @@ const imageData = {
 export default {
   mixins: [recordMixin],
   data: () => {
-    const image = 'sunset';
+    const image = 'rhino';
 
     return {
       status: 'playing',
@@ -194,6 +217,9 @@ export default {
         yInNoiseMultiplier: 1234, // Not user configurable, pointless
         yOutNoiseMultiplier: isMobile ? 0.004 : 0.002,
         pointSizeMultiplier: 10,
+        twinkleFrequency: 12,
+        twinkleIntensity: 25,
+        twinkleFactor: 0,
 
         image,
         ...imageData[image].configPreset
@@ -232,6 +258,9 @@ export default {
     gui.add(this.config, 'xOutNoiseMultiplier', 0, 1).listen();
     gui.add(this.config, 'yOutNoiseMultiplier', 0, 0.1).listen();
     gui.add(this.config, 'pointSizeMultiplier', 1, 30).listen();
+    gui.add(this.config, 'twinkleFrequency', 1, 50).listen();
+    gui.add(this.config, 'twinkleIntensity', 1, 50).listen();
+    gui.add(this.config, 'twinkleFactor', 0, 1).listen();
 
     this.stats = new Stats();
     this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -350,7 +379,10 @@ export default {
         u_x_out_noise_multiplier: config.xOutNoiseMultiplier,
         u_y_in_noise_multiplier: config.yInNoiseMultiplier,
         u_y_out_noise_multiplier: config.yOutNoiseMultiplier,
-        u_point_size_multiplier: config.pointSizeMultiplier
+        u_point_size_multiplier: config.pointSizeMultiplier,
+        u_twinkle_frequency: config.twinkleFrequency,
+        u_twinkle_intensity: config.twinkleIntensity,
+        u_twinkle_factor: config.twinkleFactor
       };
 
       twgl.setUniforms(programInfo, uniforms);
@@ -404,6 +436,7 @@ export default {
         return;
       }
 
+      // user to user doesn't change this
       this.setSize();
 
       if (this.imageData.configPreset) {

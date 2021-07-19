@@ -16,6 +16,7 @@ uniform float u_y_out_noise_multiplier;
 uniform float u_point_size_multiplier;
 
 varying vec2 v_position;
+varying float v_initial_offset;
 
 void main() {
   vec2 position = vec2(2.0 * a_x - 1.0, 0.0);
@@ -32,6 +33,7 @@ void main() {
   position.y *= 1.1;
 
   v_position = position;
+  v_initial_offset = a_initial_offset;
 
   gl_Position = vec4(position, 0.0, 1.0);
   gl_PointSize = u_width / 660.0 * u_point_size_multiplier;

@@ -5,8 +5,12 @@ uniform float u_radius_val_exponent;
 uniform float u_alpha_val_exponent;
 uniform float u_alpha_val_multiplier;
 uniform bool u_color;
+uniform float u_twinkle_frequency;
+uniform float u_twinkle_intensity;
+uniform float u_twinkle_factor;
 
 varying vec2 v_position;
+varying float v_initial_offset;
 
 void main() {
   vec2 position = v_position;
@@ -21,9 +25,16 @@ void main() {
   float radius_val = pow(intensity, u_radius_val_exponent);
   float alpha_val = pow(intensity, u_alpha_val_exponent) * u_alpha_val_multiplier;
 
+  float twinkle_y_normalised = abs(mod((position.y - v_initial_offset * 123.0) * 100.0, u_twinkle_frequency * 2.0) - u_twinkle_frequency);
+  float twinkle_value = 1.0 - u_twinkle_factor + u_twinkle_factor * smoothstep(
+      u_twinkle_frequency * (1.0 - 1.0 / u_twinkle_intensity / u_twinkle_frequency * 5.0),
+      u_twinkle_frequency,
+      twinkle_y_normalised
+    );
+
   vec2 pc = (gl_PointCoord - 0.5) * 2.0;
   float dist = sqrt(pc.x * pc.x + pc.y * pc.y);
-  float alpha = alpha_val * smoothstep(radius_val, radius_val - 0.1, dist);
+  float alpha = alpha_val * smoothstep(radius_val, radius_val - 0.1, dist) * twinkle_value;
 
   gl_FragColor = vec4(u_color ? texture_color.rgb : vec3(1.0), alpha);
 }
