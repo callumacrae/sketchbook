@@ -202,6 +202,7 @@ export default {
       height: undefined,
       showHelp: false,
       showIosWarning: false,
+      userTexture: undefined,
       config: {
         // Init config
         particles: 40e3,
@@ -404,6 +405,7 @@ export default {
           const texture = twgl.createTexture(this.gl, { src: img });
           this.userTexture = { texture, ratio: img.width / img.height };
           this.config.image = 'user';
+          this.setSize();
 
           if (img.width > 500 && img.height > 500) {
             setTimeout(() => {
@@ -436,7 +438,6 @@ export default {
         return;
       }
 
-      // user to user doesn't change this
       this.setSize();
 
       if (this.imageData.configPreset) {
