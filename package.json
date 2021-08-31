@@ -21,6 +21,7 @@
     "glsl-noise": "0.0.0",
     "glslify": "^7.0.0",
     "glslify-loader": "^2.0.0",
+    "matter-js": "^0.17.1",
     "node-sass": "^4.14.1",
     "normalize.css": "^8.0.1",
     "pixi.js": "^5.3.0",

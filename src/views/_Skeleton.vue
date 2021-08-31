@@ -86,10 +86,14 @@ export default {
         return;
       }
 
+      this.stats.begin();
+
       const t = timestamp / 1e3;
       const { width, height, ctx } = this;
 
       ctx.clearRect(0, 0, width, height);
+
+      this.stats.end();
     }
   }
 };

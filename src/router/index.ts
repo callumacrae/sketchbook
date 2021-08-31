@@ -151,6 +151,11 @@ const routes: Array<RouteConfig> = [
     }
   },
   {
+    path: '/projection-gravity',
+    name: 'Gravity projection',
+    component: () => import('../views/ProjectionGravity.vue')
+  },
+  {
     path: '*',
     component: () => import('../views/Index.vue')
   }
