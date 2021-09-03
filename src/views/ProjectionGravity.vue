@@ -33,6 +33,7 @@ export default {
       ballBounce: 0.8,
       walls: true,
       ground: false,
+      platformOpacity: 1,
       transforms: {
         x1: 0,
         y1: 0,
@@ -75,6 +76,7 @@ export default {
     gui.add(this.config, 'ballBounce', 0, 1);
     gui.add(this.config, 'walls');
     gui.add(this.config, 'ground');
+    gui.add(this.config, 'platformOpacity', 0, 1);
 
     const transformsGui = gui.addFolder('Transforms');
 
@@ -230,8 +232,6 @@ export default {
       Composite.add(this.ballsComposite, [ball]);
     },
     syncPlatforms() {
-      Composite.clear(this.platformComposite);
-
       const imgEl = new Image();
       imgEl.onload = () => {
         const tmpCanvas = document.createElement('canvas');
@@ -280,6 +280,8 @@ export default {
           return [uOut, vOut];
         };
 
+        Composite.clear(this.platformComposite);
+
         // todo why is slice(1) required?
         for (let contour of contours.coordinates[0].slice(1)) {
           const vertices = contour.map(point => {
@@ -301,7 +303,7 @@ export default {
           const platform = Bodies.fromVertices(0, 0, [vertices], {
             isStatic: true,
             render: {
-              fillStyle: 'white'
+              fillStyle: this.platformFill
             }
           });
           Composite.add(this.platformComposite, [platform]);
@@ -324,12 +326,22 @@ export default {
       this.groundBody.collisionFilter.mask = this.config.ground ? -1 : 0;
     }
   },
+  computed: {
+    platformFill() {
+      return `rgba(255, 255, 255, ${this.config.platformOpacity}`;
+    }
+  },
   watch: {
     'config.gravityScale'() {
       this.engine.gravity.scale = this.config.gravityScale;
     },
     'config.walls': 'handleConfigWallsUpdate',
     'config.ground': 'handleConfigGroundUpdate',
+    'config.platformOpacity'() {
+      for (let platform of Composite.allBodies(this.platformComposite)) {
+        platform.render.fillStyle = this.platformFill;
+      }
+    },
     'config.transforms': {
       deep: true,
       handler: 'syncPlatforms'
