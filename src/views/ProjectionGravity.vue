@@ -255,7 +255,12 @@ export default {
     syncPlatforms(useCache = true) {
       // The cache is for when adjusting the transforms without reading the
       // image or video again
-      if (this._cachedImageData && useCache) {
+      if (
+        this._cachedImageData &&
+        // If cache data has been moved to previous thread we can't use it
+        this._cachedImageData.data.buffer.byteLength &&
+        useCache
+      ) {
         this.platformsFromData(this._cachedImageData);
       } else if (this.config.useCamera) {
         const videoEl = document.querySelector('video');
@@ -319,7 +324,9 @@ export default {
         imgEl.src = backgroundImage;
       }
     },
-    platformsFromData(data) {
+    // move ready to be used when doing real time stuff, but breaks caching so
+    // not suitable for using with an image or still of a video
+    platformsFromData(data, move = false) {
       // This is too expensive to do on main thread while animation is running
       this.contourWorker.postMessage(
         {
@@ -330,7 +337,7 @@ export default {
           outWidth: this.width,
           outHeight: this.height
         },
-        [data.data.buffer]
+        move ? undefined : [data.data.buffer]
       );
     },
     handleWorkerMessage(msg) {
