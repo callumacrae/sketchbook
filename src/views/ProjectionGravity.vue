@@ -12,9 +12,12 @@
 import * as dat from 'dat.gui';
 import { Engine, Render, Body, Bodies, Composite } from 'matter-js';
 import Stats from 'stats.js';
+import { contours as d3Contours } from 'd3-contour';
 
 import * as random from '../utils/random';
 import recordMixin from '../mixins/record';
+
+import backgroundImage from '../assets/projection-gravity/test-image.png';
 
 export default {
   mixins: [recordMixin],
@@ -29,7 +32,17 @@ export default {
       ballRadius: 0.025,
       ballBounce: 0.8,
       walls: true,
-      ground: false
+      ground: false,
+      transforms: {
+        x1: 0,
+        y1: 0,
+        x2: 1,
+        y2: 0,
+        x3: 0,
+        y3: 1,
+        x4: 1,
+        y4: 1
+      }
     }
   }),
   mounted() {
@@ -62,6 +75,17 @@ export default {
     gui.add(this.config, 'ballBounce', 0, 1);
     gui.add(this.config, 'walls');
     gui.add(this.config, 'ground');
+
+    const transformsGui = gui.addFolder('Transforms');
+
+    transformsGui.add(this.config.transforms, 'x1', 0, 1);
+    transformsGui.add(this.config.transforms, 'y1', 0, 1);
+    transformsGui.add(this.config.transforms, 'x2', 0, 1);
+    transformsGui.add(this.config.transforms, 'y2', 0, 1);
+    transformsGui.add(this.config.transforms, 'x3', 0, 1);
+    transformsGui.add(this.config.transforms, 'y3', 0, 1);
+    transformsGui.add(this.config.transforms, 'x4', 0, 1);
+    transformsGui.add(this.config.transforms, 'y4', 0, 1);
 
     this.stats = new Stats();
     this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -113,50 +137,25 @@ export default {
         }
       });
 
-      const platformOptions = {
-        isStatic: true,
-        render: {
-          fillStyle: 'white'
-        }
-      };
+      this.groundBody = Bodies.rectangle(width / 2, height + 30, width, 60, {
+        isStatic: true
+      });
 
-      const platform = Bodies.rectangle(
-        this.uToX(0.5),
-        this.vToY(0.5),
-        this.uToX(0.2),
-        this.vToY(0.05),
-        { ...platformOptions, angle: Math.PI / 10 }
-      );
-      this.groundBody = Bodies.rectangle(
-        width / 2,
-        height + 30,
-        width,
-        60,
-        platformOptions
-      );
-
-      const wallLeft = Bodies.rectangle(
-        -11,
-        height / 2,
-        20,
-        height,
-        platformOptions
-      );
-      const wallRight = Bodies.rectangle(
-        width + 11,
-        height / 2,
-        20,
-        height,
-        platformOptions
-      );
+      const wallLeft = Bodies.rectangle(-11, height / 2, 20, height, {
+        isStatic: true
+      });
+      const wallRight = Bodies.rectangle(width + 11, height / 2, 20, height, {
+        isStatic: true
+      });
       this.wallsComposite = Composite.create({ bodies: [wallLeft, wallRight] });
-
       this.platformComposite = Composite.create();
 
-      Composite.add(this.platformComposite, [
-        platform,
+      this.syncPlatforms();
+
+      Composite.add(this.engine.world, [
         this.groundBody,
-        this.wallsComposite
+        this.wallsComposite,
+        this.platformComposite
       ]);
 
       this.handleConfigGroundUpdate();
@@ -226,9 +225,94 @@ export default {
       };
 
       const radius = this.uToX(config.ballRadius);
-      const x = random.range(radius, this.width - radius);
+      const x = random.range(radius, width - radius);
       const ball = Bodies.circle(x, radius * -2, radius, ballOptions);
       Composite.add(this.ballsComposite, [ball]);
+    },
+    syncPlatforms() {
+      Composite.clear(this.platformComposite);
+
+      const imgEl = new Image();
+      imgEl.onload = () => {
+        const tmpCanvas = document.createElement('canvas');
+        const n = imgEl.width;
+        const m = imgEl.height;
+        tmpCanvas.width = n;
+        tmpCanvas.height = m;
+        const ctx = tmpCanvas.getContext('2d');
+
+        ctx.drawImage(imgEl, 0, 0);
+        const data = ctx.getImageData(0, 0, n, m);
+
+        const values = new Float64Array(n * m);
+
+        for (let j = 0, k = 0; j < m; ++j) {
+          for (let i = 0; i < n; ++i, ++k) {
+            // todo look at more than one channel
+            values[k] = data.data[k * 4] / 255;
+          }
+        }
+
+        const contours = d3Contours()
+          .size([n, m])
+          .contour(values, 0.5);
+
+        const x1 = n * this.config.transforms.x1;
+        const y1 = m * this.config.transforms.y1;
+        const x2 = n * this.config.transforms.x2;
+        const y2 = m * this.config.transforms.y2;
+        const x3 = n * this.config.transforms.x3;
+        const y3 = m * this.config.transforms.y3;
+        const x4 = n * this.config.transforms.x4;
+        const y4 = m * this.config.transforms.y4;
+
+        const transformPoint = ([xIn, yIn]) => {
+          const u1 = (xIn - x1) / (x2 - x1); // rename to uTop
+          const u2 = (xIn - x3) / (x4 - x3); // uBottom
+          const v1 = (yIn - y1) / (y3 - y1); // vLeft
+          const v2 = (yIn - y2) / (y4 - y2); // vRight
+
+          // I got these by solving simultaneous equations on paper lol
+          const det = 1 - (u1 - u2) * (v1 - v2);
+          const uOut = (u1 + v1 * (u2 - u1)) / det;
+          const vOut = (v1 + u2 * (v2 - v1)) / det;
+
+          return [uOut, vOut];
+        };
+
+        // todo why is slice(1) required?
+        for (let contour of contours.coordinates[0].slice(1)) {
+          const vertices = contour.map(point => {
+            const transformedPoint = transformPoint(point);
+
+            return {
+              x: transformedPoint[0] * this.width,
+              y: transformedPoint[1] * this.height
+            };
+          });
+
+          const [minX, minY] = vertices.reduce(
+            ([minX, minY], { x, y }) => {
+              return [Math.min(minX, x), Math.min(minY, y)];
+            },
+            [vertices[0].x, vertices[0].y]
+          );
+
+          const platform = Bodies.fromVertices(0, 0, [vertices], {
+            isStatic: true,
+            render: {
+              fillStyle: 'white'
+            }
+          });
+          Composite.add(this.platformComposite, [platform]);
+
+          Body.setPosition(platform, {
+            x: minX - platform.bounds.min.x,
+            y: minY - platform.bounds.min.y
+          });
+        }
+      };
+      imgEl.src = backgroundImage;
     },
     handleConfigWallsUpdate() {
       const walls = Composite.allBodies(this.wallsComposite);
@@ -245,7 +329,11 @@ export default {
       this.engine.gravity.scale = this.config.gravityScale;
     },
     'config.walls': 'handleConfigWallsUpdate',
-    'config.ground': 'handleConfigGroundUpdate'
+    'config.ground': 'handleConfigGroundUpdate',
+    'config.transforms': {
+      deep: true,
+      handler: 'syncPlatforms'
+    }
   }
 };
 </script>
