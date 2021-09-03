@@ -80,6 +80,9 @@ export default {
 
     const transformsGui = gui.addFolder('Transforms');
 
+    gui.useLocalStorage = true;
+    gui.remember(this.config.transforms);
+
     transformsGui.add(this.config.transforms, 'x1', 0, 1);
     transformsGui.add(this.config.transforms, 'y1', 0, 1);
     transformsGui.add(this.config.transforms, 'x2', 0, 1);
