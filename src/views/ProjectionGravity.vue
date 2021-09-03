@@ -53,6 +53,12 @@ export default {
     }
   }),
   mounted() {
+    this.contourWorker = new Worker(
+      new URL('./ProjectionGravity-worker.js', import.meta.url)
+    );
+
+    this.contourWorker.onmessage = msg => this.handleWorkerMessage(msg);
+
     this.setSize();
     this.init().then(() => {
       this.frame();
@@ -112,6 +118,10 @@ export default {
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
+
+    if (this.contourWorker) {
+      this.contourWorker.terminate();
+    }
 
     if (this.engine) {
       Engine.clear(this.engine);
@@ -249,10 +259,10 @@ export default {
       Composite.add(this.ballsComposite, [ball]);
     },
     syncPlatforms(useCache = true) {
+      // The cache is for when adjusting the transforms without reading the
+      // image or video again
       if (this._cachedImageData && useCache) {
-        const cached = this._cachedImageData;
-
-        this.platformsFromData(cached.data, cached.n, cached.m);
+        this.platformsFromData(this._cachedImageData);
       } else if (this.config.useCamera) {
         const videoEl = document.querySelector('video');
 
@@ -268,10 +278,11 @@ export default {
           ctx.drawImage(videoEl, 0, 0);
           const data = ctx.getImageData(0, 0, n, m);
 
-          this.platformsFromData(data, n, m);
+          this.platformsFromData(data);
 
-          this._cachedImageData = { data, n, m };
+          this._cachedImageData = data;
 
+          // Event might not be added, that's fine
           videoEl.removeEventListener('playing', readyFn);
         };
 
@@ -307,90 +318,47 @@ export default {
           ctx.drawImage(imgEl, 0, 0);
           const data = ctx.getImageData(0, 0, n, m);
 
-          this.platformsFromData(data, n, m);
+          this.platformsFromData(data);
 
-          this._cachedImageData = { data, n, m };
+          this._cachedImageData = data;
         };
         imgEl.src = backgroundImage;
       }
     },
-    platformsFromData(data, n, m) {
+    platformsFromData(data) {
+      // This is too expensive to do on main thread while animation is running
+      this.contourWorker.postMessage(
+        {
+          data: data.data.buffer,
+          inWidth: data.width,
+          inHeight: data.height,
+          config: this.config,
+          outWidth: this.width,
+          outHeight: this.height
+        },
+        [data.data.buffer]
+      );
+    },
+    handleWorkerMessage(msg) {
       const { config } = this;
-
-      const values = new Float64Array(n * m);
-
-      for (let j = 0, k = 0; j < m; ++j) {
-        for (let i = 0; i < n; ++i, ++k) {
-          // todo look at more than one channel
-          values[k] = data.data[k * 4] / 255;
-        }
-      }
-
-      const contours = d3Contours()
-        .size([n, m])
-        .contour(values, config.edgeThreshold);
-
-      const x1 = n * config.transforms.x1;
-      const y1 = m * config.transforms.y1;
-      const x2 = n * config.transforms.x2;
-      const y2 = m * config.transforms.y2;
-      const x3 = n * config.transforms.x3;
-      const y3 = m * config.transforms.y3;
-      const x4 = n * config.transforms.x4;
-      const y4 = m * config.transforms.y4;
-
-      const transformPoint = ([xIn, yIn]) => {
-        const u1 = (xIn - x1) / (x2 - x1); // rename to uTop
-        const u2 = (xIn - x3) / (x4 - x3); // uBottom
-        const v1 = (yIn - y1) / (y3 - y1); // vLeft
-        const v2 = (yIn - y2) / (y4 - y2); // vRight
-
-        // I got these by solving simultaneous equations on paper lol
-        const det = 1 - (u1 - u2) * (v1 - v2);
-        const uOut = (u1 + v1 * (u2 - u1)) / det;
-        const vOut = (v1 + u2 * (v2 - v1)) / det;
-
-        return [uOut, vOut];
-      };
 
       Composite.clear(this.platformComposite);
 
-      for (let coords of contours.coordinates) {
-        for (let contour of coords) {
-          const vertices = contour.map(point => {
-            const transformedPoint = transformPoint(point);
-
-            return {
-              x: transformedPoint[0] * this.width,
-              y: transformedPoint[1] * this.height
-            };
-          });
-
-          const [minX, minY] = vertices.reduce(
-            ([minX, minY], { x, y }) => {
-              return [Math.min(minX, x), Math.min(minY, y)];
-            },
-            [vertices[0].x, vertices[0].y]
-          );
-
-          const platform = Bodies.fromVertices(0, 0, [vertices], {
-            isStatic: true,
-            render: {
-              fillStyle: this.platformFill
-            }
-          });
-
-          if (
-            platform.area > config.minSize &&
-            platform.area < config.maxSize
-          ) {
-            Composite.add(this.platformComposite, [platform]);
-
-            Body.setPosition(platform, {
-              x: minX - platform.bounds.min.x,
-              y: minY - platform.bounds.min.y
-            });
+      for (const { vertices, minX, minY } of msg.data) {
+        const platform = Bodies.fromVertices(0, 0, [vertices], {
+          isStatic: true,
+          render: {
+            fillStyle: this.platformFill
           }
+        });
+
+        if (platform.area > config.minSize && platform.area < config.maxSize) {
+          Composite.add(this.platformComposite, [platform]);
+
+          Body.setPosition(platform, {
+            x: minX - platform.bounds.min.x,
+            y: minY - platform.bounds.min.y
+          });
         }
       }
     },
@@ -429,7 +397,7 @@ export default {
     },
     'config.edgeThreshold': 'syncPlatforms',
     'config.minSize': 'syncPlatforms',
-    'config.maxSize': 'syncPlatforms',
+    'config.maxSize': 'syncPlatforms'
   }
 };
 </script>
