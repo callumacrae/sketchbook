@@ -14,7 +14,6 @@
 import * as dat from 'dat.gui';
 import { Engine, Render, Body, Bodies, Composite } from 'matter-js';
 import Stats from 'stats.js';
-import { contours as d3Contours } from 'd3-contour';
 
 import * as random from '../utils/random';
 import recordMixin from '../mixins/record';
@@ -38,9 +37,10 @@ export default {
       ground: false,
       platformOpacity: 1,
       useCamera: false,
+      cameraIndex: 0,
       edgeThreshold: 0.5,
       minSize: 50e3,
-      maxSize: 150e3,
+      maxSize: 200e3,
       transforms: {
         x1: 0,
         y1: 0,
@@ -98,6 +98,7 @@ export default {
 
     imageGui.add(this.config, 'platformOpacity', 0, 1);
     imageGui.add(this.config, 'useCamera');
+    const cameraController = imageGui.add(this.config, 'cameraIndex', 0, 3, 1);
     imageGui.add(this.config, 'edgeThreshold', 0, 1);
     imageGui.add(this.config, 'minSize', 0, 100e3);
     imageGui.add(this.config, 'maxSize', 0, 200e3);
@@ -113,6 +114,20 @@ export default {
     imageGui.add(this.config.transforms, 'y3', 0, 1);
     imageGui.add(this.config.transforms, 'x4', 0, 1);
     imageGui.add(this.config.transforms, 'y4', 0, 1);
+
+    navigator.mediaDevices.enumerateDevices().then(devices => {
+      const cameras = devices.filter(({ kind }) => kind === 'videoinput');
+      if (cameras.length === 1) {
+        imageGui.remove(cameraController);
+
+        // Set to 0 in case something else is remembered
+        this.config.cameraIndex = 0;
+      } else {
+        cameraController.max(cameras.length - 1);
+      }
+
+      this.cameras = cameras;
+    });
 
     this.stats = new Stats();
     this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -265,7 +280,7 @@ export default {
         }
       }
     },
-    syncPlatforms(useCache = true) {
+    syncPlatforms(useCache = true, cacheCamera = true) {
       // The cache is for when adjusting the transforms without reading the
       // image or video again
       if (
@@ -298,24 +313,27 @@ export default {
           videoEl.removeEventListener('playing', readyFn);
         };
 
-        if (videoEl.readyState === 4) {
+        if (cacheCamera && videoEl.readyState === 4) {
           readyFn();
         } else {
-          navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
-            videoEl.srcObject = stream;
+          const cameraId = this.cameras[this.config.cameraIndex].deviceId;
+          navigator.mediaDevices
+            .getUserMedia({ video: { deviceId: { exact: cameraId } } })
+            .then(stream => {
+              videoEl.srcObject = stream;
 
-            const track = stream.getVideoTracks()[0];
+              const track = stream.getVideoTracks()[0];
 
-            const {
-              width: { max: n },
-              height: { max: m }
-            } = track.getCapabilities();
+              const {
+                width: { max: n },
+                height: { max: m }
+              } = track.getCapabilities();
 
-            videoEl.width = n;
-            videoEl.height = m;
+              videoEl.width = n;
+              videoEl.height = m;
 
-            videoEl.addEventListener('playing', readyFn);
-          });
+              videoEl.addEventListener('playing', readyFn);
+            });
         }
       } else {
         const imgEl = new Image();
@@ -408,6 +426,11 @@ export default {
     },
     'config.useCamera'() {
       this.syncPlatforms(false);
+    },
+    'config.cameraIndex'() {
+      const camera = this.cameras[this.config.cameraIndex];
+      console.info(`Switching to camera: ${camera.label}`);
+      this.syncPlatforms(false, false);
     },
     'config.edgeThreshold': 'syncPlatforms',
     'config.minSize': 'syncPlatforms',
