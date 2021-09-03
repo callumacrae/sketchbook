@@ -31,6 +31,7 @@ export default {
     config: {
       gravityScale: 0.002,
       ballsPerSecond: 5,
+      maxBalls: 50,
       ballRadius: 0.025,
       ballBounce: 0.8,
       walls: true,
@@ -87,6 +88,7 @@ export default {
 
     gui.add(this.config, 'gravityScale', 0, 0.01);
     gui.add(this.config, 'ballsPerSecond', 1, 50, 1);
+    gui.add(this.config, 'maxBalls', 1, 500, 1);
     gui.add(this.config, 'ballRadius', 0.001, 0.1);
     gui.add(this.config, 'ballBounce', 0, 1);
     gui.add(this.config, 'walls');
@@ -251,6 +253,17 @@ export default {
       const x = random.range(radius, width - radius);
       const ball = Bodies.circle(x, radius * -2, radius, ballOptions);
       Composite.add(this.ballsComposite, [ball]);
+
+      // This isn't in the cleanupBalls function as we can't reuse the `balls`
+      // variable anyway after stuff has been removed and it's a nicer
+      // experience here
+      const balls = Composite.allBodies(this.ballsComposite);
+      if (balls.length > config.maxBalls) {
+        const toRemove = balls.length - config.maxBalls;
+        for (let i = 0; i < toRemove; i++) {
+          Composite.remove(this.ballsComposite, balls[i]);
+        }
+      }
     },
     syncPlatforms(useCache = true) {
       // The cache is for when adjusting the transforms without reading the
