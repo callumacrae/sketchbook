@@ -1,6 +1,6 @@
 import { contours as d3Contours } from 'd3-contour';
 
-self.onmessage = (msg) => {
+self.onmessage = msg => {
   const {
     data: dataBuffer,
     inWidth: n,
@@ -16,8 +16,7 @@ self.onmessage = (msg) => {
 
   for (let j = 0, k = 0; j < m; ++j) {
     for (let i = 0; i < n; ++i, ++k) {
-      // todo look at more than one channel
-      values[k] = data[k * 4] / 255;
+      values[k] = (data[k * 4] + data[k * 4 + 1] + data[k * 4 + 2]) / 3 / 255;
     }
   }
 
