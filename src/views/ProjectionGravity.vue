@@ -228,12 +228,6 @@ export default {
 
       this.lastFrame = timestamp;
     },
-    uToX(u) {
-      return u * this.width;
-    },
-    vToY(v) {
-      return v * this.height;
-    },
     cleanupBalls() {
       const balls = Composite.allBodies(this.ballsComposite);
 
@@ -253,7 +247,7 @@ export default {
         }
       };
 
-      const radius = this.uToX(config.ballRadius);
+      const radius = config.ballRadius * width;
       const x = random.range(radius, width - radius);
       const ball = Bodies.circle(x, radius * -2, radius, ballOptions);
       Composite.add(this.ballsComposite, [ball]);
