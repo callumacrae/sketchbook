@@ -5,6 +5,8 @@
       @click="status = status === 'playing' ? 'paused' : 'playing'"
     ></canvas>
     <GlobalEvents target="window" @resize="setSize" />
+    <!-- this has to be visible or video doesn't play -->
+    <video autoplay></video>
   </div>
 </template>
 
@@ -34,6 +36,7 @@ export default {
       walls: true,
       ground: false,
       platformOpacity: 1,
+      useCamera: false,
       transforms: {
         x1: 0,
         y1: 0,
@@ -70,6 +73,9 @@ export default {
       gui.close();
     }
 
+    gui.useLocalStorage = true;
+    gui.remember(this.config);
+
     gui.add(this.config, 'gravityScale', 0, 0.01);
     gui.add(this.config, 'ballsPerSecond', 1, 50, 1);
     gui.add(this.config, 'ballRadius', 0.001, 0.1);
@@ -77,11 +83,12 @@ export default {
     gui.add(this.config, 'walls');
     gui.add(this.config, 'ground');
     gui.add(this.config, 'platformOpacity', 0, 1);
+    gui.add(this.config, 'useCamera');
+    gui
+      .add({ refresh: () => this.syncPlatforms(false) }, 'refresh')
+      .name('Refresh image');
 
     const transformsGui = gui.addFolder('Transforms');
-
-    gui.useLocalStorage = true;
-    gui.remember(this.config.transforms);
 
     transformsGui.add(this.config.transforms, 'x1', 0, 1);
     transformsGui.add(this.config.transforms, 'y1', 0, 1);
@@ -234,90 +241,142 @@ export default {
       const ball = Bodies.circle(x, radius * -2, radius, ballOptions);
       Composite.add(this.ballsComposite, [ball]);
     },
-    syncPlatforms() {
-      const imgEl = new Image();
-      imgEl.onload = () => {
-        const tmpCanvas = document.createElement('canvas');
-        const n = imgEl.width;
-        const m = imgEl.height;
-        tmpCanvas.width = n;
-        tmpCanvas.height = m;
-        const ctx = tmpCanvas.getContext('2d');
+    syncPlatforms(useCache = true) {
+      if (this._cachedImageData && useCache) {
+        const cached = this._cachedImageData;
 
-        ctx.drawImage(imgEl, 0, 0);
-        const data = ctx.getImageData(0, 0, n, m);
+        this.platformsFromData(cached.data, cached.n, cached.m);
+      } else if (this.config.useCamera) {
+        const videoEl = document.querySelector('video');
 
-        const values = new Float64Array(n * m);
+        const readyFn = () => {
+          const n = videoEl.width;
+          const m = videoEl.height;
 
-        for (let j = 0, k = 0; j < m; ++j) {
-          for (let i = 0; i < n; ++i, ++k) {
-            // todo look at more than one channel
-            values[k] = data.data[k * 4] / 255;
-          }
-        }
+          const tmpCanvas = document.createElement('canvas');
+          tmpCanvas.width = n;
+          tmpCanvas.height = m;
+          const ctx = tmpCanvas.getContext('2d');
 
-        const contours = d3Contours()
-          .size([n, m])
-          .contour(values, 0.5);
+          ctx.drawImage(videoEl, 0, 0);
+          const data = ctx.getImageData(0, 0, n, m);
 
-        const x1 = n * this.config.transforms.x1;
-        const y1 = m * this.config.transforms.y1;
-        const x2 = n * this.config.transforms.x2;
-        const y2 = m * this.config.transforms.y2;
-        const x3 = n * this.config.transforms.x3;
-        const y3 = m * this.config.transforms.y3;
-        const x4 = n * this.config.transforms.x4;
-        const y4 = m * this.config.transforms.y4;
+          this.platformsFromData(data, n, m);
 
-        const transformPoint = ([xIn, yIn]) => {
-          const u1 = (xIn - x1) / (x2 - x1); // rename to uTop
-          const u2 = (xIn - x3) / (x4 - x3); // uBottom
-          const v1 = (yIn - y1) / (y3 - y1); // vLeft
-          const v2 = (yIn - y2) / (y4 - y2); // vRight
+          this._cachedImageData = { data, n, m };
 
-          // I got these by solving simultaneous equations on paper lol
-          const det = 1 - (u1 - u2) * (v1 - v2);
-          const uOut = (u1 + v1 * (u2 - u1)) / det;
-          const vOut = (v1 + u2 * (v2 - v1)) / det;
-
-          return [uOut, vOut];
+          videoEl.removeEventListener('playing', readyFn);
         };
 
-        Composite.clear(this.platformComposite);
+        if (videoEl.readyState === 4) {
+          readyFn();
+        } else {
+          navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+            videoEl.srcObject = stream;
 
-        // todo why is slice(1) required?
-        for (let contour of contours.coordinates[0].slice(1)) {
-          const vertices = contour.map(point => {
-            const transformedPoint = transformPoint(point);
+            const track = stream.getVideoTracks()[0];
 
-            return {
-              x: transformedPoint[0] * this.width,
-              y: transformedPoint[1] * this.height
-            };
-          });
+            const {
+              width: { max: n },
+              height: { max: m }
+            } = track.getCapabilities();
 
-          const [minX, minY] = vertices.reduce(
-            ([minX, minY], { x, y }) => {
-              return [Math.min(minX, x), Math.min(minY, y)];
-            },
-            [vertices[0].x, vertices[0].y]
-          );
+            videoEl.width = n;
+            videoEl.height = m;
 
-          const platform = Bodies.fromVertices(0, 0, [vertices], {
-            isStatic: true,
-            render: {
-              fillStyle: this.platformFill
-            }
-          });
-          Composite.add(this.platformComposite, [platform]);
-
-          Body.setPosition(platform, {
-            x: minX - platform.bounds.min.x,
-            y: minY - platform.bounds.min.y
+            videoEl.addEventListener('playing', readyFn);
           });
         }
+      } else {
+        const imgEl = new Image();
+        imgEl.onload = () => {
+          const tmpCanvas = document.createElement('canvas');
+          const n = imgEl.width;
+          const m = imgEl.height;
+          tmpCanvas.width = n;
+          tmpCanvas.height = m;
+          const ctx = tmpCanvas.getContext('2d');
+
+          ctx.drawImage(imgEl, 0, 0);
+          const data = ctx.getImageData(0, 0, n, m);
+
+          this.platformsFromData(data, n, m);
+
+          this._cachedImageData = { data, n, m };
+        };
+        imgEl.src = backgroundImage;
+      }
+    },
+    platformsFromData(data, n, m) {
+      const values = new Float64Array(n * m);
+
+      for (let j = 0, k = 0; j < m; ++j) {
+        for (let i = 0; i < n; ++i, ++k) {
+          // todo look at more than one channel
+          values[k] = data.data[k * 4] / 255;
+        }
+      }
+
+      const contours = d3Contours()
+        .size([n, m])
+        .contour(values, 0.5);
+
+      const x1 = n * this.config.transforms.x1;
+      const y1 = m * this.config.transforms.y1;
+      const x2 = n * this.config.transforms.x2;
+      const y2 = m * this.config.transforms.y2;
+      const x3 = n * this.config.transforms.x3;
+      const y3 = m * this.config.transforms.y3;
+      const x4 = n * this.config.transforms.x4;
+      const y4 = m * this.config.transforms.y4;
+
+      const transformPoint = ([xIn, yIn]) => {
+        const u1 = (xIn - x1) / (x2 - x1); // rename to uTop
+        const u2 = (xIn - x3) / (x4 - x3); // uBottom
+        const v1 = (yIn - y1) / (y3 - y1); // vLeft
+        const v2 = (yIn - y2) / (y4 - y2); // vRight
+
+        // I got these by solving simultaneous equations on paper lol
+        const det = 1 - (u1 - u2) * (v1 - v2);
+        const uOut = (u1 + v1 * (u2 - u1)) / det;
+        const vOut = (v1 + u2 * (v2 - v1)) / det;
+
+        return [uOut, vOut];
       };
-      imgEl.src = backgroundImage;
+
+      Composite.clear(this.platformComposite);
+
+      // todo why is slice(1) required?
+      for (let contour of contours.coordinates[0].slice(1)) {
+        const vertices = contour.map(point => {
+          const transformedPoint = transformPoint(point);
+
+          return {
+            x: transformedPoint[0] * this.width,
+            y: transformedPoint[1] * this.height
+          };
+        });
+
+        const [minX, minY] = vertices.reduce(
+          ([minX, minY], { x, y }) => {
+            return [Math.min(minX, x), Math.min(minY, y)];
+          },
+          [vertices[0].x, vertices[0].y]
+        );
+
+        const platform = Bodies.fromVertices(0, 0, [vertices], {
+          isStatic: true,
+          render: {
+            fillStyle: this.platformFill
+          }
+        });
+        Composite.add(this.platformComposite, [platform]);
+
+        Body.setPosition(platform, {
+          x: minX - platform.bounds.min.x,
+          y: minY - platform.bounds.min.y
+        });
+      }
     },
     handleConfigWallsUpdate() {
       const walls = Composite.allBodies(this.wallsComposite);
@@ -348,6 +407,9 @@ export default {
     'config.transforms': {
       deep: true,
       handler: 'syncPlatforms'
+    },
+    'config.useCamera'() {
+      this.syncPlatforms(false);
     }
   }
 };
