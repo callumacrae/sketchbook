@@ -19,7 +19,7 @@ import { contours as d3Contours } from 'd3-contour';
 import * as random from '../utils/random';
 import recordMixin from '../mixins/record';
 
-import backgroundImage from '../assets/projection-gravity/test-image.png';
+import backgroundImage from '../assets/projection-gravity/test-image-2.jpg';
 
 export default {
   mixins: [recordMixin],
@@ -37,6 +37,9 @@ export default {
       ground: false,
       platformOpacity: 1,
       useCamera: false,
+      edgeThreshold: 0.5,
+      minSize: 50e3,
+      maxSize: 150e3,
       transforms: {
         x1: 0,
         y1: 0,
@@ -82,22 +85,26 @@ export default {
     gui.add(this.config, 'ballBounce', 0, 1);
     gui.add(this.config, 'walls');
     gui.add(this.config, 'ground');
-    gui.add(this.config, 'platformOpacity', 0, 1);
-    gui.add(this.config, 'useCamera');
-    gui
+
+    const imageGui = gui.addFolder('Platform generation');
+
+    imageGui.add(this.config, 'platformOpacity', 0, 1);
+    imageGui.add(this.config, 'useCamera');
+    imageGui.add(this.config, 'edgeThreshold', 0, 1);
+    imageGui.add(this.config, 'minSize', 0, 100e3);
+    imageGui.add(this.config, 'maxSize', 0, 200e3);
+    imageGui
       .add({ refresh: () => this.syncPlatforms(false) }, 'refresh')
       .name('Refresh image');
 
-    const transformsGui = gui.addFolder('Transforms');
-
-    transformsGui.add(this.config.transforms, 'x1', 0, 1);
-    transformsGui.add(this.config.transforms, 'y1', 0, 1);
-    transformsGui.add(this.config.transforms, 'x2', 0, 1);
-    transformsGui.add(this.config.transforms, 'y2', 0, 1);
-    transformsGui.add(this.config.transforms, 'x3', 0, 1);
-    transformsGui.add(this.config.transforms, 'y3', 0, 1);
-    transformsGui.add(this.config.transforms, 'x4', 0, 1);
-    transformsGui.add(this.config.transforms, 'y4', 0, 1);
+    imageGui.add(this.config.transforms, 'x1', 0, 1);
+    imageGui.add(this.config.transforms, 'y1', 0, 1);
+    imageGui.add(this.config.transforms, 'x2', 0, 1);
+    imageGui.add(this.config.transforms, 'y2', 0, 1);
+    imageGui.add(this.config.transforms, 'x3', 0, 1);
+    imageGui.add(this.config.transforms, 'y3', 0, 1);
+    imageGui.add(this.config.transforms, 'x4', 0, 1);
+    imageGui.add(this.config.transforms, 'y4', 0, 1);
 
     this.stats = new Stats();
     this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -308,6 +315,8 @@ export default {
       }
     },
     platformsFromData(data, n, m) {
+      const { config } = this;
+
       const values = new Float64Array(n * m);
 
       for (let j = 0, k = 0; j < m; ++j) {
@@ -319,16 +328,16 @@ export default {
 
       const contours = d3Contours()
         .size([n, m])
-        .contour(values, 0.5);
+        .contour(values, config.edgeThreshold);
 
-      const x1 = n * this.config.transforms.x1;
-      const y1 = m * this.config.transforms.y1;
-      const x2 = n * this.config.transforms.x2;
-      const y2 = m * this.config.transforms.y2;
-      const x3 = n * this.config.transforms.x3;
-      const y3 = m * this.config.transforms.y3;
-      const x4 = n * this.config.transforms.x4;
-      const y4 = m * this.config.transforms.y4;
+      const x1 = n * config.transforms.x1;
+      const y1 = m * config.transforms.y1;
+      const x2 = n * config.transforms.x2;
+      const y2 = m * config.transforms.y2;
+      const x3 = n * config.transforms.x3;
+      const y3 = m * config.transforms.y3;
+      const x4 = n * config.transforms.x4;
+      const y4 = m * config.transforms.y4;
 
       const transformPoint = ([xIn, yIn]) => {
         const u1 = (xIn - x1) / (x2 - x1); // rename to uTop
@@ -346,36 +355,43 @@ export default {
 
       Composite.clear(this.platformComposite);
 
-      // todo why is slice(1) required?
-      for (let contour of contours.coordinates[0].slice(1)) {
-        const vertices = contour.map(point => {
-          const transformedPoint = transformPoint(point);
+      for (let coords of contours.coordinates) {
+        for (let contour of coords) {
+          const vertices = contour.map(point => {
+            const transformedPoint = transformPoint(point);
 
-          return {
-            x: transformedPoint[0] * this.width,
-            y: transformedPoint[1] * this.height
-          };
-        });
+            return {
+              x: transformedPoint[0] * this.width,
+              y: transformedPoint[1] * this.height
+            };
+          });
 
-        const [minX, minY] = vertices.reduce(
-          ([minX, minY], { x, y }) => {
-            return [Math.min(minX, x), Math.min(minY, y)];
-          },
-          [vertices[0].x, vertices[0].y]
-        );
+          const [minX, minY] = vertices.reduce(
+            ([minX, minY], { x, y }) => {
+              return [Math.min(minX, x), Math.min(minY, y)];
+            },
+            [vertices[0].x, vertices[0].y]
+          );
 
-        const platform = Bodies.fromVertices(0, 0, [vertices], {
-          isStatic: true,
-          render: {
-            fillStyle: this.platformFill
+          const platform = Bodies.fromVertices(0, 0, [vertices], {
+            isStatic: true,
+            render: {
+              fillStyle: this.platformFill
+            }
+          });
+
+          if (
+            platform.area > config.minSize &&
+            platform.area < config.maxSize
+          ) {
+            Composite.add(this.platformComposite, [platform]);
+
+            Body.setPosition(platform, {
+              x: minX - platform.bounds.min.x,
+              y: minY - platform.bounds.min.y
+            });
           }
-        });
-        Composite.add(this.platformComposite, [platform]);
-
-        Body.setPosition(platform, {
-          x: minX - platform.bounds.min.x,
-          y: minY - platform.bounds.min.y
-        });
+        }
       }
     },
     handleConfigWallsUpdate() {
@@ -410,7 +426,10 @@ export default {
     },
     'config.useCamera'() {
       this.syncPlatforms(false);
-    }
+    },
+    'config.edgeThreshold': 'syncPlatforms',
+    'config.minSize': 'syncPlatforms',
+    'config.maxSize': 'syncPlatforms',
   }
 };
 </script>
