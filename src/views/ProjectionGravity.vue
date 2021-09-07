@@ -85,6 +85,7 @@ export default {
 
     gui.useLocalStorage = true;
     gui.remember(this.config);
+    gui.remember(this.config.transforms);
 
     gui.add(this.config, 'gravityScale', 0, 0.01);
     gui.add(this.config, 'ballsPerSecond', 1, 50, 1);
