@@ -27,6 +27,7 @@ export default {
     width: undefined,
     height: undefined,
     lastFrame: undefined,
+    lastRefresh: Date.now(),
     config: {
       gravityScale: 0.002,
       ballsPerSecond: 5,
@@ -41,6 +42,7 @@ export default {
       edgeThreshold: 0.5,
       minSize: 50e3,
       maxSize: 200e3,
+      refreshPerSecond: 0,
       transforms: {
         x1: 0,
         y1: 0,
@@ -103,9 +105,10 @@ export default {
     imageGui.add(this.config, 'edgeThreshold', 0, 1);
     imageGui.add(this.config, 'minSize', 0, 100e3);
     imageGui.add(this.config, 'maxSize', 0, 200e3);
+    imageGui.add(this.config, 'refreshPerSecond', 0, 15);
     imageGui
       .add({ refresh: () => this.syncPlatforms(false) }, 'refresh')
-      .name('Refresh image');
+      .name('Manually refresh image');
 
     imageGui.add(this.config.transforms, 'x1', 0, 1);
     imageGui.add(this.config.transforms, 'y1', 0, 1);
@@ -241,6 +244,14 @@ export default {
 
       Engine.update(this.engine, delta);
       Render.world(this.render);
+
+      if (
+        config.refreshPerSecond &&
+        Date.now() - this.lastRefresh > 1000 / config.refreshPerSecond
+      ) {
+        this.syncPlatforms(false);
+        this.lastRefresh = Date.now();
+      }
 
       this.stats.end();
 
