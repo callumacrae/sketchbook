@@ -36,6 +36,9 @@ export default {
       ballsPerSecond: 5,
       maxBalls: 50,
       ballRadius: 0.025,
+      ballRadiusVar: 0,
+      ballSaturation: 100,
+      ballLightness: 100,
       ballBounce: 0.8,
       walls: true,
       ground: false,
@@ -108,6 +111,9 @@ export default {
     gui.add(this.config, 'ballsPerSecond', 1, 50, 1);
     gui.add(this.config, 'maxBalls', 1, 500, 1);
     gui.add(this.config, 'ballRadius', 0.001, 0.1);
+    gui.add(this.config, 'ballRadiusVar', 0, 1);
+    gui.add(this.config, 'ballSaturation', 0, 100, 1);
+    gui.add(this.config, 'ballLightness', 0, 100, 1);
     gui.add(this.config, 'ballBounce', 0, 1);
     gui.add(this.config, 'walls');
     gui.add(this.config, 'ground');
@@ -306,11 +312,16 @@ export default {
       const ballOptions = {
         restitution: config.ballBounce,
         render: {
-          fillStyle: 'white',
+          fillStyle: `hsl(${random.range(0, 360)}, ${config.ballSaturation}%, ${
+            config.ballLightness
+          }%)`,
         },
       };
 
-      const radius = config.ballRadius * width;
+      const radius =
+        config.ballRadius *
+        (1 + random.range(-1, 1) * config.ballRadiusVar) *
+        width;
       const x = random.range(radius, width - radius);
       const ball = Bodies.circle(x, radius * -2, radius, ballOptions);
       Composite.add(this.ballsComposite, [ball]);
