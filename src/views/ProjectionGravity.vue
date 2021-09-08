@@ -104,7 +104,7 @@ export default {
     imageGui.add(this.config, 'platformOpacity', 0, 1);
     imageGui.add(this.config, 'useCamera');
     const cameraController = imageGui.add(this.config, 'cameraIndex', 0, 3, 1);
-    imageGui.add(this.config, 'imageReduceFactor', 1, 16, 1);
+    imageGui.add(this.config, 'imageReduceFactor', 1, 16);
     imageGui.add(this.config, 'edgeThreshold', 0, 1);
     imageGui.add(this.config, 'minSize', 0, 100e3);
     imageGui.add(this.config, 'maxSize', 0, 200e3);
@@ -325,7 +325,7 @@ export default {
           ctx.drawImage(videoEl, 0, 0);
           const data = ctx.getImageData(0, 0, n, m);
 
-          this.platformsFromData(data, true);
+          this.platformsFromData(data, !!config.refreshPerSecond);
 
           this._cachedImageData = data;
 
@@ -368,7 +368,7 @@ export default {
           ctx.drawImage(imgEl, 0, 0, n, m);
           const data = ctx.getImageData(0, 0, n, m);
 
-          this.platformsFromData(data);
+          this.platformsFromData(data, !!config.refreshPerSecond);
 
           this._cachedImageData = data;
         };

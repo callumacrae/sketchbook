@@ -69,6 +69,12 @@ self.onmessage = msg => {
         [vertices[0].x, vertices[0].y]
       );
 
+      // It sometimes returns the outside of the image or something
+      // Gets filtered out in next step any, better not to send it at all
+      if (minX === 0 && minY === 0) {
+        continue;
+      }
+
       platforms.push({ vertices, minX, minY });
     }
   }
