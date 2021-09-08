@@ -107,7 +107,7 @@ export default {
     imageGui.add(this.config, 'imageReduceFactor', 1, 16);
     imageGui.add(this.config, 'edgeThreshold', 0, 1);
     imageGui.add(this.config, 'minSize', 0, 100e3);
-    imageGui.add(this.config, 'maxSize', 0, 200e3);
+    imageGui.add(this.config, 'maxSize', 0, 400e3);
     imageGui.add(this.config, 'refreshPerSecond', 0, 15);
     imageGui
       .add({ refresh: () => this.syncPlatforms(false) }, 'refresh')
