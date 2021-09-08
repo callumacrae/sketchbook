@@ -26,14 +26,14 @@ self.onmessage = msg => {
     .size([n, m])
     .contour(values, config.edgeThreshold);
 
-  const x1 = n * config.transforms.x1;
-  const y1 = m * config.transforms.y1;
-  const x2 = n * config.transforms.x2;
-  const y2 = m * config.transforms.y2;
-  const x3 = n * config.transforms.x3;
-  const y3 = m * config.transforms.y3;
-  const x4 = n * config.transforms.x4;
-  const y4 = m * config.transforms.y4;
+  const x1 = n * (config.transforms.x1 + config.transforms.x1B);
+  const y1 = m * (config.transforms.y1 + config.transforms.y1B);
+  const x2 = n * (config.transforms.x2 + config.transforms.x2B);
+  const y2 = m * (config.transforms.y2 + config.transforms.y2B);
+  const x3 = n * (config.transforms.x3 + config.transforms.x3B);
+  const y3 = m * (config.transforms.y3 + config.transforms.y3B);
+  const x4 = n * (config.transforms.x4 + config.transforms.x4B);
+  const y4 = m * (config.transforms.y4 + config.transforms.y4B);
 
   const transformPoint = ([xIn, yIn]) => {
     const u1 = (xIn - x1) / (x2 - x1); // rename to uTop

@@ -45,15 +45,25 @@ export default {
       minSize: 50e3,
       maxSize: 200e3,
       refreshPerSecond: 0,
+      // The b values are more precise and just added to the other value by
+      // the worker they're passed to
       transforms: {
         x1: 0,
+        x1B: 0,
         y1: 0,
+        y1B: 0,
         x2: 1,
+        x2B: 0,
         y2: 0,
+        y2B: 0,
         x3: 0,
+        x3B: 0,
         y3: 1,
+        y3B: 0,
         x4: 1,
-        y4: 1
+        x4B: 0,
+        y4: 1,
+        y4B: 0
       }
     }
   }),
@@ -114,13 +124,21 @@ export default {
       .name('Manually refresh image');
 
     imageGui.add(this.config.transforms, 'x1', 0, 1);
+    imageGui.add(this.config.transforms, 'x1B', -0.01, 0.01);
     imageGui.add(this.config.transforms, 'y1', 0, 1);
+    imageGui.add(this.config.transforms, 'y1B', -0.01, 0.01);
     imageGui.add(this.config.transforms, 'x2', 0, 1);
+    imageGui.add(this.config.transforms, 'x2B', -0.01, 0.01);
     imageGui.add(this.config.transforms, 'y2', 0, 1);
+    imageGui.add(this.config.transforms, 'y2B', -0.01, 0.01);
     imageGui.add(this.config.transforms, 'x3', 0, 1);
+    imageGui.add(this.config.transforms, 'x3B', -0.01, 0.01);
     imageGui.add(this.config.transforms, 'y3', 0, 1);
+    imageGui.add(this.config.transforms, 'y3B', -0.01, 0.01);
     imageGui.add(this.config.transforms, 'x4', 0, 1);
+    imageGui.add(this.config.transforms, 'x4B', -0.01, 0.01);
     imageGui.add(this.config.transforms, 'y4', 0, 1);
+    imageGui.add(this.config.transforms, 'y4B', -0.01, 0.01);
 
     navigator.mediaDevices.enumerateDevices().then(devices => {
       const cameras = devices.filter(({ kind }) => kind === 'videoinput');
