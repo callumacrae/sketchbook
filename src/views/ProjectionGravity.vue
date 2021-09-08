@@ -16,6 +16,7 @@ import { Engine, Render, Body, Bodies, Composite } from 'matter-js';
 import Stats from 'stats.js';
 
 import * as random from '../utils/random';
+import * as perf from '../utils/perf';
 import recordMixin from '../mixins/record';
 
 import backgroundImage from '../assets/projection-gravity/test-image-2.jpg';
@@ -293,6 +294,8 @@ export default {
       }
     },
     syncPlatforms(useCache = true, cacheCamera = true) {
+      perf.start('sync platforms total');
+      perf.start('syncPlatforms');
       // The cache is for when adjusting the transforms without reading the
       // image or video again
       if (
@@ -366,6 +369,7 @@ export default {
         };
         imgEl.src = backgroundImage;
       }
+      perf.end('syncPlatforms');
     },
     // move ready to be used when doing real time stuff, but breaks caching so
     // not suitable for using with an image or still of a video
@@ -384,6 +388,7 @@ export default {
       );
     },
     handleWorkerMessage(msg) {
+      perf.start('handleWorkerMessage');
       const { config } = this;
 
       Composite.clear(this.platformComposite);
@@ -405,6 +410,8 @@ export default {
           });
         }
       }
+      perf.end('handleWorkerMessage');
+      perf.end('sync platforms total');
     },
     handleConfigWallsUpdate() {
       const walls = Composite.allBodies(this.wallsComposite);

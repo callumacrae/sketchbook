@@ -1,6 +1,8 @@
 import { contours as d3Contours } from 'd3-contour';
+import * as perf from '../utils/perf';
 
 self.onmessage = msg => {
+  perf.start('worker task');
   const {
     data: dataBuffer,
     inWidth: n,
@@ -72,4 +74,5 @@ self.onmessage = msg => {
   }
 
   self.postMessage(platforms);
+  perf.end('worker task');
 };

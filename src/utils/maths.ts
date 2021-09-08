@@ -12,5 +12,6 @@ export function shuffle(array: any[]) {
 }
 
 export function round(value: number, factor = 0.01) {
-  return Math.round(value / factor) * factor;
+  // The division by the inverse is to help cut down on floating point errors
+  return Math.round(value / factor) / (1 / factor);
 }
