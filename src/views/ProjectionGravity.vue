@@ -40,6 +40,7 @@ export default {
       platformOpacity: 1,
       useCamera: false,
       cameraIndex: 0,
+      imageReduceFactor: 2,
       edgeThreshold: 0.5,
       minSize: 50e3,
       maxSize: 200e3,
@@ -103,6 +104,7 @@ export default {
     imageGui.add(this.config, 'platformOpacity', 0, 1);
     imageGui.add(this.config, 'useCamera');
     const cameraController = imageGui.add(this.config, 'cameraIndex', 0, 3, 1);
+    imageGui.add(this.config, 'imageReduceFactor', 1, 16, 1);
     imageGui.add(this.config, 'edgeThreshold', 0, 1);
     imageGui.add(this.config, 'minSize', 0, 100e3);
     imageGui.add(this.config, 'maxSize', 0, 200e3);
@@ -296,16 +298,19 @@ export default {
     syncPlatforms(useCache = true, cacheCamera = true) {
       perf.start('sync platforms total');
       perf.start('syncPlatforms');
+
+      const { _cachedImageData, config } = this;
+
       // The cache is for when adjusting the transforms without reading the
       // image or video again
       if (
-        this._cachedImageData &&
+        _cachedImageData &&
         // If cache data has been moved to previous thread we can't use it
-        this._cachedImageData.data.buffer.byteLength &&
+        _cachedImageData.data.buffer.byteLength &&
         useCache
       ) {
-        this.platformsFromData(this._cachedImageData);
-      } else if (this.config.useCamera) {
+        this.platformsFromData(_cachedImageData);
+      } else if (config.useCamera) {
         const videoEl = document.querySelector('video');
 
         const readyFn = () => {
@@ -320,7 +325,7 @@ export default {
           ctx.drawImage(videoEl, 0, 0);
           const data = ctx.getImageData(0, 0, n, m);
 
-          this.platformsFromData(data);
+          this.platformsFromData(data, true);
 
           this._cachedImageData = data;
 
@@ -331,7 +336,7 @@ export default {
         if (cacheCamera && videoEl.readyState === 4) {
           readyFn();
         } else {
-          const cameraId = this.cameras[this.config.cameraIndex].deviceId;
+          const cameraId = this.cameras[config.cameraIndex].deviceId;
           navigator.mediaDevices
             .getUserMedia({ video: { deviceId: { exact: cameraId } } })
             .then(stream => {
@@ -354,13 +359,13 @@ export default {
         const imgEl = new Image();
         imgEl.onload = () => {
           const tmpCanvas = document.createElement('canvas');
-          const n = imgEl.width;
-          const m = imgEl.height;
+          const n = imgEl.width / config.imageReduceFactor;
+          const m = imgEl.height / config.imageReduceFactor;
           tmpCanvas.width = n;
           tmpCanvas.height = m;
           const ctx = tmpCanvas.getContext('2d');
 
-          ctx.drawImage(imgEl, 0, 0);
+          ctx.drawImage(imgEl, 0, 0, n, m);
           const data = ctx.getImageData(0, 0, n, m);
 
           this.platformsFromData(data);
@@ -444,6 +449,9 @@ export default {
       handler: 'syncPlatforms'
     },
     'config.useCamera'() {
+      this.syncPlatforms(false);
+    },
+    'config.imageReduceFactor'() {
       this.syncPlatforms(false);
     },
     'config.cameraIndex'() {
