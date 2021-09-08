@@ -12,14 +12,16 @@
 
 <script>
 import * as dat from 'dat.gui';
-import { Engine, Render, Body, Bodies, Composite } from 'matter-js';
+import { Events, Engine, Render, Body, Bodies, Composite } from 'matter-js';
 import Stats from 'stats.js';
+import { scalePow } from 'd3-scale';
 
 import * as random from '../utils/random';
 import * as perf from '../utils/perf';
 import recordMixin from '../mixins/record';
 
 import backgroundImage from '../assets/projection-gravity/test-image-2.jpg';
+import impactAudio from '../assets/projection-gravity/335908__littlerainyseasons__correct.mp3';
 
 export default {
   mixins: [recordMixin],
@@ -37,6 +39,7 @@ export default {
       ballBounce: 0.8,
       walls: true,
       ground: false,
+      makeSound: false,
       platformOpacity: 1,
       useCamera: false,
       cameraIndex: 0,
@@ -63,16 +66,16 @@ export default {
         x4: 1,
         x4B: 0,
         y4: 1,
-        y4B: 0
-      }
-    }
+        y4B: 0,
+      },
+    },
   }),
   mounted() {
     this.contourWorker = new Worker(
       new URL('./ProjectionGravity-worker.js', import.meta.url)
     );
 
-    this.contourWorker.onmessage = msg => this.handleWorkerMessage(msg);
+    this.contourWorker.onmessage = (msg) => this.handleWorkerMessage(msg);
 
     this.setSize();
     this.init().then(() => {
@@ -85,7 +88,7 @@ export default {
           fps: 25,
           duration: 10e3,
           directory: '',
-          background: 'black'
+          background: 'black',
         });
       }
     });
@@ -108,13 +111,14 @@ export default {
     gui.add(this.config, 'ballBounce', 0, 1);
     gui.add(this.config, 'walls');
     gui.add(this.config, 'ground');
+    gui.add(this.config, 'makeSound');
 
     const imageGui = gui.addFolder('Platform generation');
 
     imageGui.add(this.config, 'platformOpacity', 0, 1);
     imageGui.add(this.config, 'useCamera');
     const cameraController = imageGui.add(this.config, 'cameraIndex', 0, 3, 1);
-    imageGui.add(this.config, 'imageReduceFactor', 1, 16);
+    imageGui.add(this.config, 'imageReduceFactor', 1, 16, 1);
     imageGui.add(this.config, 'edgeThreshold', 0, 1);
     imageGui.add(this.config, 'minSize', 0, 100e3);
     imageGui.add(this.config, 'maxSize', 0, 400e3);
@@ -140,7 +144,7 @@ export default {
     imageGui.add(this.config.transforms, 'y4', 0, 1);
     imageGui.add(this.config.transforms, 'y4B', -0.01, 0.01);
 
-    navigator.mediaDevices.enumerateDevices().then(devices => {
+    navigator.mediaDevices.enumerateDevices().then((devices) => {
       const cameras = devices.filter(({ kind }) => kind === 'videoinput');
       if (cameras.length === 1) {
         imageGui.remove(cameraController);
@@ -193,8 +197,8 @@ export default {
 
       this.engine = Engine.create({
         gravity: {
-          scale: config.gravityScale
-        }
+          scale: config.gravityScale,
+        },
       });
 
       this.render = Render.create({
@@ -204,19 +208,19 @@ export default {
           width: width,
           height: height,
           background: 'black',
-          wireframes: false
-        }
+          wireframes: false,
+        },
       });
 
       this.groundBody = Bodies.rectangle(width / 2, height + 30, width, 60, {
-        isStatic: true
+        isStatic: true,
       });
 
       const wallLeft = Bodies.rectangle(-11, height / 2, 20, height, {
-        isStatic: true
+        isStatic: true,
       });
       const wallRight = Bodies.rectangle(width + 11, height / 2, 20, height, {
-        isStatic: true
+        isStatic: true,
       });
       this.wallsComposite = Composite.create({ bodies: [wallLeft, wallRight] });
       this.platformComposite = Composite.create();
@@ -226,7 +230,7 @@ export default {
       Composite.add(this.engine.world, [
         this.groundBody,
         this.wallsComposite,
-        this.platformComposite
+        this.platformComposite,
       ]);
 
       this.handleConfigGroundUpdate();
@@ -235,8 +239,17 @@ export default {
 
       Composite.add(this.engine.world, [
         this.platformComposite,
-        this.ballsComposite
+        this.ballsComposite,
       ]);
+
+      Events.on(this.engine, 'collisionStart', (e) => {
+        if (this.config.makeSound) {
+          const maxDepthCollision = e.pairs.reduce((max, pair) =>
+            max.collision.depth > pair.collision.depth ? max : pair
+          );
+          this.playImpactSound(maxDepthCollision.collision.depth);
+        }
+      });
 
       return Promise.resolve();
     },
@@ -293,8 +306,8 @@ export default {
       const ballOptions = {
         restitution: config.ballBounce,
         render: {
-          fillStyle: 'white'
-        }
+          fillStyle: 'white',
+        },
       };
 
       const radius = config.ballRadius * width;
@@ -357,14 +370,14 @@ export default {
           const cameraId = this.cameras[config.cameraIndex].deviceId;
           navigator.mediaDevices
             .getUserMedia({ video: { deviceId: { exact: cameraId } } })
-            .then(stream => {
+            .then((stream) => {
               videoEl.srcObject = stream;
 
               const track = stream.getVideoTracks()[0];
 
               const {
                 width: { max: n },
-                height: { max: m }
+                height: { max: m },
               } = track.getCapabilities();
 
               videoEl.width = n;
@@ -405,7 +418,7 @@ export default {
           inHeight: data.height,
           config: this.config,
           outWidth: this.width,
-          outHeight: this.height
+          outHeight: this.height,
         },
         move ? undefined : [data.data.buffer]
       );
@@ -420,8 +433,8 @@ export default {
         const platform = Bodies.fromVertices(0, 0, [vertices], {
           isStatic: true,
           render: {
-            fillStyle: this.platformFill
-          }
+            fillStyle: this.platformFill,
+          },
         });
 
         if (platform.area > config.minSize && platform.area < config.maxSize) {
@@ -429,7 +442,7 @@ export default {
 
           Body.setPosition(platform, {
             x: minX - platform.bounds.min.x,
-            y: minY - platform.bounds.min.y
+            y: minY - platform.bounds.min.y,
           });
         }
       }
@@ -444,12 +457,41 @@ export default {
     },
     handleConfigGroundUpdate() {
       this.groundBody.collisionFilter.mask = this.config.ground ? -1 : 0;
-    }
+    },
+    async playImpactSound(collisionDepth) {
+      const audioContext = (this.audioContext ||= new AudioContext());
+
+      if (!this.impactAudioBuffer) {
+        const response = await fetch(impactAudio);
+        this.impactAudioBuffer = await audioContext.decodeAudioData(
+          await response.arrayBuffer()
+        );
+      }
+
+      const gain = scalePow().exponent(1).domain([5, 50]).clamp(true)(
+        collisionDepth
+      );
+
+      if (gain == 0) {
+        return;
+      }
+
+      const gainNode = audioContext.createGain();
+      gainNode.gain.value = gain;
+      gainNode.connect(audioContext.destination);
+
+      const trackSource = audioContext.createBufferSource();
+      trackSource.buffer = this.impactAudioBuffer;
+      trackSource.connect(gainNode);
+
+      trackSource.detune.value = Math.random() * 100 - 50;
+      trackSource.start();
+    },
   },
   computed: {
     platformFill() {
       return `rgba(255, 255, 255, ${this.config.platformOpacity}`;
-    }
+    },
   },
   watch: {
     'config.gravityScale'() {
@@ -464,7 +506,7 @@ export default {
     },
     'config.transforms': {
       deep: true,
-      handler: 'syncPlatforms'
+      handler: 'syncPlatforms',
     },
     'config.useCamera'() {
       this.syncPlatforms(false);
@@ -479,8 +521,8 @@ export default {
     },
     'config.edgeThreshold': 'syncPlatforms',
     'config.minSize': 'syncPlatforms',
-    'config.maxSize': 'syncPlatforms'
-  }
+    'config.maxSize': 'syncPlatforms',
+  },
 };
 </script>
 

@@ -14,7 +14,7 @@
     "chroma-js": "^2.1.0",
     "core-js": "^3.6.4",
     "d3-contour": "^3.0.1",
-    "d3-scale": "^3.2.1",
+    "d3-scale": "^3.3.0",
     "d3-scale-chromatic": "^1.5.0",
     "dat.gui": "^0.7.7",
     "eases": "^1.0.8",
