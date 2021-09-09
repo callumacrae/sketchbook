@@ -124,11 +124,11 @@ export default {
     imageGui.add(this.config, 'platformOpacity', 0, 1);
     imageGui.add(this.config, 'useCamera');
     const cameraController = imageGui.add(this.config, 'cameraIndex', 0, 3, 1);
-    imageGui.add(this.config, 'imageReduceFactor', 1, 16, 1);
+    imageGui.add(this.config, 'imageReduceFactor', 1, 32, 1);
     imageGui.add(this.config, 'edgeThreshold', 0, 1);
     imageGui.add(this.config, 'minSize', 0, 100e3);
     imageGui.add(this.config, 'maxSize', 0, 400e3);
-    imageGui.add(this.config, 'refreshPerSecond', 0, 15);
+    imageGui.add(this.config, 'refreshPerSecond', 0, 15, 1);
     imageGui
       .add({ refresh: () => this.syncPlatforms(false) }, 'refresh')
       .name('Manually refresh image');
@@ -356,15 +356,15 @@ export default {
         const videoEl = document.querySelector('video');
 
         const readyFn = () => {
-          const n = videoEl.width;
-          const m = videoEl.height;
+          const n = videoEl.width / config.imageReduceFactor;
+          const m = videoEl.height / config.imageReduceFactor;
 
           const tmpCanvas = document.createElement('canvas');
           tmpCanvas.width = n;
           tmpCanvas.height = m;
           const ctx = tmpCanvas.getContext('2d');
 
-          ctx.drawImage(videoEl, 0, 0);
+          ctx.drawImage(videoEl, 0, 0, n, m);
           const data = ctx.getImageData(0, 0, n, m);
 
           this.platformsFromData(data, !!config.refreshPerSecond);
