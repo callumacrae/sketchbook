@@ -5,8 +5,6 @@
       @click="status = status === 'playing' ? 'paused' : 'playing'"
     ></canvas>
     <GlobalEvents target="window" @resize="setSize" />
-    <!-- this has to be visible or video doesn't play -->
-    <video autoplay></video>
   </div>
 </template>
 
@@ -19,18 +17,17 @@ import { scalePow } from 'd3-scale';
 import * as random from '../utils/random';
 import * as perf from '../utils/perf';
 import recordMixin from '../mixins/record';
+import cameraDetectionMixin from '../mixins/camera-detection';
 
-import backgroundImage from '../assets/projection-gravity/test-image-2.jpg';
 import impactAudio from '../assets/projection-gravity/335908__littlerainyseasons__correct.mp3';
 
 export default {
-  mixins: [recordMixin],
+  mixins: [recordMixin, cameraDetectionMixin],
   data: () => ({
     status: 'playing',
     width: undefined,
     height: undefined,
     lastFrame: undefined,
-    lastRefresh: Date.now(),
     config: {
       gravityScale: 0.002,
       ballsPerSecond: 5,
@@ -43,43 +40,9 @@ export default {
       walls: true,
       ground: false,
       makeSound: false,
-      platformOpacity: 1,
-      useCamera: false,
-      cameraIndex: 0,
-      imageReduceFactor: 2,
-      edgeThreshold: 0.5,
-      minSize: 50e3,
-      maxSize: 200e3,
-      refreshPerSecond: 0,
-      // The b values are more precise and just added to the other value by
-      // the worker they're passed to
-      transforms: {
-        x1: 0,
-        x1B: 0,
-        y1: 0,
-        y1B: 0,
-        x2: 1,
-        x2B: 0,
-        y2: 0,
-        y2B: 0,
-        x3: 0,
-        x3B: 0,
-        y3: 1,
-        y3B: 0,
-        x4: 1,
-        x4B: 0,
-        y4: 1,
-        y4B: 0,
-      },
     },
   }),
   mounted() {
-    this.contourWorker = new Worker(
-      new URL('./ProjectionGravity-worker.js', import.meta.url)
-    );
-
-    this.contourWorker.onmessage = (msg) => this.handleWorkerMessage(msg);
-
     this.setSize();
     this.init().then(() => {
       this.frame();
@@ -105,7 +68,6 @@ export default {
 
     gui.useLocalStorage = true;
     gui.remember(this.config);
-    gui.remember(this.config.transforms);
 
     gui.add(this.config, 'gravityScale', 0, 0.01);
     gui.add(this.config, 'ballsPerSecond', 1, 50, 1);
@@ -121,48 +83,7 @@ export default {
 
     const imageGui = gui.addFolder('Platform generation');
 
-    imageGui.add(this.config, 'platformOpacity', 0, 1);
-    imageGui.add(this.config, 'useCamera');
-    const cameraController = imageGui.add(this.config, 'cameraIndex', 0, 3, 1);
-    imageGui.add(this.config, 'imageReduceFactor', 1, 32, 1);
-    imageGui.add(this.config, 'edgeThreshold', 0, 1);
-    imageGui.add(this.config, 'minSize', 0, 100e3);
-    imageGui.add(this.config, 'maxSize', 0, 400e3);
-    imageGui.add(this.config, 'refreshPerSecond', 0, 15, 1);
-    imageGui
-      .add({ refresh: () => this.syncPlatforms(false) }, 'refresh')
-      .name('Manually refresh image');
-
-    imageGui.add(this.config.transforms, 'x1', 0, 1);
-    imageGui.add(this.config.transforms, 'x1B', -0.01, 0.01);
-    imageGui.add(this.config.transforms, 'y1', 0, 1);
-    imageGui.add(this.config.transforms, 'y1B', -0.01, 0.01);
-    imageGui.add(this.config.transforms, 'x2', 0, 1);
-    imageGui.add(this.config.transforms, 'x2B', -0.01, 0.01);
-    imageGui.add(this.config.transforms, 'y2', 0, 1);
-    imageGui.add(this.config.transforms, 'y2B', -0.01, 0.01);
-    imageGui.add(this.config.transforms, 'x3', 0, 1);
-    imageGui.add(this.config.transforms, 'x3B', -0.01, 0.01);
-    imageGui.add(this.config.transforms, 'y3', 0, 1);
-    imageGui.add(this.config.transforms, 'y3B', -0.01, 0.01);
-    imageGui.add(this.config.transforms, 'x4', 0, 1);
-    imageGui.add(this.config.transforms, 'x4B', -0.01, 0.01);
-    imageGui.add(this.config.transforms, 'y4', 0, 1);
-    imageGui.add(this.config.transforms, 'y4B', -0.01, 0.01);
-
-    navigator.mediaDevices.enumerateDevices().then((devices) => {
-      const cameras = devices.filter(({ kind }) => kind === 'videoinput');
-      if (cameras.length === 1) {
-        imageGui.remove(cameraController);
-
-        // Set to 0 in case something else is remembered
-        this.config.cameraIndex = 0;
-      } else {
-        cameraController.max(cameras.length - 1);
-      }
-
-      this.cameras = cameras;
-    });
+    this.setupDatGui(gui, imageGui);
 
     this.stats = new Stats();
     this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -170,10 +91,6 @@ export default {
   },
   beforeDestroy() {
     cancelAnimationFrame(this.frameId);
-
-    if (this.contourWorker) {
-      this.contourWorker.terminate();
-    }
 
     if (this.engine) {
       Engine.clear(this.engine);
@@ -285,13 +202,7 @@ export default {
       Engine.update(this.engine, delta);
       Render.world(this.render);
 
-      if (
-        config.refreshPerSecond &&
-        Date.now() - this.lastRefresh > 1000 / config.refreshPerSecond
-      ) {
-        this.syncPlatforms(false);
-        this.lastRefresh = Date.now();
-      }
+      this.detectionFrame(timestamp);
 
       this.stats.end();
 
@@ -337,106 +248,9 @@ export default {
         }
       }
     },
-    syncPlatforms(useCache = true, cacheCamera = true) {
-      perf.start('sync platforms total');
-      perf.start('syncPlatforms');
-
-      const { _cachedImageData, config } = this;
-
-      // The cache is for when adjusting the transforms without reading the
-      // image or video again
-      if (
-        _cachedImageData &&
-        // If cache data has been moved to previous thread we can't use it
-        _cachedImageData.data.buffer.byteLength &&
-        useCache
-      ) {
-        this.platformsFromData(_cachedImageData);
-      } else if (config.useCamera) {
-        const videoEl = document.querySelector('video');
-
-        const readyFn = () => {
-          const n = videoEl.width / config.imageReduceFactor;
-          const m = videoEl.height / config.imageReduceFactor;
-
-          const tmpCanvas = document.createElement('canvas');
-          tmpCanvas.width = n;
-          tmpCanvas.height = m;
-          const ctx = tmpCanvas.getContext('2d');
-
-          ctx.drawImage(videoEl, 0, 0, n, m);
-          const data = ctx.getImageData(0, 0, n, m);
-
-          this.platformsFromData(data, !!config.refreshPerSecond);
-
-          this._cachedImageData = data;
-
-          // Event might not be added, that's fine
-          videoEl.removeEventListener('playing', readyFn);
-        };
-
-        if (cacheCamera && videoEl.readyState === 4) {
-          readyFn();
-        } else {
-          const cameraId = this.cameras[config.cameraIndex].deviceId;
-          navigator.mediaDevices
-            .getUserMedia({ video: { deviceId: { exact: cameraId } } })
-            .then((stream) => {
-              videoEl.srcObject = stream;
-
-              const track = stream.getVideoTracks()[0];
-
-              const {
-                width: { max: n },
-                height: { max: m },
-              } = track.getCapabilities();
-
-              videoEl.width = n;
-              videoEl.height = m;
-
-              videoEl.addEventListener('playing', readyFn);
-            });
-        }
-      } else {
-        const imgEl = new Image();
-        imgEl.onload = () => {
-          const tmpCanvas = document.createElement('canvas');
-          const n = imgEl.width / config.imageReduceFactor;
-          const m = imgEl.height / config.imageReduceFactor;
-          tmpCanvas.width = n;
-          tmpCanvas.height = m;
-          const ctx = tmpCanvas.getContext('2d');
-
-          ctx.drawImage(imgEl, 0, 0, n, m);
-          const data = ctx.getImageData(0, 0, n, m);
-
-          this.platformsFromData(data, !!config.refreshPerSecond);
-
-          this._cachedImageData = data;
-        };
-        imgEl.src = backgroundImage;
-      }
-      perf.end('syncPlatforms');
-    },
-    // move ready to be used when doing real time stuff, but breaks caching so
-    // not suitable for using with an image or still of a video
-    platformsFromData(data, move = false) {
-      // This is too expensive to do on main thread while animation is running
-      this.contourWorker.postMessage(
-        {
-          data: data.data.buffer,
-          inWidth: data.width,
-          inHeight: data.height,
-          config: this.config,
-          outWidth: this.width,
-          outHeight: this.height,
-        },
-        move ? undefined : [data.data.buffer]
-      );
-    },
-    handleWorkerMessage(msg) {
+    cameraDetectionUpdate(msg) {
       perf.start('handleWorkerMessage');
-      const { config } = this;
+      const { detectionConfig: config } = this;
 
       Composite.clear(this.platformComposite);
 
@@ -501,7 +315,7 @@ export default {
   },
   computed: {
     platformFill() {
-      return `rgba(255, 255, 255, ${this.config.platformOpacity}`;
+      return `rgba(255, 255, 255, ${this.detectionConfig.platformOpacity}`;
     },
   },
   watch: {
@@ -510,29 +324,11 @@ export default {
     },
     'config.walls': 'handleConfigWallsUpdate',
     'config.ground': 'handleConfigGroundUpdate',
-    'config.platformOpacity'() {
+    'detectionConfig.platformOpacity'() {
       for (let platform of Composite.allBodies(this.platformComposite)) {
         platform.render.fillStyle = this.platformFill;
       }
     },
-    'config.transforms': {
-      deep: true,
-      handler: 'syncPlatforms',
-    },
-    'config.useCamera'() {
-      this.syncPlatforms(false);
-    },
-    'config.imageReduceFactor'() {
-      this.syncPlatforms(false);
-    },
-    'config.cameraIndex'() {
-      const camera = this.cameras[this.config.cameraIndex];
-      console.info(`Switching to camera: ${camera.label}`);
-      this.syncPlatforms(false, false);
-    },
-    'config.edgeThreshold': 'syncPlatforms',
-    'config.minSize': 'syncPlatforms',
-    'config.maxSize': 'syncPlatforms',
   },
 };
 </script>

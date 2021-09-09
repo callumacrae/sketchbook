@@ -1,7 +1,7 @@
 import { contours as d3Contours } from 'd3-contour';
 import * as perf from '../utils/perf';
 
-self.onmessage = msg => {
+self.onmessage = (msg) => {
   perf.start('worker task');
   const {
     data: dataBuffer,
@@ -9,7 +9,7 @@ self.onmessage = msg => {
     inHeight: m,
     config,
     outWidth,
-    outHeight
+    outHeight,
   } = msg.data;
 
   const data = new Uint8ClampedArray(dataBuffer);
@@ -53,12 +53,12 @@ self.onmessage = msg => {
 
   for (let coords of contours.coordinates) {
     for (let contour of coords) {
-      const vertices = contour.map(point => {
+      const vertices = contour.map((point) => {
         const transformedPoint = transformPoint(point);
 
         return {
           x: transformedPoint[0] * outWidth,
-          y: transformedPoint[1] * outHeight
+          y: transformedPoint[1] * outHeight,
         };
       });
 
