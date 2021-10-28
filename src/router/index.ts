@@ -161,6 +161,11 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/MatterBoids.vue')
   },
   {
+    path: '/barcode',
+    name: 'Barcode',
+    component: () => import('../views/BarCode.vue')
+  },
+  {
     path: '*',
     component: () => import('../views/Index.vue')
   }
