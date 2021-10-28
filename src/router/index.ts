@@ -156,6 +156,11 @@ const routes: Array<RouteConfig> = [
     component: () => import('../views/ProjectionGravity.vue')
   },
   {
+    path: '/matter-boids',
+    name: 'MatterJS boids',
+    component: () => import('../views/MatterBoids.vue')
+  },
+  {
     path: '*',
     component: () => import('../views/Index.vue')
   }
