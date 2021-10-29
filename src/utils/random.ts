@@ -26,6 +26,10 @@ export function floorRange(min: number, max: number) {
   return Math.floor(range(min, max));
 }
 
+export function roundRange(min: number, max: number) {
+  return Math.round(range(min, max));
+}
+
 export function pick(ary: any[]) {
   return ary[floorRange(0, ary.length)];
 }

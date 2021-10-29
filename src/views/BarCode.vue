@@ -13,6 +13,7 @@ import * as dat from 'dat.gui';
 import Stats from 'stats.js';
 
 import recordMixin from '../mixins/record';
+import * as random from '../utils/random';
 
 export default {
   mixins: [recordMixin],
@@ -21,14 +22,20 @@ export default {
     width: undefined,
     height: undefined,
     layers: [],
+    lastRefresh: 0,
 
     config: {
       parts: 4,
       layers: 3,
+      layersVariation: 2,
       minSegments: 3,
-      maxSegments: 20,
-      minVelocity: 0.05,
-      maxVelocity: 0.3,
+      maxSegments: 15,
+      minVelocity: 0.04,
+      maxVelocity: 0.2,
+      velocityVariation1: 0.15,
+      velocityVariation2In: 0.25,
+      velocityVariation2Out: 0.45,
+      refreshEvery: 1,
     },
   }),
   mounted() {
@@ -57,10 +64,15 @@ export default {
 
     gui.add(this.config, 'parts', 1, 10, 1);
     gui.add(this.config, 'layers', 1, 10, 1);
+    gui.add(this.config, 'layersVariation', 0, 5, 1);
     gui.add(this.config, 'minSegments', 1, 10, 1);
     gui.add(this.config, 'maxSegments', 10, 100, 1);
     gui.add(this.config, 'minVelocity', 0, 0.1);
     gui.add(this.config, 'maxVelocity', 0, 2);
+    gui.add(this.config, 'velocityVariation1', 0, 1);
+    gui.add(this.config, 'velocityVariation2In', 0, 2);
+    gui.add(this.config, 'velocityVariation2Out', 0, 3);
+    gui.add(this.config, 'refreshEvery', 0, 10);
 
     this.stats = new Stats();
     this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -108,9 +120,21 @@ export default {
 
       ctx.clearRect(0, 0, width, height);
 
+      if (
+        config.refreshEvery &&
+        Date.now() - this.lastRefresh > config.refreshEvery * 1e3
+      ) {
+        this.generateLayers();
+      }
+
       const getLayerVal = (layer, v) => {
-        const offset = layer.velocity * t;
-        const index = Math.floor(((v + offset) % 1) * layer.data.length);
+        const offset =
+          layer.initialOffset +
+          layer.velocity * t +
+          Math.sin((t + 1000) * layer.velocityVariation2In) *
+            layer.velocityVariation2Out;
+        // todo 1e6 is a hack for if offset is negative, fix that
+        const index = Math.floor(((v + offset + 1e6) % 1) * layer.data.length);
         return layer.data[index];
       };
 
@@ -141,21 +165,36 @@ export default {
         const part = [];
         this.layers.push(part);
 
-        for (let i = 0; i < config.layers; i++) {
+        const layers = Math.max(
+          config.layers +
+            random.roundRange(-config.layersVariation, config.layersVariation),
+          1
+        );
+
+        for (let i = 0; i < layers; i++) {
           const segs = Math.round(
-            config.minSegments + segmentRange * (i / config.layers)
+            config.minSegments +
+              segmentRange * (random.range(i, i + 1) / config.layers)
           );
 
-          const data = new Array(segs)
-            .fill(0)
-            .map(() => (Math.random() < 0.5 ? 0 : 1));
+          const data = new Array(segs).fill(0).map(() => random.pick([0, 1]));
 
           const velocity =
-            (config.minVelocity + velocityRange * (i / config.layers)) * Math.random() * 2;
+            config.minVelocity +
+            velocityRange * (i / config.layers) +
+            random.range(-config.velocityVariation1, config.velocityVariation1);
 
-          part.push({ velocity, data });
+          part.push({
+            initialOffset: random.value(),
+            velocity,
+            velocityVariation2In: random.range(0, config.velocityVariation2In),
+            velocityVariation2Out: random.range(0, config.velocityVariation2Out),
+            data,
+          });
         }
       }
+
+      this.lastRefresh = Date.now();
     },
   },
   watch: {
