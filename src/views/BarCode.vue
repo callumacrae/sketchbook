@@ -119,6 +119,7 @@ export default {
       const { width, height, ctx, layers, config } = this;
 
       ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = 'black';
 
       if (
         config.refreshEvery &&
@@ -141,13 +142,26 @@ export default {
       const partWidth = width / config.parts;
 
       for (let x = 0; x < config.parts; x++) {
+        let startY = 0;
+        let currentVal = 0;
         for (let y = 0; y < height; y++) {
           const v = y / height;
           const val = layers[x].reduce((acc, l) => acc + getLayerVal(l, v), 0);
 
-          ctx.fillStyle = val % 2 ? 'black' : 'white';
-          // todo support not-1 maybe
-          ctx.fillRect(partWidth * x, y, partWidth, 1);
+          if (y === 0) {
+            currentVal = val;
+            continue;
+          }
+
+          if (val === currentVal && y !== height - 1) {
+            continue;
+          }
+
+          if (val % 2) {
+            ctx.fillRect(partWidth * x, startY, partWidth, y - startY);
+          }
+          startY = y;
+          currentVal = val;
         }
       }
 
@@ -188,7 +202,10 @@ export default {
             initialOffset: random.value(),
             velocity,
             velocityVariation2In: random.range(0, config.velocityVariation2In),
-            velocityVariation2Out: random.range(0, config.velocityVariation2Out),
+            velocityVariation2Out: random.range(
+              0,
+              config.velocityVariation2Out
+            ),
             data,
           });
         }
