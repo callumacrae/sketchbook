@@ -14,6 +14,7 @@ import Stats from 'stats.js';
 import SimplexNoise from 'simplex-noise';
 
 import recordMixin from '../mixins/record';
+import Vector from '../utils/vector';
 
 const simplex = new SimplexNoise('seed');
 
@@ -25,13 +26,13 @@ export default {
     height: undefined,
     config: {
       circleRadius: 0.4,
-      lines: 70,
-      lineWidth: 4,
-      segmentY: 50,
+      lines: 150,
+      lineWidth: 2,
+      segmentY: 5,
       noiseXIn: 850,
-      noiseYIn: 1500,
-      noiseOut: 140,
-    }
+      noiseYIn: 850,
+      noiseOut: 100,
+    },
   }),
   mounted() {
     this.setSize();
@@ -45,7 +46,7 @@ export default {
           fps: 25,
           duration: 10e3,
           directory: '',
-          background: 'black'
+          background: 'black',
         });
       }
     });
@@ -57,13 +58,13 @@ export default {
       gui.close();
     }
 
-    gui.add(this.config, 'circleRadius', 0.1, 0.9)
-    gui.add(this.config, 'lines', 1, 200, 1)
-    gui.add(this.config, 'lineWidth', 1, 20, 1)
-    gui.add(this.config, 'segmentY', 1, 100, 1)
-    gui.add(this.config, 'noiseXIn', 1, 10000, 1)
-    gui.add(this.config, 'noiseYIn', 1, 10000, 1)
-    gui.add(this.config, 'noiseOut', 1, 1000, 1)
+    gui.add(this.config, 'circleRadius', 0.1, 0.9);
+    gui.add(this.config, 'lines', 1, 200, 1);
+    gui.add(this.config, 'lineWidth', 1, 20, 1);
+    gui.add(this.config, 'segmentY', 1, 100, 1);
+    gui.add(this.config, 'noiseXIn', 1, 10000, 1);
+    gui.add(this.config, 'noiseYIn', 1, 10000, 1);
+    gui.add(this.config, 'noiseOut', 1, 1000, 1);
 
     this.stats = new Stats();
     this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -110,38 +111,57 @@ export default {
 
       ctx.clearRect(0, 0, width, height);
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(width / 2, height / 2, Math.min(width, height) * config.circleRadius, 0, Math.PI * 2);
-      ctx.clip();
+      const origin = [width / 2, height / 2];
+      const maxDist = Math.min(width, height) * config.circleRadius;
 
       const transform = (x, y) => {
-        const offsetX = simplex.noise2D(x / config.noiseXIn, y / config.noiseYIn) * config.noiseOut;
-        return [x + offsetX, y]
-      }
+        const offsetX =
+          simplex.noise2D(x / config.noiseXIn, y / config.noiseYIn) *
+          config.noiseOut;
+        return [x + offsetX, y];
+      };
 
       ctx.lineWidth = config.lineWidth;
-      ctx.strokeStyle = "black"
+      ctx.lineCap = "round"
+      ctx.strokeStyle = 'black';
       for (let i = 0; i < config.lines; i++) {
+        const x = (width / config.lines) * i;
+        let lastSegmentDrawn = false;
+        let lastPoint = transform(x, 0);
+
         ctx.beginPath();
-        const x = width / config.lines * i;
-        ctx.moveTo(...transform(x, 0))
+        ctx.moveTo(...lastPoint);
+
         for (let y = 0; y < height; y += config.segmentY) {
-          ctx.lineTo(...transform(x, y + config.segmentY))
+          const nextPoint = transform(x, y + config.segmentY);
+
+          const centerPoint = [(lastPoint[0] + nextPoint[0]) / 2, y];
+
+          const distFromOrigin = Vector.between(
+            origin,
+            centerPoint
+          ).getMagnitude();
+
+          if (distFromOrigin < maxDist) {
+            ctx.lineTo(...nextPoint);
+          } else {
+            ctx.moveTo(...nextPoint);
+          }
+
+          lastPoint = nextPoint;
         }
-        ctx.stroke()
+
+        ctx.stroke();
       }
 
-      ctx.restore();
-
       this.stats.end();
-    }
+    },
   },
   watch: {
     config: {
       deep: true,
-      handler: 'frame'
-    }
+      handler: 'frame',
+    },
   },
 };
 </script>
