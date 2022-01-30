@@ -26,12 +26,18 @@ export default {
     height: undefined,
     config: {
       circleRadius: 0.4,
-      lines: 150,
+      distFactSmallA: 500,
+      distFactSmallB: 50,
+      distFactBigA: 300,
+      distFactBigB: 500,
+      smallBigMix: 0.4,
+      distFactThreshold: 0.25,
+      lines: 200,
       lineWidth: 2,
       segmentY: 5,
-      noiseXIn: 850,
-      noiseYIn: 850,
-      noiseOut: 100,
+      noiseXIn: 700,
+      noiseYIn: 700,
+      noiseOut: 90,
     },
   }),
   mounted() {
@@ -59,12 +65,18 @@ export default {
     }
 
     gui.add(this.config, 'circleRadius', 0.1, 0.9);
-    gui.add(this.config, 'lines', 1, 200, 1);
-    gui.add(this.config, 'lineWidth', 1, 20, 1);
+    gui.add(this.config, 'distFactSmallA', 50, 1000, 1);
+    gui.add(this.config, 'distFactSmallB', 5, 1000, 1);
+    gui.add(this.config, 'distFactBigA', 50, 1000, 1);
+    gui.add(this.config, 'distFactBigB', 5, 1000, 1);
+    gui.add(this.config, 'smallBigMix', 0, 1);
+    gui.add(this.config, 'distFactThreshold', 0, 1);
+    gui.add(this.config, 'lines', 1, 500, 1);
+    gui.add(this.config, 'lineWidth', 1, 10);
     gui.add(this.config, 'segmentY', 1, 100, 1);
-    gui.add(this.config, 'noiseXIn', 1, 10000, 1);
-    gui.add(this.config, 'noiseYIn', 1, 10000, 1);
-    gui.add(this.config, 'noiseOut', 1, 1000, 1);
+    gui.add(this.config, 'noiseXIn', 1, 5000, 1);
+    gui.add(this.config, 'noiseYIn', 1, 5000, 1);
+    gui.add(this.config, 'noiseOut', 1, 500, 1);
 
     this.stats = new Stats();
     this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -114,35 +126,68 @@ export default {
       const origin = [width / 2, height / 2];
       const maxDist = Math.min(width, height) * config.circleRadius;
 
-      const transform = (x, y) => {
+      const transform = ([x, y]) => {
         const offsetX =
           simplex.noise2D(x / config.noiseXIn, y / config.noiseYIn) *
           config.noiseOut;
         return [x + offsetX, y];
       };
 
+      const samplePoint = (point, untransformedPoint) => {
+        const distFromOrigin = Vector.between(origin, point).getMagnitude();
+
+        let pointValue = distFromOrigin < maxDist;
+
+        // Random missing bits inside circle
+        {
+          const noise = simplex.noise2D(point[0] / 50, point[1] / 50);
+          if (noise < -0.9) {
+            pointValue = false;
+          }
+        }
+
+        // Edge fuzzing
+        {
+          const distFromCircleEdge = Math.abs(distFromOrigin - maxDist);
+          const distFactorForSmall = Math.max(0, 1 - distFromCircleEdge / config.distFactSmallA);
+          const noiseForSmall =
+            simplex.noise2D(untransformedPoint[0], point[1] / config.distFactSmallB) *
+            distFactorForSmall;
+          const distFactorForBig = Math.max(0, 1 - distFromCircleEdge / config.distFactBigA);
+          const noiseForBig =
+            simplex.noise2D(untransformedPoint[0], point[1] / config.distFactBigB) *
+            distFactorForBig;
+
+          const mix = (a, b, factor = config.smallBigMix) => a * factor + b * (1 - factor);
+
+          if (mix(noiseForSmall, noiseForBig) < -1 * config.distFactThreshold) {
+            pointValue = true;
+          } else if (mix(noiseForSmall, noiseForBig) > config.distFactThreshold) {
+            pointValue = false;
+          }
+        }
+
+        return pointValue;
+      };
+
       ctx.lineWidth = config.lineWidth;
-      ctx.lineCap = "round"
+      ctx.lineCap = 'round';
       ctx.strokeStyle = 'black';
       for (let i = 0; i < config.lines; i++) {
         const x = (width / config.lines) * i;
         let lastSegmentDrawn = false;
-        let lastPoint = transform(x, 0);
+        let lastPoint = transform([x, 0]);
 
         ctx.beginPath();
         ctx.moveTo(...lastPoint);
 
         for (let y = 0; y < height; y += config.segmentY) {
-          const nextPoint = transform(x, y + config.segmentY);
+          const untransformedPoint = [x, y + config.segmentY];
+          const nextPoint = transform(untransformedPoint);
 
           const centerPoint = [(lastPoint[0] + nextPoint[0]) / 2, y];
 
-          const distFromOrigin = Vector.between(
-            origin,
-            centerPoint
-          ).getMagnitude();
-
-          if (distFromOrigin < maxDist) {
+          if (samplePoint(centerPoint, untransformedPoint)) {
             ctx.lineTo(...nextPoint);
           } else {
             ctx.moveTo(...nextPoint);
