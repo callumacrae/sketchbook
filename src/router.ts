@@ -13,6 +13,11 @@ const router = createRouter({
       name: 'Hello World',
       component: () => import('./sketches/hello-world'),
     },
+    {
+      path: '/line-shapes',
+      name: 'Line shapes',
+      component: () => import('./sketches/line-shapes'),
+    },
   ],
 });
 

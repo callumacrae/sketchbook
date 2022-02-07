@@ -1,0 +1,27 @@
+export function shuffle(array: any[]): any[] {
+  let counter = array.length;
+
+  while (counter > 0) {
+    const index = Math.floor(Math.random() * counter);
+    counter--;
+
+    [array[counter], array[index]] = [array[index], array[counter]];
+  }
+
+  return array;
+}
+
+export function round(value: number, factor = 0.01): number {
+  // The division by the inverse is to help cut down on floating point errors
+  return Math.round(value / factor) / (1 / factor);
+}
+
+// Only supports linear scales, use d3-scale for more advanced stuff
+export function scale(
+  domain: [number, number],
+  range: [number, number],
+  value: number
+): number {
+  const u = (value - domain[0]) / (domain[1] - domain[0]);
+  return range[0] + (range[1] - range[0]) * u;
+}
