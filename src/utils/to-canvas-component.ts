@@ -31,10 +31,10 @@ export interface FrameProps<CanvasState, SketchConfig = undefined> {
   config?: SketchConfig;
 }
 
-export type InitFn<CanvasState, SketchConfig> = (
+export type InitFn<CanvasState, SketchConfig = undefined> = (
   props: InitProps<SketchConfig>
 ) => CanvasState | Promise<CanvasState>;
-export type FrameFn<CanvasState, SketchConfig> = (
+export type FrameFn<CanvasState, SketchConfig = undefined> = (
   props: FrameProps<CanvasState, SketchConfig>
 ) => void;
 
@@ -44,7 +44,7 @@ export default function toCanvasComponent<
 >(
   init: InitFn<CanvasState, SketchConfig>,
   frame: FrameFn<CanvasState, SketchConfig>,
-  sketchbookConfigIn: Partial<Config<SketchConfig>>
+  sketchbookConfigIn: Partial<Config<SketchConfig>> = {}
 ) {
   const sketchbookConfig: Config<SketchConfig> = Object.assign(
     {
