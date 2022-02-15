@@ -3,6 +3,11 @@
 </template>
 
 <style>
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
 canvas {
   width: 100vw;
   height: 100vh;

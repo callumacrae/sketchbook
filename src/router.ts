@@ -18,6 +18,11 @@ const router = createRouter({
       name: 'Line shapes',
       component: () => import('./sketches/line-shapes'),
     },
+    {
+      path: '/storm-chars',
+      name: 'Storm chars',
+      component: () => import('./sketches/storm-chars'),
+    },
   ],
 });
 

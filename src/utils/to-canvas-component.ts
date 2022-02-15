@@ -36,7 +36,7 @@ export type InitFn<CanvasState, SketchConfig = undefined> = (
 ) => CanvasState | Promise<CanvasState>;
 export type FrameFn<CanvasState, SketchConfig = undefined> = (
   props: FrameProps<CanvasState, SketchConfig>
-) => void;
+) => Promise<CanvasState | void> | CanvasState | void;
 
 export default function toCanvasComponent<
   CanvasState = undefined,
@@ -117,7 +117,7 @@ export default function toCanvasComponent<
         },
       };
 
-      const state = await Promise.resolve(init(initProps));
+      const state = await init(initProps);
       if (state) {
         this.canvasState = state as UnwrapRef<CanvasState>;
       }
@@ -134,7 +134,7 @@ export default function toCanvasComponent<
       }
     },
     methods: {
-      callFrame(timestamp: number) {
+      async callFrame(timestamp: number) {
         const { ctx, width, height, canvasState, sketchbookConfig } = this;
 
         if (!ctx) {
@@ -157,7 +157,12 @@ export default function toCanvasComponent<
             config: sketchbookConfig.sketchConfig as SketchConfig | undefined,
           };
 
-          frame(frameProps);
+          const newState = await frame(frameProps);
+
+          if (newState) {
+            this.canvasState = newState as UnwrapRef<CanvasState>;
+          }
+
           this.hasChanged = false;
         }
 
