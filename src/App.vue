@@ -6,9 +6,19 @@
 body {
   margin: 0;
   overflow: hidden;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #b2adb9;
 }
 
 canvas {
+  background-color: white;
+  box-shadow: -5px 10px 10px 0px rgba(0, 0, 0, 0.15);
+}
+
+canvas:not(.custom-size) {
   width: 100vw;
   height: 100vh;
 }

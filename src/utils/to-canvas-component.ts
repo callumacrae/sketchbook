@@ -5,6 +5,8 @@ import { defineComponent, h, UnwrapRef } from 'vue';
 
 export interface Config<SketchConfig = undefined> {
   animate: boolean;
+  width?: number;
+  height?: number;
   resizeDelay: number;
   sketchConfig: SketchConfig;
 }
@@ -81,11 +83,11 @@ export default function toCanvasComponent<
         throw new Error('No canvas context');
       }
 
-      this.setSize();
-
       const config = this.sketchbookConfig.sketchConfig as
         | SketchConfig
         | undefined;
+
+      this.setSize();
 
       const initProps: InitProps<SketchConfig> = {
         ctx: this.ctx,
@@ -184,12 +186,19 @@ export default function toCanvasComponent<
           throw new Error('No canvas context');
         }
 
+        const config = this.sketchbookConfig;
+
         const canvas = this.ctx.canvas;
         const dpr = window.devicePixelRatio;
-        this.width = canvas.clientWidth * dpr;
-        this.height = canvas.clientHeight * dpr;
+        this.width = config?.width ?? canvas.clientWidth * dpr;
+        this.height = config?.height ?? canvas.clientHeight * dpr;
         canvas.width = this.width;
         canvas.height = this.height;
+
+        canvas.classList.toggle(
+          'custom-size',
+          !!(config?.width && config?.height)
+        );
 
         this.hasChanged = true;
       },
