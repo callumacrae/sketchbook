@@ -5,10 +5,12 @@ import toCanvasComponent, {
   FrameFn,
 } from '../utils/to-canvas-component';
 import { pixelateImage } from '../utils/textures/sampler';
+import * as random from '../utils/random';
 
 interface CanvasState {
   simplex: SimplexNoise;
   sampled?: { path: string; data: number[]; cols: number; rows: number };
+  background?: { data: ImageData; cols: number; rows: number };
 }
 
 const sketchConfig = {
@@ -61,6 +63,46 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
   const cols = Math.floor(width / config.charSize);
   const rows = Math.floor(height / config.charSize);
 
+  const offsetX = ((width / config.charSize) % 1) / 2 + 0.5;
+  const offsetY = ((height / config.charSize) % 1) / 2 + 0.5;
+
+  if (
+    !state.background ||
+    state.background.rows !== rows ||
+    state.background.cols !== cols
+  ) {
+    const backgroundCanvas = document.createElement('canvas');
+    backgroundCanvas.width = width;
+    backgroundCanvas.height = height;
+
+    const bgCtx = backgroundCanvas.getContext('2d');
+
+    if (!bgCtx) throw new Error('typescript is weird');
+
+    bgCtx.fillStyle = 'black';
+    bgCtx.fillRect(0, 0, width, height);
+
+    bgCtx.font = `${config.charSize}px PublicPixel`;
+    bgCtx.textBaseline = 'middle';
+    bgCtx.fillStyle = 'white';
+
+    for (let y = 0; y < Math.floor(rows); y++) {
+      const line = Array.from({ length: cols }, () => '.').join('');
+
+      bgCtx.fillText(
+        line,
+        (0 + offsetX) * config.charSize,
+        (y + offsetY) * config.charSize
+      );
+    }
+
+    state.background = {
+      data: bgCtx.getImageData(0, 0, width, height),
+      rows,
+      cols,
+    };
+  }
+
   if (
     !state.sampled ||
     state.sampled.path !== config.image ||
@@ -79,30 +121,40 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
   ctx.fillStyle = 'black';
   ctx.fillRect(0, 0, width, height);
 
+  if (state.background.data) {
+    ctx.putImageData(state.background.data, 0, 0);
+  }
+
   ctx.font = `${config.charSize}px PublicPixel`;
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'white';
 
-  const offsetX = ((width / config.charSize) % 1) / 2 + 0.5;
-  const offsetY = ((height / config.charSize) % 1) / 2 + 0.5;
-
-  console.time('frame');
   for (let y = 0; y < Math.floor(rows); y++) {
-    let line = '';
     for (let x = 0; x < Math.floor(cols); x++) {
       const i = (y * cols + x) * 4;
-      const l = 0.2126 * s[i] + 0.7152 * s[i + 1] + 0.0722 * s[i + 2];
+      let l = (0.2126 * s[i] + 0.7152 * s[i + 1] + 0.0722 * s[i + 2]) / 256;
 
-      line += luminosityToChar(l / 256, config.lighten);
+      const r = random.value();
+      if (r > 0.9999) {
+        l += 0.5;
+      } else if (r > 0.99) {
+        l += 0.1;
+      }
+
+      if (l < 0.1) {
+        continue;
+      }
+
+      const char = luminosityToChar(l, config.lighten);
+      const charX = (x + offsetX) * config.charSize;
+      const charY = (y + offsetY) * config.charSize;
+
+      ctx.fillStyle = 'black';
+      // isn't actually in the exact right place, but still covers the dot
+      ctx.fillRect(charX, charY, config.charSize, config.charSize);
+      ctx.fillStyle = 'white';
+      ctx.fillText(char, charX, charY);
     }
-
-    ctx.fillText(
-      line,
-      (0 + offsetX) * config.charSize,
-      (y + offsetY) * config.charSize
-    );
   }
-  console.timeEnd('frame');
 };
 
 function luminosityToChar(l: number, lighten: number) {
@@ -121,7 +173,8 @@ function luminosityToChar(l: number, lighten: number) {
   if (adjustedL < 0.6) return '/';
   if (adjustedL < 0.87) return 'o';
   if (adjustedL < 0.9) return 'O';
-  return 'x';
+  if (adjustedL < 0.98) return 'x';
+  return 'X';
 }
 
 export default toCanvasComponent<CanvasState, SketchConfig>(
