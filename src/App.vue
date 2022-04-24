@@ -10,7 +10,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #b2adb9;
+  /* background-color: #b2adb9; */
 }
 
 canvas {
