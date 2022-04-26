@@ -45,7 +45,7 @@ const images = [
 
 const sketchConfig = {
   image: 'random',
-  charSize: 15,
+  charSize: window.devicePixelRatio > 1 ? 15 : 8,
   lighten: 0.75,
   randomness: 0.8,
 };
