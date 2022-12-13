@@ -47,7 +47,7 @@ const init: InitFn<CanvasState, SketchConfig> = ({
   const shape = data.paths[0].toShapes(true)[0];
 
   const figureGeom = new THREE.ExtrudeGeometry(shape, { bevelEnabled: false });
-  figureGeom.scale(1, -1, 1);
+  figureGeom.scale(2, -2, 1);
   const outlineGeom = new THREE.EdgesGeometry(figureGeom);
 
   const figureMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });

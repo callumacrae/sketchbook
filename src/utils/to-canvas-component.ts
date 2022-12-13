@@ -200,8 +200,9 @@ export default function toCanvasComponent<
 
         const canvas = this.canvas;
         const dpr = window.devicePixelRatio;
-        this.width = config?.width ?? canvas.clientWidth * dpr;
-        this.height = config?.height ?? canvas.clientHeight * dpr;
+        const dprMultiplier = config.type === 'threejs' ? 1 : dpr;
+        this.width = config?.width ?? window.innerWidth * dprMultiplier;
+        this.height = config?.height ?? window.innerHeight * dprMultiplier;
         canvas.width = this.width;
         canvas.height = this.height;
 
@@ -211,6 +212,15 @@ export default function toCanvasComponent<
         );
 
         this.hasChanged = true;
+
+        if (this.renderer) {
+          this.renderer.setSize(this.width, this.height);
+          this.renderer.setPixelRatio(dpr);
+        }
+        if (this.$options.canvasState?.camera instanceof THREE.Camera) {
+          this.$options.canvasState.camera.aspect = this.width / this.height;
+          this.$options.canvasState.camera.updateProjectionMatrix();
+        }
       },
     },
   });
