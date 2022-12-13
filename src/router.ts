@@ -23,6 +23,11 @@ const router = createRouter({
       name: 'Storm chars',
       component: () => import('./sketches/storm-chars'),
     },
+    {
+      path: '/golden-hour',
+      name: 'Golden hour',
+      component: () => import('./sketches/golden-hour'),
+    },
   ],
 });
 
