@@ -33,6 +33,11 @@ const router = createRouter({
       name: 'Hello world (threejs)',
       component: () => import('./sketches/hello-world-threejs'),
     },
+    {
+      path: '/brain-storm',
+      name: 'Brain storm',
+      component: () => import('./sketches/brain-storm'),
+    },
   ],
 });
 
