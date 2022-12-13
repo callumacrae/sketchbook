@@ -28,6 +28,11 @@ const router = createRouter({
       name: 'Golden hour',
       component: () => import('./sketches/golden-hour'),
     },
+    {
+      path: '/hello-world-threejs',
+      name: 'Hello world (threejs)',
+      component: () => import('./sketches/hello-world-threejs'),
+    },
   ],
 });
 

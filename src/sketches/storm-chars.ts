@@ -103,9 +103,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
   config,
   state,
 }) => {
-  if (!config) {
-    return;
-  }
+  if (!config || !ctx) throw new Error('???');
 
   const cols = Math.floor(width / config.charSize);
   const rows = Math.floor(height / config.charSize);

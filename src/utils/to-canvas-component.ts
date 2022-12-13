@@ -1,9 +1,11 @@
 import { Pane } from 'tweakpane';
 import * as EssentialsPlugin from '@tweakpane/plugin-essentials';
 import { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/fps-graph/api/fps-graph';
-import { defineComponent, h, UnwrapRef } from 'vue';
+import { defineComponent, h, UnwrapRef, shallowRef, ShallowRef } from 'vue';
+import * as THREE from 'three';
 
 export interface Config<SketchConfig = undefined> {
+  type: 'context2d' | 'threejs';
   animate: boolean;
   width?: number;
   height?: number;
@@ -17,7 +19,8 @@ export interface InitControlsProps<SketchConfig> {
 }
 
 export interface InitProps<SketchConfig = undefined> {
-  ctx: CanvasRenderingContext2D;
+  ctx: CanvasRenderingContext2D | null;
+  renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
   config?: SketchConfig;
@@ -25,7 +28,8 @@ export interface InitProps<SketchConfig = undefined> {
 }
 
 export interface FrameProps<CanvasState, SketchConfig = undefined> {
-  ctx: CanvasRenderingContext2D;
+  ctx: CanvasRenderingContext2D | null;
+  renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
   state: CanvasState;
@@ -50,6 +54,7 @@ export default function toCanvasComponent<
 ) {
   const sketchbookConfig: Config<SketchConfig> = Object.assign(
     {
+      type: 'context2d',
       animate: true,
       resizeDelay: 50,
       sketchConfig: {} as SketchConfig,
@@ -63,24 +68,20 @@ export default function toCanvasComponent<
       width: 0,
       height: 0,
       hasChanged: true,
-      canvasState: {} as CanvasState,
       sketchbookConfig: sketchbookConfig,
+      canvas: null as HTMLCanvasElement | null,
       ctx: null as CanvasRenderingContext2D | null,
+      renderer: null as THREE.WebGLRenderer | null,
       resizeTimeout: undefined as NodeJS.Timeout | undefined,
       pane: undefined as Pane | undefined,
       fpsGraph: undefined as FpsGraphBladeApi | undefined,
     }),
     async mounted() {
       const canvas = this.$refs.canvas as HTMLCanvasElement | null;
+      this.canvas = canvas;
 
       if (!canvas) {
         throw new Error('No canvas');
-      }
-
-      this.ctx = canvas.getContext('2d');
-
-      if (!this.ctx) {
-        throw new Error('No canvas context');
       }
 
       const config = this.sketchbookConfig.sketchConfig as
@@ -89,8 +90,20 @@ export default function toCanvasComponent<
 
       this.setSize();
 
+      if (this.sketchbookConfig.type === 'context2d') {
+        this.ctx = canvas.getContext('2d');
+
+        if (!this.ctx) {
+          throw new Error('No canvas context');
+        }
+      } else {
+        this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        this.renderer.setSize(this.width, this.height);
+      }
+
       const initProps: InitProps<SketchConfig> = {
         ctx: this.ctx,
+        renderer: this.renderer,
         width: this.width,
         height: this.height,
         config,
@@ -121,7 +134,7 @@ export default function toCanvasComponent<
 
       const state = await init(initProps);
       if (state) {
-        this.canvasState = state as UnwrapRef<CanvasState>;
+        this.$options.canvasState = state;
       }
 
       this.callFrame(0);
@@ -137,12 +150,6 @@ export default function toCanvasComponent<
     },
     methods: {
       async callFrame(timestamp: number) {
-        const { ctx, width, height, canvasState, sketchbookConfig } = this;
-
-        if (!ctx) {
-          throw new Error('No canvas context');
-        }
-
         if (this.fpsGraph) {
           this.fpsGraph.begin();
         }
@@ -151,18 +158,21 @@ export default function toCanvasComponent<
 
         if (hasChanged) {
           const frameProps: FrameProps<CanvasState, SketchConfig> = {
-            ctx,
-            width,
-            height,
-            state: canvasState as CanvasState,
+            ctx: this.ctx,
+            renderer: this.renderer,
+            width: this.width,
+            height: this.height,
+            state: this.$options.canvasState as CanvasState,
             timestamp,
-            config: sketchbookConfig.sketchConfig as SketchConfig | undefined,
+            config: this.sketchbookConfig.sketchConfig as
+              | SketchConfig
+              | undefined,
           };
 
           const newState = await frame(frameProps);
 
           if (newState) {
-            this.canvasState = newState as UnwrapRef<CanvasState>;
+            this.$options.canvasState = newState as UnwrapRef<CanvasState>;
           }
 
           this.hasChanged = false;
@@ -182,13 +192,13 @@ export default function toCanvasComponent<
         this.resizeTimeout = setTimeout(() => this.setSize(), resizeDelay);
       },
       setSize() {
-        if (!this.ctx) {
-          throw new Error('No canvas context');
+        if (!this.canvas) {
+          throw new Error('No canvas');
         }
 
         const config = this.sketchbookConfig;
 
-        const canvas = this.ctx.canvas;
+        const canvas = this.canvas;
         const dpr = window.devicePixelRatio;
         this.width = config?.width ?? canvas.clientWidth * dpr;
         this.height = config?.height ?? canvas.clientHeight * dpr;

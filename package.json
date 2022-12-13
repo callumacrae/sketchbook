@@ -12,8 +12,10 @@
     "@tweakpane/plugin-essentials": "^0.1.4",
     "@types/offscreencanvas": "^2019.6.4",
     "@types/seed-random": "^2.2.1",
+    "@types/three": "^0.146.0",
     "seed-random": "^2.2.0",
     "simplex-noise": "^3.0.1",
+    "three": "^0.147.0",
     "tweakpane": "^3.0.7",
     "vue": "^3.2.27",
     "vue-router": "^4.0.12"

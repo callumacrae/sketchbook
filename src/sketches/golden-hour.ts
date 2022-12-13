@@ -37,6 +37,8 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
   state,
   timestamp,
 }) => {
+  if (!ctx) throw new Error('???');
+
   ctx.drawImage(state.bg, 0, 0, width, height);
 
   ctx.textBaseline = 'middle';

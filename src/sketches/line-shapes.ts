@@ -63,9 +63,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
   state,
   config,
 }) => {
-  if (!config) {
-    return;
-  }
+  if (!ctx || !config) return;
 
   ctx.clearRect(0, 0, width, height);
 

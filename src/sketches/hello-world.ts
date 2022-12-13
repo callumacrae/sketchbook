@@ -23,6 +23,8 @@ const frame: FrameFn<CanvasState> = ({
   height,
   timestamp,
 }) => {
+  if (!ctx) throw new Error('???');
+
   ctx.clearRect(0, 0, width, height);
 
   ctx.beginPath();
