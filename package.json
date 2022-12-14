@@ -13,6 +13,7 @@
     "@types/offscreencanvas": "^2019.6.4",
     "@types/seed-random": "^2.2.1",
     "@types/three": "^0.146.0",
+    "meshline": "^3.1.6",
     "seed-random": "^2.2.0",
     "simplex-noise": "^3.0.1",
     "three": "^0.147.0",
