@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { MeshLineGeometry, MeshLineMaterial } from 'meshline';
 
+// https://www.shutterstock.com/image-illustration/man-silhouette-floating-over-colored-space-1871484967
 import figurePoints from './brain-storm-path.json';
 
 import toCanvasComponent, {
   Config,
   InitFn,
   FrameFn,
+  InitProps,
 } from '../utils/to-canvas-component';
 
 interface CanvasState {
@@ -25,28 +27,26 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
   sketchConfig,
 };
 
-const init: InitFn<CanvasState, SketchConfig> = ({
-  initControls,
-  config,
-  width,
-  height,
-}) => {
-  if (!config) throw new Error('????');
-
-  initControls(({ pane, config }) => {
-    pane.addInput(config, 'lineWidth', { min: 0, max: 5 });
-  });
-
-  const scene = new THREE.Scene();
-
+function initCamera({ width, height }: InitProps<SketchConfig>) {
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
   camera.position.z = 350;
+  return camera;
+}
 
-  const color = 0xffffff;
-  const intensity = 1;
-  const light = new THREE.DirectionalLight(color, intensity);
-  light.position.set(0, 0, 10);
-  scene.add(light);
+function initLighting() {
+  const lightingGroup = new THREE.Group();
+
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+  directionalLight.position.set(0, 0, 10);
+  lightingGroup.add(directionalLight);
+
+  return { group: lightingGroup };
+}
+
+function initFigure({ config, width, height }: InitProps<SketchConfig>) {
+  if (!config) throw new Error('????');
+
+  const figureGroup = new THREE.Group();
 
   const outlineGeom = new MeshLineGeometry();
   outlineGeom.setPoints(figurePoints as [number, number][]);
@@ -74,10 +74,29 @@ const init: InitFn<CanvasState, SketchConfig> = ({
   const outlineObject = new THREE.Mesh(outlineGeom, outlineMaterial);
   const fillObject = new THREE.Mesh(fillGeom, fillMaterial);
 
-  scene.add(outlineObject);
-  scene.add(fillObject);
+  figureGroup.add(outlineObject);
+  figureGroup.add(fillObject);
 
-  return { scene, camera, outlineMaterial };
+  return { group: figureGroup, outlineMaterial };
+}
+
+const init: InitFn<CanvasState, SketchConfig> = (props) => {
+  props.initControls(({ pane, config }) => {
+    pane.addInput(config, 'lineWidth', { min: 0, max: 5 });
+  });
+
+  const scene = new THREE.Scene();
+
+  const camera = initCamera(props);
+  scene.add(camera);
+
+  const lighting = initLighting();
+  scene.add(lighting.group);
+
+  const figure = initFigure(props);
+  scene.add(figure.group);
+
+  return { scene, camera, outlineMaterial: figure.outlineMaterial };
 };
 
 const frame: FrameFn<CanvasState, SketchConfig> = ({
