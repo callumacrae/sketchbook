@@ -103,7 +103,7 @@ export async function toVanillaCanvas<
     canvas: null as HTMLCanvasElement | null,
     ctx: null as CanvasRenderingContext2D | null,
     renderer: null as THREE.WebGLRenderer | null,
-    resizeTimeout: undefined as NodeJS.Timeout | undefined,
+    resizeTimeout: undefined as ReturnType<typeof setTimeout> | undefined,
     animationFrame: undefined as
       | ReturnType<typeof requestAnimationFrame>
       | undefined,
