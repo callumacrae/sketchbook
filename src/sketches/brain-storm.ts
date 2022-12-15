@@ -156,6 +156,10 @@ async function initSphere(
     new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
     new THREE.MeshPhongMaterial({ color: 0xffffff }), // side
   ];
+  const inverseMaterials = [
+    new THREE.MeshPhongMaterial({ color: 0xff0000, flatShading: true }), // front
+    new THREE.MeshPhongMaterial({ color: 0xff0000 }), // side
+  ];
 
   function drawSphere() {
     if (!config) throw new Error('????');
@@ -270,6 +274,10 @@ async function initSphere(
           true
         );
         characterObj.scale.set(scale, scale, scale);
+
+        if (characterObj instanceof THREE.Mesh && characterObj.visible) {
+          characterObj.material = isInverse ? inverseMaterials : materials;
+        }
       }
     }
   };
