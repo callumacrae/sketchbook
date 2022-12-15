@@ -38,6 +38,7 @@ const sketchConfig = {
     textSize: 10,
     bands: 27,
     letterSpacing: 15,
+    letterSpacingVar: 0.3,
     yMovement: { min: 0.0001, max: 0.002 },
   },
 };
@@ -49,7 +50,8 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
 };
 
 const morseCoder = getMorseCoder('... --- ... / ... -- ...');
-const getIsInverse = (t: number) => morseCoder.at(t * 1.5);
+const getIsInverse = (t: number) =>
+  t < 2000 ? false : morseCoder.at((t - 2000) * 1.5);
 
 function initCamera(
   scene: THREE.Scene,
@@ -195,7 +197,12 @@ async function initSphere(
       const letterSpacing = config.sphere.letterSpacing;
       const lettersOnBand = Math.floor(bandCircumference / letterSpacing);
       for (let yIndex = 0; yIndex < lettersOnBand; yIndex++) {
-        const y = math.scale([0, lettersOnBand], [0, Math.PI * 2], yIndex);
+        const { letterSpacingVar } = config.sphere;
+        const y = math.scale(
+          [0, lettersOnBand],
+          [0, Math.PI * 2],
+          yIndex + random.range(-letterSpacingVar, letterSpacingVar)
+        );
 
         const textMesh = new THREE.Mesh(
           random.pick(characterGeometries),
@@ -255,6 +262,10 @@ const init: InitFn<CanvasState, SketchConfig> = async (props) => {
     sphereFolder.addInput(config.sphere, 'textSize', { min: 5, max: 50 });
     sphereFolder.addInput(config.sphere, 'bands', { min: 5, max: 51 });
     sphereFolder.addInput(config.sphere, 'letterSpacing', { min: 1, max: 100 });
+    sphereFolder.addInput(config.sphere, 'letterSpacingVar', {
+      min: 0,
+      max: 1,
+    });
     sphereFolder.addInput(config.sphere, 'yMovement', { min: 0, max: 0.01 });
   });
 
