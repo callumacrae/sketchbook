@@ -1,7 +1,7 @@
 import { Pane } from 'tweakpane';
 import * as EssentialsPlugin from '@tweakpane/plugin-essentials';
 import { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/fps-graph/api/fps-graph';
-import { defineComponent, h, UnwrapRef, shallowRef, ShallowRef } from 'vue';
+import { defineComponent, h, UnwrapRef } from 'vue';
 import * as THREE from 'three';
 
 export interface Config<SketchConfig = undefined> {
@@ -35,6 +35,7 @@ export interface FrameProps<CanvasState, SketchConfig = undefined> {
   state: CanvasState;
   timestamp: number;
   config?: SketchConfig;
+  hasChanged: boolean;
 }
 
 export type InitFn<CanvasState, SketchConfig = undefined> = (
@@ -167,6 +168,8 @@ export default function toCanvasComponent<
             config: this.sketchbookConfig.sketchConfig as
               | SketchConfig
               | undefined,
+            // hasChanged can be used to see if the config has changed
+            hasChanged: this.hasChanged,
           };
 
           const newState = await frame(frameProps);

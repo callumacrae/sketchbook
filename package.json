@@ -9,7 +9,7 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
   },
   "dependencies": {
-    "@tweakpane/plugin-essentials": "^0.1.4",
+    "@tweakpane/plugin-essentials": "^0.1.5",
     "@types/offscreencanvas": "^2019.6.4",
     "@types/seed-random": "^2.2.1",
     "@types/three": "^0.146.0",

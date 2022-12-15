@@ -1,3 +1,8 @@
+/**
+ * IDEAS FOR FUTURE CHANGES:
+ *
+ * - have the bands slowly animate upwards or downwards
+ */
 import * as THREE from 'three';
 import { Font, FontLoader } from 'three/examples/jsm/loaders/FontLoader';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
@@ -18,12 +23,21 @@ import toCanvasComponent, {
 interface CanvasState {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
-  outlineMaterial: MeshLineMaterial;
-  characterGroup: THREE.Group;
+  figure: Awaited<ReturnType<typeof initFigure>>;
+  sphere: Awaited<ReturnType<typeof initSphere>>;
 }
 
 const sketchConfig = {
-  lineWidth: 1.2,
+  figure: {
+    lineWidth: 1.2,
+  },
+  sphere: {
+    radius: 200,
+    textSize: 10,
+    bands: 27,
+    letterSpacing: 15,
+    yMovement: { min: 0.0001, max: 0.002 },
+  },
 };
 type SketchConfig = typeof sketchConfig;
 
@@ -32,23 +46,26 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
   sketchConfig,
 };
 
-function initCamera({ width, height }: InitProps<SketchConfig>) {
+function initCamera(
+  scene: THREE.Scene,
+  { width, height }: InitProps<SketchConfig>
+) {
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
   camera.position.z = 350;
+  scene.add(camera);
   return camera;
 }
 
-function initLighting() {
-  const lightingGroup = new THREE.Group();
-
+function initLighting(scene: THREE.Scene) {
   const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
   directionalLight.position.set(0, 0, 10);
-  lightingGroup.add(directionalLight);
-
-  return { group: lightingGroup };
+  scene.add(directionalLight);
 }
 
-function initFigure({ config, width, height }: InitProps<SketchConfig>) {
+function initFigure(
+  scene: THREE.Scene,
+  { config, width, height }: InitProps<SketchConfig>
+) {
   if (!config) throw new Error('????');
 
   const figureGroup = new THREE.Group();
@@ -70,7 +87,7 @@ function initFigure({ config, width, height }: InitProps<SketchConfig>) {
 
   const outlineMaterial = new MeshLineMaterial({
     color: 0xffffff,
-    lineWidth: config.lineWidth,
+    lineWidth: config.figure.lineWidth,
     resolution: new THREE.Vector2(width, height),
   });
 
@@ -82,12 +99,21 @@ function initFigure({ config, width, height }: InitProps<SketchConfig>) {
   figureGroup.add(outlineObject);
   figureGroup.add(fillObject);
 
-  return { group: figureGroup, outlineMaterial };
+  scene.add(figureGroup);
+
+  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+    if (props.hasChanged) {
+      outlineMaterial.lineWidth = config.figure.lineWidth;
+    }
+  };
+
+  return { frame };
 }
 
-async function initCharacters() {
-  const characterGroup = new THREE.Group();
-
+async function initSphere(
+  scene: THREE.Scene,
+  { config }: InitProps<SketchConfig>
+) {
   const loader = new FontLoader();
   const font = await new Promise<Font>((resolve) => {
     loader.load('/brain-storm/helvetiker_regular.typeface.json', (font) =>
@@ -95,108 +121,120 @@ async function initCharacters() {
     );
   });
 
-  const characterRadius = 200;
-
-  const characters = 'abcdefghijklmnopqrstuvwxyz'.split('');
-  const characterGeometries = characters.map((character) => {
-    const size = 10;
-    const geometry = new TextGeometry(character, {
-      font,
-      size,
-      height: 1,
-      curveSegments: 12,
-      bevelEnabled: false,
-    });
-
-    geometry.computeBoundingBox();
-    const { boundingBox } = geometry;
-    if (!boundingBox) throw new Error('??');
-    const centerOffsetX = -0.5 * (boundingBox.max.x - boundingBox.min.x);
-    // const centerOffsetY = -0.5 * (boundingBox.max.y - boundingBox.min.y);
-    const centerOffsetY = size / -2;
-
-    geometry.translate(centerOffsetX, centerOffsetY, 0);
-    return geometry;
-  });
-
   const materials = [
     new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
     new THREE.MeshPhongMaterial({ color: 0xffffff }), // side
   ];
 
-  const bands = 27;
-  for (let xIndex = 0; xIndex < bands; xIndex++) {
-    const bandGroup = new THREE.Group();
+  function drawSphere() {
+    if (!config) throw new Error('????');
 
-    const x = math.scale([-1, bands], [Math.PI / -2, Math.PI / 2], xIndex);
-    const bandRadius = characterRadius * Math.cos(x);
-    const bandCircumference = 2 * Math.PI * bandRadius;
+    const characters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+    const characterGeometries = characters.map((character) => {
+      const geometry = new TextGeometry(character, {
+        font,
+        size: config.sphere.textSize,
+        height: 1,
+        curveSegments: 12,
+        bevelEnabled: false,
+      });
 
-    const letterSpacing = 15;
+      geometry.computeBoundingBox();
+      const { boundingBox } = geometry;
+      if (!boundingBox) throw new Error('??');
+      const centerOffsetX = -0.5 * (boundingBox.max.x - boundingBox.min.x);
+      // const centerOffsetY = -0.5 * (boundingBox.max.y - boundingBox.min.y);
+      const centerOffsetY = config.sphere.textSize / -2;
 
-    const lettersOnBand = Math.floor(bandCircumference / letterSpacing);
-    for (let yIndex = 0; yIndex < lettersOnBand; yIndex++) {
-      const y = math.scale([0, lettersOnBand], [0, Math.PI * 2], yIndex);
+      geometry.translate(centerOffsetX, centerOffsetY, 0);
+      return geometry;
+    });
 
-      const textMesh = new THREE.Mesh(
-        random.pick(characterGeometries),
-        materials
-      );
+    const sphereGroup = new THREE.Group();
 
-      textMesh.rotateY(y);
-      textMesh.rotateX(x);
-      textMesh.translateZ(-characterRadius);
-      bandGroup.add(textMesh);
+    const bands = config.sphere.bands;
+    for (let xIndex = 0; xIndex < bands; xIndex++) {
+      const bandGroup = new THREE.Group();
+      bandGroup.userData.yVelocity =
+        random.range(config.sphere.yMovement.min, config.sphere.yMovement.max) *
+        random.pick([-1, 1]);
+
+      const x = math.scale([-1, bands], [Math.PI / -2, Math.PI / 2], xIndex);
+      const bandRadius = config.sphere.radius * Math.cos(x);
+      const bandCircumference = 2 * Math.PI * bandRadius;
+
+      const letterSpacing = config.sphere.letterSpacing;
+      const lettersOnBand = Math.floor(bandCircumference / letterSpacing);
+      for (let yIndex = 0; yIndex < lettersOnBand; yIndex++) {
+        const y = math.scale([0, lettersOnBand], [0, Math.PI * 2], yIndex);
+
+        const textMesh = new THREE.Mesh(
+          random.pick(characterGeometries),
+          materials
+        );
+
+        textMesh.rotateY(y);
+        textMesh.rotateX(x);
+        textMesh.translateZ(-config.sphere.radius);
+        bandGroup.add(textMesh);
+      }
+
+      sphereGroup.add(bandGroup);
     }
-
-    characterGroup.add(bandGroup);
+    scene.add(sphereGroup);
+    return sphereGroup;
   }
 
-  return { group: characterGroup };
+  let sphereGroup = drawSphere();
+
+  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+    if (props.hasChanged) {
+      sphereGroup.removeFromParent();
+      sphereGroup = drawSphere();
+    }
+    for (const bandGroup of sphereGroup.children) {
+      bandGroup.rotateY(bandGroup.userData.yVelocity);
+    }
+  };
+
+  return { frame };
 }
 
 const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   props.initControls(({ pane, config }) => {
-    pane.addInput(config, 'lineWidth', { min: 0, max: 5 });
+    const figureFolder = pane.addFolder({ title: 'Figure' });
+    figureFolder.addInput(config.figure, 'lineWidth', { min: 0, max: 5 });
+
+    const sphereFolder = pane.addFolder({ title: 'Sphere' });
+    sphereFolder.addInput(config.sphere, 'radius', { min: 150, max: 250 });
+    sphereFolder.addInput(config.sphere, 'textSize', { min: 5, max: 50 });
+    sphereFolder.addInput(config.sphere, 'bands', { min: 5, max: 51 });
+    sphereFolder.addInput(config.sphere, 'letterSpacing', { min: 1, max: 100 });
+    sphereFolder.addInput(config.sphere, 'yMovement', { min: 0, max: 0.01 });
   });
 
   const scene = new THREE.Scene();
-
-  const camera = initCamera(props);
-  scene.add(camera);
-
-  const lighting = initLighting();
-  scene.add(lighting.group);
-
-  const characters = await initCharacters();
-  scene.add(characters.group);
-
-  const figure = initFigure(props);
-  scene.add(figure.group);
+  const camera = initCamera(scene, props);
+  initLighting(scene);
+  const sphere = await initSphere(scene, props);
+  const figure = initFigure(scene, props);
 
   return {
     scene,
     camera,
-    outlineMaterial: figure.outlineMaterial,
-    characterGroup: characters.group,
+    figure,
+    sphere,
   };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = ({
-  renderer,
-  config,
-  state,
-}) => {
+const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+  const { renderer, config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
-  const { scene, camera, outlineMaterial, characterGroup } = state;
+  state.figure.frame(props);
+  state.sphere.frame(props);
 
-  outlineMaterial.lineWidth = config.lineWidth;
-
-  const bandGroup = characterGroup.children[11];
-  bandGroup.rotateY(0.002);
-
-  renderer.render(scene, camera);
+  renderer.render(state.scene, state.camera);
 };
 
 export default toCanvasComponent<CanvasState, SketchConfig>(
