@@ -1,7 +1,5 @@
-import toCanvasComponent, {
-  InitFn,
-  FrameFn,
-} from '../utils/to-canvas-component';
+import { toCanvasComponent } from '@/utils/renderers';
+import type { InitFn, FrameFn } from '@/utils/renderers';
 
 interface CanvasState {
   num: number;

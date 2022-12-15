@@ -1,9 +1,3 @@
-/**
- * IDEAS FOR FUTURE CHANGES:
- *
- * - have the bands slowly animate upwards or downwards
- * - make the width responsive lol
- */
 import * as THREE from 'three';
 import { Font, FontLoader } from 'three/examples/jsm/loaders/FontLoader';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
@@ -15,12 +9,8 @@ import getMorseCoder from '@/utils/morse-code';
 // https://www.shutterstock.com/image-illustration/man-silhouette-floating-over-colored-space-1871484967
 import figurePoints from './brain-storm-path.json';
 
-import toCanvasComponent, {
-  Config,
-  InitFn,
-  FrameFn,
-  InitProps,
-} from '../utils/to-canvas-component';
+import { toCanvasComponent } from '@/utils/renderers';
+import type { Config, InitFn, FrameFn, InitProps } from '@/utils/renderers';
 
 interface CanvasState {
   scene: THREE.Scene;
@@ -31,14 +21,14 @@ interface CanvasState {
 
 const sketchConfig = {
   figure: {
-    lineWidth: 1.2,
+    lineWidth: 1.5,
   },
   sphere: {
     radius: 200,
     textSize: 10,
-    bands: 27,
+    bands: 31,
     letterSpacing: 15,
-    letterSpacingVar: 0.3,
+    letterSpacingVar: 0.33,
     yMovement: { min: 0.0001, max: 0.002 },
   },
 };
@@ -46,10 +36,13 @@ type SketchConfig = typeof sketchConfig;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
+  width: 800,
+  height: 800,
+  pageBg: 'black',
   sketchConfig,
 };
 
-const morseCoder = getMorseCoder('... --- ... / ... -- ...');
+const morseCoder = getMorseCoder('... --- ...');
 const getIsInverse = (t: number) =>
   t < 2000 ? false : morseCoder.at((t - 2000) * 1.5);
 
@@ -307,19 +300,6 @@ const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   initLighting(scene);
   const sphere = await initSphere(scene, props);
   const figure = initFigure(scene, props);
-
-  // const char = new THREE.CircleGeometry(30);
-  // const mat = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
-  // const obj = new THREE.Mesh(char, mat);
-  // obj.rotateX(Math.PI / 2 - Math.PI / 4); // when hits PI / 2, move to PI / -2
-  // obj.rotateX(Math.PI / 8 * 5);
-  // console.log(obj.rotation.x);
-  // if (obj.rotation.x > Math.PI / 2) {
-  //   console.log('rotating');
-  //   obj.rotateX(-Math.PI);
-  // }
-  // obj.translateZ(-200);
-  // scene.add(obj);
 
   return {
     scene,

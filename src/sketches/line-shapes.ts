@@ -1,10 +1,7 @@
 import SimplexNoise from 'simplex-noise';
-import toCanvasComponent, {
-  Config,
-  InitFn,
-  FrameFn,
-} from '../utils/to-canvas-component';
-import Vector from '../utils/vector';
+import { toCanvasComponent } from '@/utils/renderers';
+import type { Config, InitFn, FrameFn } from '@/utils/renderers';
+import Vector from '@/utils/vector';
 
 interface CanvasState {
   simplex: SimplexNoise;

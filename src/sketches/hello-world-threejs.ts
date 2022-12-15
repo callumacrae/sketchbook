@@ -1,10 +1,7 @@
 import * as THREE from 'three';
 
-import toCanvasComponent, {
-  Config,
-  InitFn,
-  FrameFn,
-} from '../utils/to-canvas-component';
+import { toCanvasComponent } from '@/utils/renderers';
+import type { Config, InitFn, FrameFn } from '@/utils/renderers';
 
 interface CanvasState {
   scene: THREE.Scene;

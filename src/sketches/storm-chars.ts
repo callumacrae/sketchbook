@@ -1,11 +1,8 @@
 import SimplexNoise from 'simplex-noise';
-import toCanvasComponent, {
-  Config,
-  InitFn,
-  FrameFn,
-} from '../utils/to-canvas-component';
-import { pixelateImage } from '../utils/textures/sampler';
-import * as random from '../utils/random';
+import { toCanvasComponent } from '@/utils/renderers';
+import type { Config, InitFn, FrameFn } from '@/utils/renderers';
+import { pixelateImage } from '@/utils/textures/sampler';
+import * as random from '@/utils/random';
 
 interface CanvasState {
   simplex: SimplexNoise;
