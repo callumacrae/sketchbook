@@ -23,6 +23,7 @@ export interface InitProps<SketchConfig = undefined> {
   renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
+  timestamp: number;
   config?: SketchConfig;
   initControls: (cb: (props: InitControlsProps<SketchConfig>) => void) => void;
 }
@@ -107,6 +108,7 @@ export default function toCanvasComponent<
         renderer: this.renderer,
         width: this.width,
         height: this.height,
+        timestamp: 0,
         config,
         initControls: (cb) => {
           if (!config) {

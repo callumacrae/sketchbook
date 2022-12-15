@@ -24,7 +24,7 @@ export default class Vector {
   }
 
   toArray() {
-    return [this.ax, this.ay]
+    return [this.ax, this.ay];
   }
 
   /**

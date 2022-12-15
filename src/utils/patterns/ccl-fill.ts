@@ -86,11 +86,11 @@ export default function cclFill(
     .sort((a, b) => a - b);
 
   // const maxGroupSize = Math.max(...groupSizesFlat);
-  const maxGroupSize = groupSizesFlat[Math.ceil(groupSizesFlat.length * 0.9)]
+  const maxGroupSize = groupSizesFlat[Math.ceil(groupSizesFlat.length * 0.9)];
 
   // Calculate colours for each group
   const groupColors: { [label: string]: Color } = {
-    '-1': [0, 0, 0, 0]
+    '-1': [0, 0, 0, 0],
   };
   for (const [label, value] of Object.entries(groupSizes)) {
     if (label === '-1') {

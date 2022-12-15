@@ -58,7 +58,7 @@ export default function generatePath(points: Coord[], config: Config) {
 
       const newPoint: Coord = [
         math.round(currentPoint[0] + newDirection.ax, config.ROUND_FACTOR),
-        math.round(currentPoint[1] + newDirection.ay, config.ROUND_FACTOR)
+        math.round(currentPoint[1] + newDirection.ay, config.ROUND_FACTOR),
       ];
 
       path.push(newPoint);

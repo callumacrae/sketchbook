@@ -14,7 +14,7 @@ function simplexDistribution({
   height: canvasHeight,
   scaleFactor = 1 / 80,
   threshold = 0.4,
-  noise
+  noise,
 }: Options) {
   let maxLoops = 1e6;
   const abortLoop = (msg?: string) => {
@@ -40,9 +40,9 @@ function simplexDistribution({
       if (isHotspot(x, y)) {
         // Check if already in another hotspot - if so, abort
         // @todo room for optimisation again - can skip to end of hotspot
-        const alreadyGrouped = hotspots.some(hotspot =>
+        const alreadyGrouped = hotspots.some((hotspot) =>
           hotspot.find(
-            toSearchItem => toSearchItem[0] === x && toSearchItem[1] === y
+            (toSearchItem) => toSearchItem[0] === x && toSearchItem[1] === y
           )
         );
 
@@ -53,7 +53,7 @@ function simplexDistribution({
         const hotspot: Coord[] = [[x, y]];
         const toSearch: Coord[] = [
           [x + width, y],
-          [x, y + height]
+          [x, y + height],
         ];
 
         // Heads up, toSearch.length changes mid-loop
@@ -70,7 +70,7 @@ function simplexDistribution({
               // we can do .includes() on or something
               if (
                 !toSearch.find(
-                  toSearchItem =>
+                  (toSearchItem) =>
                     toSearchItem[0] === searchNext[0] &&
                     toSearchItem[1] === searchNext[1]
                 )
@@ -91,7 +91,7 @@ function simplexDistribution({
     }
   }
 
-  return hotspots.map(hotspot => {
+  return hotspots.map((hotspot) => {
     const size = hotspot.length;
     const brightestSpot = hotspot.reduce(
       (brightest, point) => {
@@ -107,12 +107,12 @@ function simplexDistribution({
       },
       {
         value: 0,
-        point: [0, 0] as Coord
+        point: [0, 0] as Coord,
       }
     );
 
     const {
-      point: [x, y]
+      point: [x, y],
     } = brightestSpot;
 
     return { x, y, value: size, value2: brightestSpot.value };

@@ -3,7 +3,10 @@
  *     A   B=A
  *    /__C__\
  */
-export function randomEquilateral(centroid: { x: number; y: number }, A: number) {
+export function randomEquilateral(
+  centroid: { x: number; y: number },
+  A: number
+) {
   // const A = 50 + Math.random() * 20;
   // const C = 40 + Math.random() * 40;
 
@@ -12,7 +15,7 @@ export function randomEquilateral(centroid: { x: number; y: number }, A: number)
   if (!centroid) {
     centroid = {
       x: 100 + Math.random() * 400,
-      y: 100 + Math.random() * 400
+      y: 100 + Math.random() * 400,
     };
   }
 

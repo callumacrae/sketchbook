@@ -2,6 +2,7 @@
  * IDEAS FOR FUTURE CHANGES:
  *
  * - have the bands slowly animate upwards or downwards
+ * - make the width responsive lol
  */
 import * as THREE from 'three';
 import { Font, FontLoader } from 'three/examples/jsm/loaders/FontLoader';
@@ -9,6 +10,7 @@ import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
 import { MeshLineGeometry, MeshLineMaterial } from 'meshline';
 import * as random from '@/utils/random';
 import * as math from '@/utils/maths';
+import getMorseCoder from '@/utils/morse-code';
 
 // https://www.shutterstock.com/image-illustration/man-silhouette-floating-over-colored-space-1871484967
 import figurePoints from './brain-storm-path.json';
@@ -46,12 +48,15 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
   sketchConfig,
 };
 
+const morseCoder = getMorseCoder('... --- ... / ... -- ...');
+const getIsInverse = (t: number) => morseCoder.at(t * 1.5);
+
 function initCamera(
   scene: THREE.Scene,
   { width, height }: InitProps<SketchConfig>
 ) {
-  const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-  camera.position.z = 350;
+  const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 1000);
+  camera.position.z = 450;
   scene.add(camera);
   return camera;
 }
@@ -72,32 +77,52 @@ function initFigure(
 
   const outlineGeom = new MeshLineGeometry();
   outlineGeom.setPoints(figurePoints as [number, number][]);
-  const fillShape = new THREE.Shape();
-  for (let i = 0; i < figurePoints.length; i++) {
-    const point = figurePoints[i];
-    if (i === 0) {
-      fillShape.moveTo(point[0], point[1]);
-    } else {
-      fillShape.lineTo(point[0], point[1]);
-    }
-  }
-  const fillGeom = new THREE.ShapeGeometry(fillShape);
-  // The translate ensures that it appears behind the outline
-  fillGeom.translate(0, 0, -0.1);
-
   const outlineMaterial = new MeshLineMaterial({
     color: 0xffffff,
     lineWidth: config.figure.lineWidth,
     resolution: new THREE.Vector2(width, height),
   });
+  const outlineObject = new THREE.Mesh(outlineGeom, outlineMaterial);
+  figureGroup.add(outlineObject);
 
+  const inverseFillShape = new THREE.Shape();
+  inverseFillShape.moveTo(-1000, -1000);
+  inverseFillShape.lineTo(1000, -1000);
+  inverseFillShape.lineTo(1000, 1000);
+  inverseFillShape.lineTo(-1000, 1000);
+  inverseFillShape.lineTo(-1000, -1000);
+
+  const holePath = new THREE.Path();
+  inverseFillShape.holes.push(holePath);
+
+  const fillShape = new THREE.Shape();
+  for (let i = 0; i < figurePoints.length; i++) {
+    const point = figurePoints[i];
+    if (i === 0) {
+      fillShape.moveTo(point[0], point[1]);
+      holePath.moveTo(point[0], point[1]);
+    } else {
+      fillShape.lineTo(point[0], point[1]);
+      holePath.lineTo(point[0], point[1]);
+    }
+  }
+
+  const fillGroup = new THREE.Group();
   const fillMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
-  const outlineObject = new THREE.Mesh(outlineGeom, outlineMaterial);
+  const fillGeom = new THREE.ShapeGeometry(fillShape);
   const fillObject = new THREE.Mesh(fillGeom, fillMaterial);
+  fillGroup.add(fillObject);
 
-  figureGroup.add(outlineObject);
-  figureGroup.add(fillObject);
+  const inverseFillGeom = new THREE.ShapeGeometry(inverseFillShape);
+  const inverseFillObject = new THREE.Mesh(inverseFillGeom, fillMaterial);
+  inverseFillObject.visible = false;
+  fillGroup.add(inverseFillObject);
+
+  // The translate ensures that it appears behind the outline
+  fillGroup.translateZ(-0.1);
+
+  figureGroup.add(fillGroup);
 
   scene.add(figureGroup);
 
@@ -105,6 +130,10 @@ function initFigure(
     if (props.hasChanged) {
       outlineMaterial.lineWidth = config.figure.lineWidth;
     }
+
+    const isInverse = getIsInverse(props.timestamp);
+    inverseFillObject.visible = isInverse;
+    fillObject.visible = !isInverse;
   };
 
   return { frame };
@@ -187,13 +216,29 @@ async function initSphere(
 
   let sphereGroup = drawSphere();
 
-  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-    if (props.hasChanged) {
+  const frame: FrameFn<CanvasState, SketchConfig> = ({
+    hasChanged,
+    timestamp,
+    config,
+  }) => {
+    if (!config) throw new Error('???');
+
+    if (hasChanged) {
       sphereGroup.removeFromParent();
       sphereGroup = drawSphere();
     }
+
+    const isInverse = getIsInverse(timestamp);
     for (const bandGroup of sphereGroup.children) {
       bandGroup.rotateY(bandGroup.userData.yVelocity);
+
+      for (const characterObj of bandGroup.children) {
+        const position = new THREE.Vector3();
+        position.setFromMatrixPosition(characterObj.matrixWorld);
+        characterObj.visible = isInverse
+          ? position.z < config.sphere.textSize / -2 - 2
+          : true;
+      }
     }
   };
 

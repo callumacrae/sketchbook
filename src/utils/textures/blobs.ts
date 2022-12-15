@@ -64,7 +64,7 @@ export default class BlobCanvas {
 
     const contours = this.generateContours(t);
 
-    contours.forEach(points => {
+    contours.forEach((points) => {
       this.context.beginPath();
       points.forEach((point, i) => {
         if (!i) {
@@ -103,7 +103,7 @@ export default class BlobCanvas {
 
     if (!this.noise) {
       // This is just to make typescript happy basically
-      throw new Error('Noise undefined')
+      throw new Error('Noise undefined');
     }
 
     const noise = this.noise.noise3D(x * xScale, y * yScale, t * tScale);
@@ -140,7 +140,7 @@ export default class BlobCanvas {
       imageData.data[stride + 3] = 66;
     }
 
-    this.context.putImageData(imageData, 0, 0)
+    this.context.putImageData(imageData, 0, 0);
     return imageData;
   }
 
@@ -148,7 +148,7 @@ export default class BlobCanvas {
     // Resolution - grid height and width
     const resolution = 10;
 
-    const threshold = 0.2
+    const threshold = 0.2;
     const hitsThreshold = (value: number) => value > threshold;
 
     type Point = [number, number];
@@ -211,7 +211,7 @@ export default class BlobCanvas {
               return [
                 [[x1, y1 - resolution, x1, y1], 'left'],
                 [[x1, y1 - resolution, x2, y2 - resolution], 'up'],
-                [[x2, y2 - resolution, x2, y2], 'right']
+                [[x2, y2 - resolution, x2, y2], 'right'],
               ] as EdgeAndDirection[];
             }
 
@@ -219,7 +219,7 @@ export default class BlobCanvas {
               return [
                 [[x1, y1, x1 + resolution, y1], 'up'],
                 [[x1 + resolution, y1, x2 + resolution, y2], 'right'],
-                [[x2, y2, x2 + resolution, y2], 'down']
+                [[x2, y2, x2 + resolution, y2], 'down'],
               ] as EdgeAndDirection[];
             }
 
@@ -227,14 +227,14 @@ export default class BlobCanvas {
               return [
                 [[x2, y2, x2, y2 + resolution], 'right'],
                 [[x1, y1 + resolution, x2, y2 + resolution], 'down'],
-                [[x1, y1, x1, y1 + resolution], 'left']
+                [[x1, y1, x1, y1 + resolution], 'left'],
               ] as EdgeAndDirection[];
             }
 
             return [
               [[x2 - resolution, y2, x2, y2], 'down'],
               [[x1 - resolution, y1, x2 - resolution, y2], 'left'],
-              [[x1 - resolution, y1, x1, y1], 'up']
+              [[x1 - resolution, y1, x1, y1], 'up'],
             ] as EdgeAndDirection[];
           })();
 
