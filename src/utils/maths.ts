@@ -20,8 +20,14 @@ export function round(value: number, factor = 0.01): number {
 export function scale(
   domain: [number, number],
   range: [number, number],
-  value: number
+  value: number,
+  shouldClamp = false
 ): number {
   const u = (value - domain[0]) / (domain[1] - domain[0]);
-  return range[0] + (range[1] - range[0]) * u;
+  const scaled = range[0] + (range[1] - range[0]) * u;
+  return shouldClamp ? clamp(range, scaled) : scaled;
+}
+
+export function clamp(range: [number, number], value: number) {
+  return Math.max(Math.min(...range), Math.min(value, Math.max(...range)));
 }

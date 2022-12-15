@@ -184,7 +184,7 @@ async function initSphere(
     const sphereGroup = new THREE.Group();
 
     const bands = config.sphere.bands;
-    for (let xIndex = 0; xIndex < bands; xIndex++) {
+    for (let xIndex = 0; xIndex <= bands; xIndex++) {
       const bandGroup = new THREE.Group();
       bandGroup.userData.yVelocity =
         random.range(config.sphere.yMovement.min, config.sphere.yMovement.max) *
@@ -195,7 +195,13 @@ async function initSphere(
       const bandCircumference = 2 * Math.PI * bandRadius;
 
       const letterSpacing = config.sphere.letterSpacing;
-      const lettersOnBand = Math.floor(bandCircumference / letterSpacing);
+      // We want to start with fewer letters on the bottom and top rings, but
+      // not too few as the bands are moving
+      const lettersOnBand = Math.floor(
+        (bandCircumference + config.sphere.radius * 2 * Math.PI) /
+          letterSpacing /
+          2
+      );
       for (let yIndex = 0; yIndex < lettersOnBand; yIndex++) {
         const { letterSpacingVar } = config.sphere;
         const y = math.scale(
@@ -213,6 +219,8 @@ async function initSphere(
         textMesh.rotateX(x);
         textMesh.translateZ(-config.sphere.radius);
         bandGroup.add(textMesh);
+
+        textMesh.userData.lastXRotation = x;
       }
 
       sphereGroup.add(bandGroup);
@@ -245,6 +253,23 @@ async function initSphere(
         characterObj.visible = isInverse
           ? position.z < config.sphere.textSize / -2 - 2
           : true;
+
+        characterObj.translateZ(config.sphere.radius);
+        characterObj.rotateX(-characterObj.userData.lastXRotation);
+        characterObj.userData.lastXRotation += 0.001;
+        if (characterObj.userData.lastXRotation > Math.PI / 2) {
+          characterObj.userData.lastXRotation -= Math.PI;
+        }
+        characterObj.rotateX(characterObj.userData.lastXRotation);
+        characterObj.translateZ(-config.sphere.radius);
+
+        const scale = math.scale(
+          [(Math.PI / 8) * 3, Math.PI / 2],
+          [1, 0],
+          Math.abs(characterObj.userData.lastXRotation),
+          true
+        );
+        characterObj.scale.set(scale, scale, scale);
       }
     }
   };
@@ -274,6 +299,19 @@ const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   initLighting(scene);
   const sphere = await initSphere(scene, props);
   const figure = initFigure(scene, props);
+
+  // const char = new THREE.CircleGeometry(30);
+  // const mat = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
+  // const obj = new THREE.Mesh(char, mat);
+  // obj.rotateX(Math.PI / 2 - Math.PI / 4); // when hits PI / 2, move to PI / -2
+  // obj.rotateX(Math.PI / 8 * 5);
+  // console.log(obj.rotation.x);
+  // if (obj.rotation.x > Math.PI / 2) {
+  //   console.log('rotating');
+  //   obj.rotateX(-Math.PI);
+  // }
+  // obj.translateZ(-200);
+  // scene.add(obj);
 
   return {
     scene,
