@@ -1,0 +1,10 @@
+export * as canvas from './canvas';
+export * as colors from './colors';
+export { default as EventEmitter } from './events';
+export * as lines from './lines';
+export * as maths from './maths';
+export { default as getMorseCoder } from './morse-code';
+export * as perf from './perf';
+export * as random from './random';
+export * as renderers from './renderers';
+export { default as Vector } from './vector';

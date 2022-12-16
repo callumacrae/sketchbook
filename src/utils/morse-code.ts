@@ -39,7 +39,6 @@ export default function getMorseCoder(pattern: string) {
     on: false,
   });
 
-  console.log(totalTime);
   return {
     at(time: number) {
       const normalisedTime = time % totalTime;

@@ -1,10 +1,14 @@
 {
   "name": "@callumacrae/utils",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Utils for creative dev",
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "exports": {
+    "import": "./built/index.js",
+    "renderers": "./built/renderers.js"
   },
   "repository": {
     "type": "git",
