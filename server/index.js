@@ -1,5 +1,7 @@
 // WARNING ONLY RUN THIS LOCALLY
 
+/* eslint-disable */
+
 const fs = require('fs');
 const express = require('express');
 const bodyParser = require('body-parser');
