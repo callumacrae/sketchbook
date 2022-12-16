@@ -39,7 +39,7 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
   capture: {
     enabled: false,
-    duration: 19000 - sketchConfig.startDelay,
+    duration: 14200,
     fps: 24,
     directory: 'brain-storm',
   },
@@ -53,7 +53,7 @@ const morseCoder = getMorseCoder('... --- ...');
 const getIsInverse = (t: number) =>
   t < sketchConfig.startDelay
     ? false
-    : morseCoder.at((t - sketchConfig.startDelay) * 1.5);
+    : morseCoder.at((t - sketchConfig.startDelay) * 2.25);
 
 function initCamera(
   scene: THREE.Scene,
@@ -149,9 +149,7 @@ async function initSphere(
 ) {
   const loader = new FontLoader();
   const font = await new Promise<Font>((resolve) => {
-    loader.load('/brain-storm/helvetiker_regular.typeface.json', (font) =>
-      resolve(font)
-    );
+    loader.load('/brain-storm/twitter-chirp.json', (font) => resolve(font));
   });
 
   const materials = [

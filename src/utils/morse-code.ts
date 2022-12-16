@@ -19,13 +19,13 @@ export default function getMorseCoder(pattern: string) {
       }
       timings.push({
         start: totalTime,
-        end: (totalTime += char === '.' ? 1000 : 2000),
+        end: (totalTime += char === '.' ? 1000 : 3000),
         on: true,
       });
     } else if (char === ' ' || char === '/') {
       timings.push({
         start: totalTime,
-        end: (totalTime += char === ' ' ? 2000 : 5000),
+        end: (totalTime += char === ' ' ? 2000 : 7000),
         on: false,
       });
     }
@@ -35,10 +35,11 @@ export default function getMorseCoder(pattern: string) {
 
   timings.push({
     start: totalTime,
-    end: (totalTime += 5000),
+    end: (totalTime += 7000),
     on: false,
   });
 
+  console.log(totalTime);
   return {
     at(time: number) {
       const normalisedTime = time % totalTime;
