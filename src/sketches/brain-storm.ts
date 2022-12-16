@@ -9,8 +9,13 @@ import getMorseCoder from '@/utils/morse-code';
 // https://www.shutterstock.com/image-illustration/man-silhouette-floating-over-colored-space-1871484967
 import figurePoints from './brain-storm-path.json';
 
-import { toCanvasComponent } from '@/utils/renderers';
-import type { Config, InitFn, FrameFn, InitProps } from '@/utils/renderers';
+import { toCanvasComponent } from '@/utils/renderers/vue';
+import type {
+  Config,
+  InitFn,
+  FrameFn,
+  InitProps,
+} from '@/utils/renderers/vanilla';
 
 interface CanvasState {
   scene: THREE.Scene;

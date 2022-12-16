@@ -1,5 +1,5 @@
-import { toCanvasComponent } from '@/utils/renderers';
-import type { Config, InitFn, FrameFn } from '@/utils/renderers';
+import { toCanvasComponent } from '@/utils/renderers/vue';
+import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 interface CanvasState {
   bg: HTMLImageElement;

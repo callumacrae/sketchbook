@@ -1,6 +1,6 @@
 import SimplexNoise from 'simplex-noise';
-import { toCanvasComponent } from '@/utils/renderers';
-import type { Config, InitFn, FrameFn } from '@/utils/renderers';
+import { toCanvasComponent } from '@/utils/renderers/vue';
+import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import { pixelateImage } from '@/utils/textures/sampler';
 import * as random from '@/utils/random';
 

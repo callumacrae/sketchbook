@@ -6,5 +6,6 @@ export * as maths from './maths';
 export { default as getMorseCoder } from './morse-code';
 export * as perf from './perf';
 export * as random from './random';
-export * as renderers from './renderers';
+export { toVanillaCanvas } from './renderers/vanilla';
+export { toCanvasComponent } from './renderers/vue';
 export { default as Vector } from './vector';

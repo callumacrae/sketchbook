@@ -1,6 +1,5 @@
 import { Pane } from 'tweakpane';
 import * as EssentialsPlugin from '@tweakpane/plugin-essentials';
-import { defineComponent, h } from 'vue';
 import * as THREE from 'three';
 import type { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/fps-graph/api/fps-graph';
 
@@ -53,35 +52,6 @@ export type InitFn<CanvasState, SketchConfig = undefined> = (
 export type FrameFn<CanvasState, SketchConfig = undefined> = (
   props: FrameProps<CanvasState, SketchConfig>
 ) => Promise<CanvasState | void> | CanvasState | void;
-
-export function toCanvasComponent<
-  CanvasState = undefined,
-  SketchConfig = undefined
->(
-  init: InitFn<CanvasState, SketchConfig>,
-  frame: FrameFn<CanvasState, SketchConfig>,
-  sketchbookConfig: Partial<Config<SketchConfig>> = {}
-) {
-  return defineComponent({
-    render: () => h('canvas', { ref: 'canvas' }),
-    async mounted() {
-      const canvas = this.$refs.canvas as HTMLCanvasElement | null;
-      const { teardown } = await toVanillaCanvas<CanvasState, SketchConfig>(
-        canvas,
-        init,
-        frame,
-        sketchbookConfig
-      );
-
-      this.$options.teardown = teardown;
-    },
-    unmounted() {
-      if (this.$options.teardown) {
-        this.$options.teardown();
-      }
-    },
-  });
-}
 
 export async function toVanillaCanvas<
   CanvasState = undefined,
