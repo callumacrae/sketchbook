@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { RouteRecordRaw, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
+import type { RouteRecordRaw } from 'vue-router';
 
 const preview = ref<RouteRecordRaw | null>(null);
 const previewLink = ref('');
@@ -59,6 +60,12 @@ function handleTransitionEnd() {
     </div>
   </div>
 </template>
+
+<script lang="ts">
+export default {
+  name: 'ViewIndex',
+};
+</script>
 
 <style scoped>
 .main {

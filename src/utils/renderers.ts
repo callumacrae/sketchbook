@@ -1,8 +1,8 @@
 import { Pane } from 'tweakpane';
 import * as EssentialsPlugin from '@tweakpane/plugin-essentials';
-import { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/fps-graph/api/fps-graph';
 import { defineComponent, h } from 'vue';
 import * as THREE from 'three';
+import type { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/fps-graph/api/fps-graph';
 
 export interface Config<SketchConfig = undefined> {
   type: 'context2d' | 'threejs';

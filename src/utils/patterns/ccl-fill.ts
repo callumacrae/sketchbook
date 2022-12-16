@@ -82,7 +82,7 @@ export default function cclFill(
 
   const groupSizesFlat = Object.entries(groupSizes)
     .filter(([label]) => label !== '-1')
-    .map(([key, value]) => value)
+    .map(([_key, value]) => value)
     .sort((a, b) => a - b);
 
   // const maxGroupSize = Math.max(...groupSizesFlat);

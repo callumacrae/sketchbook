@@ -3,6 +3,7 @@ import seedRandom from 'seed-random';
 let currentRandom: () => number;
 
 export function setSeed(seed: string) {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   window.randomSeed = seed;
 
