@@ -17,7 +17,7 @@ export function doWorkOffscreen(width: number, height: number, workFn: WorkFn) {
   const ctx = canvas.getContext('2d');
 
   // This is to keep typescript happy 🤷‍♂️
-  if (!ctx) {
+  if (!ctx || ctx instanceof ImageBitmapRenderingContext) {
     throw new Error('Something went wrong');
   }
 
