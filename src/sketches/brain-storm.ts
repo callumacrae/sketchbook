@@ -231,6 +231,7 @@ async function initSphere(
   const frame: FrameFn<CanvasState, SketchConfig> = ({
     hasChanged,
     timestamp,
+    delta,
     config,
   }) => {
     if (!config) throw new Error('???');
@@ -242,7 +243,7 @@ async function initSphere(
 
     const isInverse = getIsInverse(timestamp);
     for (const bandGroup of sphereGroup.children) {
-      bandGroup.rotateY(bandGroup.userData.yVelocity);
+      bandGroup.rotateY((bandGroup.userData.yVelocity / 16.6) * delta);
 
       for (const characterObj of bandGroup.children) {
         const position = new THREE.Vector3();
@@ -253,7 +254,7 @@ async function initSphere(
 
         characterObj.translateZ(config.sphere.radius);
         characterObj.rotateX(-characterObj.userData.lastXRotation);
-        characterObj.userData.lastXRotation += 0.001;
+        characterObj.userData.lastXRotation += delta * 0.00006;
         if (characterObj.userData.lastXRotation > Math.PI / 2) {
           characterObj.userData.lastXRotation -= Math.PI;
         }

@@ -36,6 +36,7 @@ export interface FrameProps<CanvasState, SketchConfig = undefined> {
   height: number;
   state: CanvasState;
   timestamp: number;
+  delta: number;
   config?: SketchConfig;
   hasChanged: boolean;
 }
@@ -104,6 +105,7 @@ export async function toVanillaCanvas<
     ctx: null as CanvasRenderingContext2D | null,
     renderer: null as THREE.WebGLRenderer | null,
     resizeTimeout: undefined as ReturnType<typeof setTimeout> | undefined,
+    previousFrameTime: 0,
     animationFrame: undefined as
       | ReturnType<typeof requestAnimationFrame>
       | undefined,
@@ -194,6 +196,7 @@ export async function toVanillaCanvas<
         height: data.height,
         state: data.canvasState as CanvasState,
         timestamp,
+        delta: timestamp - data.previousFrameTime,
         config: data.sketchbookConfig.sketchConfig as SketchConfig | undefined,
         // hasChanged can be used to see if the config has changed
         hasChanged: data.hasChanged,
@@ -205,6 +208,7 @@ export async function toVanillaCanvas<
       }
 
       data.hasChanged = false;
+      data.previousFrameTime = timestamp;
     }
 
     if (data.fpsGraph) {
