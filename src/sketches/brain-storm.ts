@@ -20,6 +20,7 @@ interface CanvasState {
 }
 
 const sketchConfig = {
+  startDelay: 1000,
   figure: {
     lineWidth: 1.5,
   },
@@ -36,6 +37,12 @@ type SketchConfig = typeof sketchConfig;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
+  capture: {
+    enabled: false,
+    duration: 19000 - sketchConfig.startDelay,
+    fps: 24,
+    directory: 'brain-storm',
+  },
   width: 800,
   height: 800,
   pageBg: 'black',
@@ -44,7 +51,9 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
 
 const morseCoder = getMorseCoder('... --- ...');
 const getIsInverse = (t: number) =>
-  t < 2000 ? false : morseCoder.at((t - 2000) * 1.5);
+  t < sketchConfig.startDelay
+    ? false
+    : morseCoder.at((t - sketchConfig.startDelay) * 1.5);
 
 function initCamera(
   scene: THREE.Scene,

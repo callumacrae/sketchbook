@@ -7,6 +7,12 @@ import type { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/f
 export interface Config<SketchConfig = undefined> {
   type: 'context2d' | 'threejs';
   animate: boolean;
+  capture?: {
+    enabled: boolean;
+    duration: number;
+    fps?: number;
+    directory: string;
+  };
   width?: number;
   height?: number;
   pageBg?: string;
@@ -177,6 +183,25 @@ export async function toVanillaCanvas<
     data.canvasState = state;
   }
 
+  // https://macr.ae/article/canvas-to-gif
+  const captureData = {
+    frames: {} as Record<string, string>,
+    frameDuration: 0,
+    frameCount: 0,
+    framesNameLength: 0,
+    frameNumber: 0,
+    directory: sketchbookConfig.capture?.directory,
+  };
+  if (sketchbookConfig.capture) {
+    captureData.frameDuration = 1e3 / (sketchbookConfig.capture.fps || 24);
+    captureData.frameCount = Math.round(
+      sketchbookConfig.capture.duration / captureData.frameDuration
+    );
+    captureData.framesNameLength = Math.ceil(
+      Math.log10(captureData.frameCount)
+    );
+  }
+
   callFrame(0);
 
   window.addEventListener('resize', handleResize);
@@ -184,6 +209,10 @@ export async function toVanillaCanvas<
   async function callFrame(timestamp: number) {
     if (data.fpsGraph) {
       data.fpsGraph.begin();
+    }
+
+    if (!sketchbookConfig.capture?.enabled) {
+      data.animationFrame = requestAnimationFrame(callFrame);
     }
 
     const hasChanged = data.hasChanged || sketchbookConfig.animate;
@@ -211,11 +240,34 @@ export async function toVanillaCanvas<
       data.previousFrameTime = timestamp;
     }
 
+    if (sketchbookConfig.capture?.enabled && canvasEl) {
+      const frameName = captureData.frameNumber
+        .toString()
+        .padStart(captureData.framesNameLength, '0');
+      console.info(`Capturing frame ${frameName}`);
+      captureData.frames[frameName] = canvasEl.toDataURL('image/png');
+
+      if (timestamp > sketchbookConfig.capture.duration) {
+        console.log(
+          `Sending ${Object.keys(captureData.frames).length} frames to server`
+        );
+        fetch('http://localhost:3000/save-images', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(captureData),
+        });
+      } else {
+        captureData.frameNumber++;
+        const timestamp = captureData.frameNumber * captureData.frameDuration;
+        callFrame(timestamp);
+      }
+    }
+
     if (data.fpsGraph) {
       data.fpsGraph.end();
     }
-
-    data.animationFrame = requestAnimationFrame(callFrame);
   }
 
   function handleResize() {
