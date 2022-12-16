@@ -25,7 +25,7 @@ export default function getMorseCoder(pattern: string) {
     } else if (char === ' ' || char === '/') {
       timings.push({
         start: totalTime,
-        end: (totalTime += char === ' ' ? 2000 : 7000),
+        end: (totalTime += char === ' ' ? 3000 : 7000),
         on: false,
       });
     }

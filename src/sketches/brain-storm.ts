@@ -44,7 +44,7 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
   capture: {
     enabled: false,
-    duration: 14200,
+    duration: 15000,
     fps: 24,
     directory: 'brain-storm',
   },
