@@ -38,6 +38,11 @@ const router = createRouter({
       name: 'Brain storm',
       component: () => import('./sketches/brain-storm'),
     },
+    {
+      path: '/exploding-text-3d',
+      name: '3D exploding text',
+      component: () => import('./sketches/exploding-text-3d'),
+    },
   ],
 });
 
