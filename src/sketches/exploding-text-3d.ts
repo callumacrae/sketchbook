@@ -12,6 +12,8 @@ import type {
   FrameFn,
 } from '@/utils/renderers/vanilla';
 
+const glsl = String.raw;
+
 interface CanvasState {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
@@ -72,28 +74,49 @@ async function initLetters(
   const worldGeo = (worldMesh.geometry as THREE.BufferGeometry).toNonIndexed();
   worldGeo.translate(0.8, 0, 0);
 
-  const displacement = new Float32Array(helloGeo.attributes.position.count * 3);
-  const worldPosition = worldGeo.attributes.position.array;
-  for (let i = 0; i < displacement.length; i++) {
-    displacement[i] = worldPosition[i] === undefined ? 0 : worldPosition[i];
+  const aWorldPosition = new Float32Array(
+    helloGeo.attributes.position.count * 3
+  );
+  for (let i = 0; i < aWorldPosition.length; i++) {
+    aWorldPosition[i] = worldGeo.attributes.position.array[i] ?? 0;
+  }
+  const aWorldNormal = new Float32Array(helloGeo.attributes.normal.count * 3);
+  for (let i = 0; i < aWorldNormal.length; i++) {
+    aWorldNormal[i] = worldGeo.attributes.normal.array[i] ?? 0;
   }
 
   helloMesh.geometry.setAttribute(
     'aWorldPosition',
-    new THREE.BufferAttribute(displacement, 3)
+    new THREE.BufferAttribute(aWorldPosition, 3)
+  );
+  helloMesh.geometry.setAttribute(
+    'aWorldNormal',
+    new THREE.BufferAttribute(aWorldNormal, 3)
   );
 
   helloMesh.material = extendMaterial(new THREE.MeshStandardMaterial(), {
     class: THREE.ShaderMaterial,
 
-    vertexHeader: 'uniform float uTime; attribute vec3 aWorldPosition;',
+    vertexHeader: glsl`
+      uniform float uTime;
+      attribute vec3 aWorldPosition;
+      attribute vec3 aWorldNormal;
+    `,
     vertex: {
-      transformEnd:
-        'transformed = transformed * (1.0 - uTime) + aWorldPosition * uTime;',
+      transformEnd: glsl`
+        transformed = mix(transformed, aWorldPosition, uTime);
+      `,
+      '#include <beginnormal_vertex>': glsl`
+        objectNormal = mix(objectNormal, aWorldNormal, uTime);
+      `,
     },
 
     uniforms: {
-      uTime: 0,
+      uTime: {
+        shared: true,
+        mixed: true,
+        value: 0,
+      },
     },
   });
 
