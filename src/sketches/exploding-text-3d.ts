@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { extendMaterial } from 'three-extend-material';
+import { extendMaterial } from '@/utils/three-extend-material';
 import { easeCubic } from 'd3-ease';
 
 import { toCanvasComponent } from '@/utils/renderers/vue';

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { extendMaterial } from 'three-extend-material';
+import { extendMaterial } from '@/utils/three-extend-material';
 
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
