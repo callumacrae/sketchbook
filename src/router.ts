@@ -43,6 +43,11 @@ const router = createRouter({
       name: '3D exploding text',
       component: () => import('./sketches/exploding-text-3d'),
     },
+    {
+      path: '/extend-material',
+      name: 'three-extend-material',
+      component: () => import('./sketches/extend-material'),
+    },
   ],
 });
 
