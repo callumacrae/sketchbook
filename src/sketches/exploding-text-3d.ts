@@ -47,8 +47,55 @@ function initLighting(scene: THREE.Scene) {
   scene.add(ambientLight);
 }
 
-function ease(num: number) {
-  return easeCubic(Math.abs((num % 2) - 1));
+/**
+ * Converts geometry to non-indexed and orders the triangles based on their
+ * x position for a more graceful transition.
+ */
+function initGeometry(geometry: THREE.BufferGeometry) {
+  const g = geometry.toNonIndexed();
+
+  const triangleCount = g.attributes.position.count / 3;
+  type TriangleSort = { index: number; center?: [number, number, number] };
+  const triangles = new Array<TriangleSort>(triangleCount);
+  for (let i = 0; i < triangleCount; i++) {
+    triangles[i] = { index: i };
+  }
+
+  const posAry = g.attributes.position.array;
+  function getCenter(cache: TriangleSort) {
+    if (!cache.center) {
+      const i = cache.index;
+      cache.center = [
+        (posAry[i * 9] + posAry[i * 9 + 3] + posAry[i * 9 + 6]) / 3,
+        (posAry[i * 9 + 1] + posAry[i * 9 + 4] + posAry[i * 9 + 7]) / 3,
+        (posAry[i * 9 + 2] + posAry[i * 9 + 5] + posAry[i * 9 + 8]) / 3,
+      ];
+    }
+    return cache.center;
+  }
+
+  triangles.sort((a, b) => {
+    const aCenter = getCenter(a);
+    const bCenter = getCenter(b);
+
+    return aCenter[0] - bCenter[0];
+  });
+
+  const orderedPositions = new Float32Array(g.attributes.position.count * 3);
+  const orderedNormals = new Float32Array(g.attributes.normal.count * 3);
+  for (let i = 0; i < triangleCount; i++) {
+    const fromI = triangles[i].index;
+
+    for (let j = 0; j < 9; j++) {
+      orderedPositions[i * 9 + j] = g.attributes.position.array[fromI * 9 + j];
+      orderedNormals[i * 9 + j] = g.attributes.normal.array[fromI * 9 + j];
+    }
+  }
+
+  g.attributes.position = new THREE.BufferAttribute(orderedPositions, 3);
+  g.attributes.normal = new THREE.BufferAttribute(orderedNormals, 3);
+
+  return g;
 }
 
 async function initLetters(
@@ -58,7 +105,6 @@ async function initLetters(
   const loader = new GLTFLoader();
 
   const textScene = await loader.loadAsync('/exploding-text/hello-world.glb');
-  console.log(textScene);
 
   const helloMesh = textScene.scene.getObjectByName('Hello_mesh');
   if (!(helloMesh instanceof THREE.Mesh)) throw new Error('???');
@@ -69,16 +115,22 @@ async function initLetters(
   const worldMesh = textScene.scene.getObjectByName('World_mesh');
   if (!(worldMesh instanceof THREE.Mesh)) throw new Error('???');
 
-  const helloGeo = (helloMesh.geometry as THREE.BufferGeometry).toNonIndexed();
+  const helloGeo = initGeometry(helloMesh.geometry);
   helloMesh.geometry = helloGeo;
-  const worldGeo = (worldMesh.geometry as THREE.BufferGeometry).toNonIndexed();
+  const worldGeo = initGeometry(worldMesh.geometry);
   worldGeo.translate(0.8, 0, 0);
 
   const aWorldPosition = new Float32Array(
     helloGeo.attributes.position.count * 3
   );
-  for (let i = 0; i < aWorldPosition.length; i++) {
-    aWorldPosition[i] = worldGeo.attributes.position.array[i] ?? 0;
+  for (let i = 0; i < aWorldPosition.length / 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      aWorldPosition[i * 3 + j] =
+        worldGeo.attributes.position.array[i * 3 + j] ??
+        worldGeo.attributes.position.array[
+          worldGeo.attributes.position.count * 3 - 3 + j
+        ];
+    }
   }
   const aWorldNormal = new Float32Array(helloGeo.attributes.normal.count * 3);
   for (let i = 0; i < aWorldNormal.length; i++) {
@@ -121,7 +173,9 @@ async function initLetters(
   });
 
   const frame: FrameFn<CanvasState, SketchConfig> = ({ timestamp }) => {
-    helloMesh.material.uniforms.uTime.value = ease(timestamp / 1000);
+    helloMesh.material.uniforms.uTime.value = easeCubic(
+      Math.abs(((timestamp / 1000) % 2) - 1)
+    );
   };
 
   return { frame };
