@@ -60,16 +60,16 @@ function initLighting(scene: THREE.Scene) {
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
   scene.add(ambientLight);
 
-  const easeFnZ = easePolyInOut.exponent(9);
-  const easeFnX = easePolyInOut.exponent(2);
+  const easeFnZ = easePolyInOut.exponent(7);
+  const easeFnX = easePolyInOut.exponent(3);
 
   const frame: FrameFn<CanvasState, SketchConfig> = ({ timestamp }) => {
-    const tz = (timestamp / 2000) % 1;
-    const z = (-tz + easeFnZ(tz)) * -300 + pos.z;
+    const tz = (timestamp / 1500) % 1;
+    const z = (-tz + easeFnZ(tz)) * 300 + pos.z;
     pointLight.position.setZ(z);
     pointLightWithoutShadow.position.setZ(z);
 
-    const tx = Math.abs(((timestamp / 2000) % 2) - 1);
+    const tx = Math.abs(((timestamp / 1500) % 2) - 1);
     const x = (easeFnX(tx) * 2 - 1) * pos.x;
     pointLight.position.setX(x);
     pointLightWithoutShadow.position.setX(x);
@@ -209,7 +209,7 @@ async function initLetters(
     vertex: {
       'void main() {': glsl`
         float timeWithOffset = uTime - aWorldPosition.x / 50.0;
-        float mixVal = easeInOut(abs(mod(timeWithOffset, 2.0) - 1.0), 9.0);
+        float mixVal = easeInOut(abs(mod(timeWithOffset, 2.0) - 1.0), 7.0);
       `,
       '#include <beginnormal_vertex>': glsl`
         objectNormal = mix(objectNormal, aWorldNormal, mixVal);
@@ -217,7 +217,7 @@ async function initLetters(
       transformEnd: glsl`
         transformed = mix(transformed, aWorldPosition, mixVal);
         float modTime = mod(timeWithOffset, 1.0);
-        transformed.y += (-modTime + easeInOut(modTime, 9.0)) * 3.0;
+        transformed.y += (-modTime + easeInOut(modTime, 7.0)) * -3.0;
       `,
     },
 
@@ -248,7 +248,7 @@ async function initLetters(
   );
 
   const frame: FrameFn<CanvasState, SketchConfig> = ({ timestamp }) => {
-    helloMesh.material.uniforms.uTime.value = timestamp / 2000;
+    helloMesh.material.uniforms.uTime.value = timestamp / 1500;
   };
 
   return { frame };
