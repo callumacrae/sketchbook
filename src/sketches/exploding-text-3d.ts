@@ -26,6 +26,14 @@ type SketchConfig = typeof sketchConfig;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
+  width: 1280,
+  height: 720,
+  capture: {
+    enabled: false,
+    duration: 3000,
+    fps: 30,
+    directory: 'exploding-text-3d',
+  },
   sketchConfig,
 };
 
@@ -33,9 +41,9 @@ function initCamera(
   scene: THREE.Scene,
   { width, height }: InitProps<SketchConfig>
 ) {
-  const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-  camera.position.z = 500;
-  camera.position.y = 200;
+  const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 1000);
+  camera.position.z = 300;
+  camera.position.y = 120;
   scene.add(camera);
   return camera;
 }
@@ -64,12 +72,12 @@ function initLighting(scene: THREE.Scene) {
   const easeFnX = easePolyInOut.exponent(3);
 
   const frame: FrameFn<CanvasState, SketchConfig> = ({ timestamp }) => {
-    const tz = (timestamp / 1500) % 1;
+    const tz = (timestamp / 1500 + 0.5) % 1;
     const z = (-tz + easeFnZ(tz)) * 300 + pos.z;
     pointLight.position.setZ(z);
     pointLightWithoutShadow.position.setZ(z);
 
-    const tx = Math.abs(((timestamp / 1500) % 2) - 1);
+    const tx = Math.abs(((timestamp / 1500 + 0.5) % 2) - 1);
     const x = (easeFnX(tx) * 2 - 1) * pos.x;
     pointLight.position.setX(x);
     pointLightWithoutShadow.position.setX(x);
@@ -79,7 +87,7 @@ function initLighting(scene: THREE.Scene) {
 }
 
 function initFloor(scene: THREE.Scene) {
-  const geometry = new THREE.PlaneGeometry(2000, 1000);
+  const geometry = new THREE.PlaneGeometry(4000, 4000);
   geometry.rotateX(Math.PI / -2);
   geometry.translate(0, -10, 0);
   const material = new THREE.MeshStandardMaterial({ color: 0x0178ae });
@@ -88,7 +96,7 @@ function initFloor(scene: THREE.Scene) {
   scene.add(floor);
 
   scene.background = new THREE.Color(0x04537a);
-  scene.fog = new THREE.Fog(0x04537a, 500, 1000);
+  scene.fog = new THREE.Fog(0x04537a, 300, 500);
 }
 
 /**
@@ -248,7 +256,7 @@ async function initLetters(
   );
 
   const frame: FrameFn<CanvasState, SketchConfig> = ({ timestamp }) => {
-    helloMesh.material.uniforms.uTime.value = timestamp / 1500;
+    helloMesh.material.uniforms.uTime.value = timestamp / 1500 + 0.5;
   };
 
   return { frame };
