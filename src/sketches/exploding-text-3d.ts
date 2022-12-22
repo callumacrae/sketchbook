@@ -35,26 +35,29 @@ function initCamera(
 ) {
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
   camera.position.z = 500;
-  camera.position.y = 300;
+  camera.position.y = 200;
   scene.add(camera);
   return camera;
 }
 
 function initLighting(scene: THREE.Scene) {
-  const pos = new THREE.Vector3(-150, 150, 100);
+  const pos = new THREE.Vector3(100, 150, 100);
 
-  const pointLight = new THREE.PointLight(0xffffff, 1);
+  const pointLight = new THREE.PointLight(0xffffff, 0.25);
   pointLight.position.set(pos.x, pos.y, pos.z);
+  pointLight.castShadow = true;
+  pointLight.shadow.camera.far = 1000;
+  pointLight.shadow.radius = 20;
+  pointLight.shadow.blurSamples = 16;
   scene.add(pointLight);
 
-  // const pointLightMarker = new THREE.Mesh(
-  //   new THREE.SphereGeometry(5, 10, 10),
-  //   new THREE.MeshBasicMaterial({ color: 0xff0000 })
-  // );
-  // pointLightMarker.position.set(pos.x, pos.y, pos.z);
-  // scene.add(pointLightMarker);
+  // Duplicate the light so that the shadow is less intense
+  const pointLightWithoutShadow = pointLight.clone();
+  pointLightWithoutShadow.intensity = 0.4;
+  pointLightWithoutShadow.castShadow = false;
+  scene.add(pointLightWithoutShadow);
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
   scene.add(ambientLight);
 
   const easeFnZ = easePolyInOut.exponent(9);
@@ -62,15 +65,30 @@ function initLighting(scene: THREE.Scene) {
 
   const frame: FrameFn<CanvasState, SketchConfig> = ({ timestamp }) => {
     const tz = (timestamp / 2000) % 1;
-    // pointLightMarker.position.setZ((-tz + easeFnZ(tz)) * -300 + 100);
-    pointLight.position.setZ((-tz + easeFnZ(tz)) * -300 + 100);
+    const z = (-tz + easeFnZ(tz)) * -300 + pos.z;
+    pointLight.position.setZ(z);
+    pointLightWithoutShadow.position.setZ(z);
 
     const tx = Math.abs(((timestamp / 2000) % 2) - 1);
-    // pointLightMarker.position.setX((easeFnX(tx) * 2 - 1) * 150);
-    pointLight.position.setX((easeFnX(tx) * 2 - 1) * 200);
+    const x = (easeFnX(tx) * 2 - 1) * pos.x;
+    pointLight.position.setX(x);
+    pointLightWithoutShadow.position.setX(x);
   };
 
   return { frame };
+}
+
+function initFloor(scene: THREE.Scene) {
+  const geometry = new THREE.PlaneGeometry(2000, 1000);
+  geometry.rotateX(Math.PI / -2);
+  geometry.translate(0, -10, 0);
+  const material = new THREE.MeshStandardMaterial({ color: 0x0178ae });
+  const floor = new THREE.Mesh(geometry, material);
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  scene.background = new THREE.Color(0x04537a);
+  scene.fog = new THREE.Fog(0x04537a, 500, 1000);
 }
 
 /**
@@ -134,8 +152,10 @@ async function initLetters(
 
   const helloMesh = textScene.scene.getObjectByName('Hello_mesh');
   if (!(helloMesh instanceof THREE.Mesh)) throw new Error('???');
-  helloMesh.material = new THREE.MeshPhongMaterial({ color: 0xffffff });
   helloMesh.rotateX(Math.PI);
+  helloMesh.translateY(-10);
+  // helloMesh.receiveShadow = true;
+  helloMesh.castShadow = true;
   scene.add(helloMesh);
 
   const worldMesh = textScene.scene.getObjectByName('World_mesh');
@@ -172,7 +192,7 @@ async function initLetters(
     new THREE.BufferAttribute(aWorldNormal, 3)
   );
 
-  helloMesh.material = extendMaterial(new THREE.MeshPhongMaterial(), {
+  helloMesh.material = extendMaterial(THREE.MeshPhongMaterial, {
     class: THREE.ShaderMaterial,
 
     vertexHeader: glsl`
@@ -187,9 +207,11 @@ async function initLetters(
       }
     `,
     vertex: {
-      '#include <beginnormal_vertex>': glsl`
+      'void main() {': glsl`
         float timeWithOffset = uTime - aWorldPosition.x / 50.0;
         float mixVal = easeInOut(abs(mod(timeWithOffset, 2.0) - 1.0), 9.0);
+      `,
+      '#include <beginnormal_vertex>': glsl`
         objectNormal = mix(objectNormal, aWorldNormal, mixVal);
       `,
       transformEnd: glsl`
@@ -199,14 +221,31 @@ async function initLetters(
       `,
     },
 
+    material: {
+      side: THREE.DoubleSide,
+    },
+
     uniforms: {
       uTime: {
-        shared: true,
         mixed: true,
+        linked: true,
         value: 0,
+      },
+      diffuse: {
+        value: new THREE.Color(0xefd152),
       },
     },
   });
+
+  helloMesh.material.customDepthMaterial = extendMaterial(
+    THREE.MeshDepthMaterial,
+    { template: helloMesh.material }
+  );
+
+  helloMesh.material.customDistanceMaterial = extendMaterial(
+    THREE.MeshDistanceMaterial,
+    { template: helloMesh.material }
+  );
 
   const frame: FrameFn<CanvasState, SketchConfig> = ({ timestamp }) => {
     helloMesh.material.uniforms.uTime.value = timestamp / 2000;
@@ -218,14 +257,18 @@ async function initLetters(
 const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   if (!props.renderer) throw new Error('???');
 
+  props.renderer.shadowMap.enabled = true;
+
   // props.initControls(({ pane, config }) => {});
 
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
-  new OrbitControls(camera, props.renderer.domElement);
+  const controls = new OrbitControls(camera, props.renderer.domElement);
+  controls.maxPolarAngle = Math.PI / 2.05;
 
   const lighting = initLighting(scene);
+  initFloor(scene);
   const letters = await initLetters(scene, props);
 
   return { scene, camera, lighting, letters };

@@ -151,7 +151,10 @@ function uniform(name) {
   return this.uniforms[name];
 }
 
-function extend<T extends THREE.Material>(source: T, object) {
+function extend<T extends THREE.Material | typeof THREE.Material>(
+  source: T,
+  object
+) {
   object = object || {};
 
   // Extend from class or shader material

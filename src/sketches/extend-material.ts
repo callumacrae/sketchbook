@@ -67,11 +67,7 @@ function initNormalCube(scene: THREE.Scene) {
 
 function initShaderCube(scene: THREE.Scene) {
   const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const material = new THREE.MeshPhongMaterial({
-    color: 0xffffff,
-    shininess: 60,
-  });
-  const extendedMaterial = extendMaterial(material, {
+  const extendedMaterial = extendMaterial(THREE.MeshPhongMaterial, {
     class: THREE.ShaderMaterial,
 
     vertexHeader: glsl`
@@ -99,6 +95,9 @@ function initShaderCube(scene: THREE.Scene) {
         mixed: true,
         value: 0,
       },
+      shininess: {
+        value: 60,
+      }
     },
   });
 
