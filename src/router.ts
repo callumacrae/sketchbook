@@ -57,6 +57,14 @@ const router = createRouter({
           (await import('./sketches/perspective-lines.glsl?raw')).default
         ),
     },
+    {
+      path: '/anti-aliased-circle',
+      name: 'Anti-aliased circle (glsl)',
+      component: async () =>
+        shaderToyComponent(
+          (await import('./sketches/anti-aliased-circle.glsl?raw')).default
+        ),
+    },
   ],
 });
 
