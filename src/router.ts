@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { shaderToyComponent } from '@/utils/renderers/shader-toy';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -47,6 +48,14 @@ const router = createRouter({
       path: '/extend-material',
       name: 'three-extend-material',
       component: () => import('./sketches/extend-material'),
+    },
+    {
+      path: '/perspective-lines-glsl',
+      name: 'Perspective lines (glsl)',
+      component: async () =>
+        shaderToyComponent(
+          (await import('./sketches/perspective-lines.glsl?raw')).default
+        ),
     },
   ],
 });
