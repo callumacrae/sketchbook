@@ -65,6 +65,14 @@ const router = createRouter({
           (await import('./sketches/anti-aliased-circle.glsl?raw')).default
         ),
     },
+    {
+      path: '/circle-sphere',
+      name: 'Circle sphere (glsl)',
+      component: async () =>
+        shaderToyComponent(
+          (await import('./sketches/circle-sphere.glsl?raw')).default
+        ),
+    },
   ],
 });
 

@@ -49,5 +49,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     color = (intersectionOnB + intersectionOnD) / 2.0 - x;
   }
 
+  // lol what's the fun in this
+  /* color = smoothstep(radius + 0.5, radius - 0.5, dist); */
+
   fragColor = vec4(vec3(color), 1.0);
 }
