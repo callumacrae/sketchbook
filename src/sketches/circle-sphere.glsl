@@ -9,7 +9,7 @@ vec3 hsv2rgb(vec3 c) {
   return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-void drawCircle(out vec4 fragColor, vec2 fragCoord, float yOffset, float hue) {
+void drawCircle(inout vec4 fragColor, vec2 fragCoord, float yOffset, float hue) {
   // ellipse: ( y * a ) ^ 2 + x ^ 2 = radius ^ 2
   // line to point: y = fragCoord.x / fragCoord.y * x
   // adjustedRadius = sqrt(pow(x, 2.0) + pow(y, 2.0));
