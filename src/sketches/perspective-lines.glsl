@@ -35,8 +35,10 @@ float colorForCol(vec2 fragCoord, float rowFactor) {
   float offsetXFromCenterOfBar = abs(barWidth / 2.0 - offsetXInBar);
   float radius = sqrt(pow(offsetXFromCenterOfBar, 2.0) + pow(barWidth / 2.0 - offsetYFromEnd, 2.0));
   
-  if (offsetXInBar < barWidth && (offsetYFromEnd > barWidth / 2.0 || radius < barWidth / 2.0)) {
-    return pow(rowFactor, LIGHT_FADE_FACTOR);
+  if (offsetXInBar < barWidth) {
+    return pow(rowFactor, LIGHT_FADE_FACTOR) * (
+      offsetYFromEnd > barWidth / 2.0 ? 1.0 : smoothstep(radius - 0.5, radius + 0.5, barWidth / 2.0)
+    );
   } else {
     return 0.0;
   }
