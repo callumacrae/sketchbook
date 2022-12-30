@@ -38,11 +38,13 @@ const router = createRouter({
       path: '/brain-storm',
       name: 'Brain storm',
       component: () => import('./sketches/brain-storm'),
+      meta: { favourite: true },
     },
     {
       path: '/exploding-text-3d',
       name: '3D exploding text',
       component: () => import('./sketches/exploding-text-3d'),
+      meta: { favourite: true },
     },
     {
       path: '/extend-material',
@@ -72,6 +74,7 @@ const router = createRouter({
         shaderToyComponent(
           (await import('./sketches/circle-sphere.glsl?raw')).default
         ),
+      meta: { favourite: true },
     },
   ],
 });

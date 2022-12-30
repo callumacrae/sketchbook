@@ -94,6 +94,7 @@ li:last-child {
 }
 
 .fav-icon {
+  margin-right: 4px;
   font-style: normal;
 }
 
