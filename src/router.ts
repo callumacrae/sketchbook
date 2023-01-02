@@ -76,6 +76,11 @@ const router = createRouter({
         ),
       meta: { favourite: true },
     },
+    {
+      path: '/line-shape-grid',
+      name: 'Line shape grid',
+      component: () => import('./sketches/line-shape-grid'),
+    },
   ],
 });
 
