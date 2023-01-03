@@ -11,6 +11,13 @@ const routes = computed(() => {
   return router.options.routes.filter((route) => route.name !== 'home');
 });
 
+const shouldFilter = ref(false);
+const filteredRoutes = computed(() => {
+  return shouldFilter.value
+    ? routes.value.filter((route) => route.meta?.favourite)
+    : routes.value;
+});
+
 function previewRoute(route: RouteRecordRaw) {
   preview.value = route;
 
@@ -29,8 +36,21 @@ function handleTransitionEnd() {
 <template>
   <div class="main">
     <div class="index">
+      <p class="toggle-favourites">
+        View
+        <label>
+          <input v-model="shouldFilter" type="radio" :value="true" />
+          <span>my favourites</span>
+        </label>
+        /
+        <label>
+          <input v-model="shouldFilter" type="radio" :value="false" />
+          <span>all</span>
+        </label>
+      </p>
+
       <ul>
-        <li v-for="route in routes" :key="route.path">
+        <li v-for="route in filteredRoutes" :key="route.path">
           <i v-if="route.meta && route.meta.favourite" class="fav-icon">⭐️</i>
           <router-link :to="route.path" @mouseover="previewRoute(route)">
             {{ route.name || route.path }}
@@ -44,13 +64,11 @@ function handleTransitionEnd() {
       :class="{ 'preview--has-link': preview?.meta?.link }"
       @transitionend="handleTransitionEnd"
     >
-      <h1>Sketches</h1>
+      <h1>Callum's sketchbook</h1>
       <p>
-        Disclaimer: this is called sketchbook for a reason - this is public to
-        demonstrate my learning process, not my ability. A lot of this stuff is
-        very bad!
+        Disclaimer: some of this is real shitty, this is called "sketchbook" not
+        "gallery"! Old sketchbook <a href="https://sketchbook.macr.ae">here</a>.
       </p>
-      <p>Old sketchbook <a href="https://sketchbook.macr.ae">here</a>.</p>
 
       <!-- Added to the DOM even when empty for the transition -->
       <a :href="previewLink" class="preview__link" target="_blank">
@@ -69,20 +87,39 @@ export default {
 
 <style scoped>
 .main {
-  height: 100vh;
+  height: 80vh;
   display: flex;
   justify-content: center;
-  align-items: center;
 
   font-family: sans-serif;
 }
 
 .index {
   margin-right: 100px;
+  width: 250px;
+  overflow: auto;
 }
 
 h1 {
   margin-top: 0;
+}
+
+.toggle-favourites {
+  font-size: 0.8em;
+}
+.toggle-favourites input {
+  display: none;
+}
+.toggle-favourites span {
+  cursor: pointer;
+}
+.toggle-favourites input:checked + span {
+  font-weight: bold;
+}
+
+ul {
+  list-style-type: none;
+  padding-left: 0;
 }
 
 li {

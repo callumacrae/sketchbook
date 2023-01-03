@@ -38,13 +38,19 @@ const router = createRouter({
       path: '/brain-storm',
       name: 'Brain storm',
       component: () => import('./sketches/brain-storm'),
-      meta: { favourite: true },
+      meta: {
+        favourite: true,
+        link: 'https://codepen.io/callumacrae/full/zYLOrWZ',
+      },
     },
     {
       path: '/exploding-text-3d',
       name: '3D exploding text',
       component: () => import('./sketches/exploding-text-3d'),
-      meta: { favourite: true },
+      meta: {
+        favourite: true,
+        link: 'https://codepen.io/callumacrae/full/VwBLvWN',
+      },
     },
     {
       path: '/extend-material',
@@ -58,6 +64,7 @@ const router = createRouter({
         shaderToyComponent(
           (await import('./sketches/perspective-lines.glsl?raw')).default
         ),
+      meta: { link: 'https://www.shadertoy.com/view/clXGD7' },
     },
     {
       path: '/anti-aliased-circle',
@@ -66,6 +73,7 @@ const router = createRouter({
         shaderToyComponent(
           (await import('./sketches/anti-aliased-circle.glsl?raw')).default
         ),
+      meta: { link: 'https://www.shadertoy.com/view/Dts3zX' },
     },
     {
       path: '/circle-sphere',
@@ -74,7 +82,7 @@ const router = createRouter({
         shaderToyComponent(
           (await import('./sketches/circle-sphere.glsl?raw')).default
         ),
-      meta: { favourite: true },
+      meta: { favourite: true, link: 'https://www.shadertoy.com/view/dtX3Dj' },
     },
     {
       path: '/line-shape-grid',
@@ -85,6 +93,7 @@ const router = createRouter({
       path: '/rolling-sphere',
       name: 'Rolling sphere (#genuary day 1)',
       component: () => import('./sketches/rolling-sphere'),
+      meta: { link: 'https://codepen.io/callumacrae/full/QWBEmVR' },
     },
   ],
 });
