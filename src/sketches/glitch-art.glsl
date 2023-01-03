@@ -105,8 +105,6 @@ void swapRectangle(inout vec2 fragCoord, int randFrom, int randFromB) {
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-  vec2 uv = fragCoord / iResolution.xy;
-
   vec3 colorOut = vec3(0.0);
 
   if (GLITCH_POSITION_RECT_SWAP_ENABLED) {
@@ -127,8 +125,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     fragCoord.x += rand(floor(fragCoord.y / bandHeight)) * 300.0;
   }
 
-  float flipNoise = snoise(vec2(iTime * 1.5 + rand(27), 0.0));
   if (GLITCH_POSITION_FLIP_ENABLED) {
+    float flipNoise = snoise(vec2(iTime * 1.5 + rand(27), 0.0));
     float flipDirectionNoise = snoise(vec2(iTime * 8.0 + rand(28), 0.0));
 
     if (flipNoise < -0.85) {
@@ -160,6 +158,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
       colorOut = vec3(color);
     }
 
+    // TODO: move out of loop for perf somehow?
     if (GLITCH_COLOR_SPLIT_ENABLED) {
       bool shouldGlitchColor1 = snoise(vec2(iTime * 3.0 + rand(18), 0.0)) < -0.5;
       if (shouldGlitchColor1) {
@@ -217,58 +216,64 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   }
 
   float blankNoise = snoise(vec2(iTime * 0.7 + rand(19), 0.0));
-  float blankNoise2 = snoise(vec2(iTime * 1.6 + rand(20), 0.0));
   if (GLITCH_OTHER_BLANK_ENABLED) {
     if (blankNoise < -0.8) {
       colorOut = vec3(0.0);
-    } else if (blankNoise > 0.3 && blankNoise2 < -0.1) {
-      int randFrom = 2479 + int(floor(snoise(vec2(iTime * 2.0 + rand(32), 0.0)) * 1.5));
-      float glitchWidth;
-      float glitchHeight;
-      vec2 glitchTopLeft;
-      generateRectangle(glitchWidth, glitchHeight, glitchTopLeft, randFrom, 0.1, 0.7, 0.06, 0.2, 0.6, 0.05);
+    } else if (blankNoise > 0.3) {
+      float blankNoise2 = snoise(vec2(iTime * 1.6 + rand(20), 0.0));
+      if (blankNoise2 < -0.1) {
+        int randFrom = 2479 + int(floor(snoise(vec2(iTime * 2.0 + rand(32), 0.0)) * 1.5));
+        float glitchWidth;
+        float glitchHeight;
+        vec2 glitchTopLeft;
+        generateRectangle(glitchWidth, glitchHeight, glitchTopLeft, randFrom, 0.1, 0.7, 0.06, 0.2, 0.6, 0.05);
 
       if (isInRectangle(glitchWidth, glitchHeight, glitchTopLeft, fragCoord)) {
         colorOut = vec3(0.0);
       }
     }
+    }
   }
 
   float invertColorNoise = snoise(vec2(iTime * 0.6 + rand(5), 0.0));
-  float invertColorNoise2 = snoise(vec2(iTime * 3.2 + rand(18), 0.0));
   if (GLITCH_COLOR_INVERT_ENABLED) {
     if (invertColorNoise < -0.85) {
       colorOut = vec3(1.0) - colorOut;
-    } else if (invertColorNoise > 0.4 && invertColorNoise2 < -0.3) {
-      int randFrom = 7254 + int(floor(snoise(vec2(iTime * 2.0 + rand(33), 0.0)) * 2.5));
-      float glitchWidth;
-      float glitchHeight;
-      vec2 glitchTopLeft;
-      generateRectangle(glitchWidth, glitchHeight, glitchTopLeft, randFrom, 0.2, 0.6, 0.18, 0.2, 0.6, 0.22);
+    } else if (invertColorNoise > 0.4) {
+      float invertColorNoise2 = snoise(vec2(iTime * 3.2 + rand(18), 0.0));
+      if (invertColorNoise2 < -0.3) {
+        int randFrom = 7254 + int(floor(snoise(vec2(iTime * 2.0 + rand(33), 0.0)) * 2.5));
+        float glitchWidth;
+        float glitchHeight;
+        vec2 glitchTopLeft;
+        generateRectangle(glitchWidth, glitchHeight, glitchTopLeft, randFrom, 0.2, 0.6, 0.18, 0.2, 0.6, 0.22);
 
-      if (isInRectangle(glitchWidth, glitchHeight, glitchTopLeft, fragCoord)) {
-        colorOut = vec3(1.0) - colorOut;
+        if (isInRectangle(glitchWidth, glitchHeight, glitchTopLeft, fragCoord)) {
+          colorOut = vec3(1.0) - colorOut;
+        }
       }
     }
   }
 
   float swapColorNoise = snoise(vec2(iTime * 0.6 + rand(21), 0.0));
-  float swapColorNoise2 = snoise(vec2(iTime * 2.6 + rand(22), 0.0));
   if (GLITCH_COLOR_SWAP_ENABLED && colorOut.r + colorOut.g + colorOut.b > 2.5) {
     float hue = snoise(vec2(iTime * 0.3 + rand(23), 0.0)) / 2.0 + 0.5;
     vec3 newColor = hsv2rgb(vec3(hue, 0.75, 0.75));
 
     if (swapColorNoise < -0.75) {
       colorOut = newColor;
-    } else if (swapColorNoise > 0.4 && swapColorNoise2 < -0.3) {
-      int randFrom = 29482 + int(floor(snoise(vec2(iTime * 0.5 + rand(34), 0.0)) * 5.0));
-      float glitchWidth;
-      float glitchHeight;
-      vec2 glitchTopLeft;
-      generateRectangle(glitchWidth, glitchHeight, glitchTopLeft, randFrom, 0.2, 0.6, 0.2, 0.2, 0.6, 0.2);
+    } else if (swapColorNoise > 0.4) {
+      float swapColorNoise2 = snoise(vec2(iTime * 2.6 + rand(22), 0.0));
+      if (swapColorNoise2 < -0.3) {
+        int randFrom = 29482 + int(floor(snoise(vec2(iTime * 0.5 + rand(34), 0.0)) * 5.0));
+        float glitchWidth;
+        float glitchHeight;
+        vec2 glitchTopLeft;
+        generateRectangle(glitchWidth, glitchHeight, glitchTopLeft, randFrom, 0.2, 0.6, 0.2, 0.2, 0.6, 0.2);
 
-      if (isInRectangle(glitchWidth, glitchHeight, glitchTopLeft, fragCoord)) {
-        colorOut = newColor;
+        if (isInRectangle(glitchWidth, glitchHeight, glitchTopLeft, fragCoord)) {
+          colorOut = newColor;
+        }
       }
     }
   }
