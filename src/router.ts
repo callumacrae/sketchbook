@@ -95,6 +95,14 @@ const router = createRouter({
       component: () => import('./sketches/rolling-sphere'),
       meta: { link: 'https://codepen.io/callumacrae/full/QWBEmVR' },
     },
+    {
+      path: '/glitch-art',
+      name: 'Glitch art (#genuary3) (glsl)',
+      component: async () =>
+        shaderToyComponent(
+          (await import('./sketches/glitch-art.glsl?raw')).default
+        ),
+    },
   ],
 });
 
