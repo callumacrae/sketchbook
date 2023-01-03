@@ -81,6 +81,11 @@ const router = createRouter({
       name: 'Line shape grid',
       component: () => import('./sketches/line-shape-grid'),
     },
+    {
+      path: '/rolling-sphere',
+      name: 'Rolling sphere (#genuary day 1)',
+      component: () => import('./sketches/rolling-sphere'),
+    },
   ],
 });
 
