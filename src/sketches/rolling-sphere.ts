@@ -150,9 +150,13 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     ballObject.position.set(ballBody.position.x, ballBody.position.y, 0);
     ballObject.rotation.set(0, 0, ballBody.angle);
 
-    camera.position.y = ballBody.position.y + props.config.cameraYOffset;
-    pointLight.position.y = ballBody.position.y + 30;
-    pointLightWithoutShadow.position.y = ballBody.position.y + 30;
+    // Thanks @nexii for this change!
+    camera.position.y =
+      camera.position.y * 0.95 +
+      (ballBody.position.y + props.config.cameraYOffset) * 0.05;
+    pointLight.position.y = camera.position.y - props.config.cameraYOffset + 30;
+    pointLightWithoutShadow.position.y =
+      camera.position.y - props.config.cameraYOffset + 30;
     backWallObject.position.y = ballBody.position.y;
 
     for (const wall of walls) {
