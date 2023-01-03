@@ -70,11 +70,12 @@ function handleTransitionEnd() {
         "gallery"! Old sketchbook <a href="https://sketchbook.macr.ae">here</a>.
       </p>
 
+      <iframe :src="preview?.path"></iframe>
+
       <!-- Added to the DOM even when empty for the transition -->
       <a :href="previewLink" class="preview__link" target="_blank">
         {{ previewLink }}
       </a>
-      <iframe :src="preview?.path"></iframe>
     </div>
   </div>
 </template>
@@ -152,22 +153,20 @@ li:last-child {
 }
 
 .preview__link {
-  position: absolute;
-  top: 100%;
-  transform: translateY(-25px);
+  position: relative;
+  z-index: -1;
+
+  transform: translateY(-2em);
   transition: transform 400ms;
 
   display: block;
   width: 100%;
+  margin-top: 0.5em;
 
   text-align: center;
 }
 
-.preview--has-link iframe {
-  transform: translateY(-12.5px);
-}
-
-.preview--has-link a {
+.preview--has-link .preview__link {
   transform: translateY(0);
 }
 </style>
