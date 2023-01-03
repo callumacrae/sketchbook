@@ -32,7 +32,7 @@ float drawLine(vec2 fragCoord, float i) {
 
   if (GLITCH_OTHER_LINE_WIDTH_CHANGES_ENABLED) {
     float lineWidthNoise = snoise(vec2(iTime * 2.0 + rand(35), 0.0));
-    if (lineWidthNoise < -0.8) {
+    if (lineWidthNoise < -0.7) {
       lineWidth *= 3.0;
     }
   }
