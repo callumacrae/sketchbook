@@ -161,7 +161,7 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
 
   const frame = (props: FrameProps<CanvasState, SketchConfig>) => {
     if (!props.config) throw new Error('???');
-    shapes.rotateY((props.config.rotationSpeed / 16.6) * props.delta);
+    // shapes.rotateY((props.config.rotationSpeed / 16.6) * props.delta);
 
     if (props.hasChanged) {
       const scale = config.shapeSize / 2;

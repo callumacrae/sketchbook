@@ -1,4 +1,4 @@
-import { Pane } from 'tweakpane';
+import { Pane, TabPageApi } from 'tweakpane';
 import * as EssentialsPlugin from '@tweakpane/plugin-essentials';
 import * as THREE from 'three';
 import type { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/fps-graph/api/fps-graph';
@@ -20,7 +20,7 @@ export interface Config<SketchConfig = undefined> {
 }
 
 export interface InitControlsProps<SketchConfig> {
-  pane: Pane;
+  pane: TabPageApi;
   config: SketchConfig;
 }
 
