@@ -134,17 +134,29 @@ export async function toVanillaCanvas<
       });
       pane.registerPlugin(EssentialsPlugin);
       data.pane = pane;
-      data.fpsGraph = pane.addBlade({
+
+      const tab = pane.addTab({
+        pages: [{ title: 'Sketch config' }, { title: 'Performance' }],
+      });
+
+      data.fpsGraph = tab.pages[1].addBlade({
         view: 'fpsgraph',
         label: 'FPS',
         lineCount: 2,
       }) as FpsGraphBladeApi;
 
+      if (data.renderer) {
+        tab.pages[1].addMonitor(data.renderer.info.render, 'triangles');
+        tab.pages[1].addMonitor(data.renderer.info.render, 'calls');
+        tab.pages[1].addMonitor(data.renderer.info.memory, 'textures');
+        tab.pages[1].addMonitor(data.renderer.info.memory, 'geometries');
+      }
+
       pane.on('change', () => {
         data.hasChanged = true;
       });
 
-      cb({ pane, config });
+      cb({ pane: tab.pages[0], config });
     },
   };
 
