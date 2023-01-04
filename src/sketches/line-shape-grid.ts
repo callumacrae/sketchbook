@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
 
 import * as random from '@/utils/random';
 import { toCanvasComponent } from '@/utils/renderers/vue';
@@ -13,12 +14,13 @@ import type {
 
 interface CanvasState {
   scene: THREE.Scene;
-  camera: THREE.PerspectiveCamera;
+  camera: ReturnType<typeof initCamera>;
   shapes: ReturnType<typeof initShapes>;
+  highlighter: ReturnType<typeof initHighlighter>;
 }
 
 const sketchConfig = {
-  rotationSpeed: 0.0025,
+  rotationSpeed: 1,
   sphereRadius: 20,
   shapeOffset: 4,
   shapeSize: 2,
@@ -32,12 +34,25 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height }: InitProps<SketchConfig>
+  { width, height, renderer }: InitProps<SketchConfig>
 ) {
+  if (!renderer) throw new Error('???');
+
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 60);
   camera.position.z = 30;
   scene.add(camera);
-  return camera;
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.autoRotate = true;
+
+  const frame = (props: FrameProps<CanvasState, SketchConfig>) => {
+    if (props.hasChanged && props.config) {
+      controls.autoRotateSpeed = props.config.rotationSpeed;
+    }
+    controls.update();
+  };
+
+  return { camera, frame };
 }
 
 const getCoords = (p: number) => [
@@ -51,7 +66,7 @@ const nodeGeometry = new THREE.SphereGeometry(0.1, 4, 4);
 const edgeGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 4, 1, true);
 
 function generateShape() {
-  const shape = new THREE.Group();
+  const shapeGeometries = [nodeGeometry.clone()];
 
   // The shape is represented by 26 points with IDs as follows:
   //
@@ -62,10 +77,6 @@ function generateShape() {
   // 6 7 8   15 16 17   24 25 26
 
   const filled = [13];
-
-  const centerNodeObject = new THREE.Mesh(nodeGeometry, shapeMaterial);
-  centerNodeObject.position.set(0, 0, 0);
-  shape.add(centerNodeObject);
 
   // TODO: try checking already searched ones, don't search again - won't bias middle
   for (let i = 0; i < 3; i++) {
@@ -98,34 +109,35 @@ function generateShape() {
       if (neighbours.length && random.value() < chance) {
         newFilled.add(j);
 
-        const nodeObject = new THREE.Mesh(nodeGeometry, shapeMaterial);
-        nodeObject.position.set(x - 1, y - 1, z - 1);
-        shape.add(nodeObject);
+        const node = nodeGeometry.clone();
+        node.translate(x - 1, y - 1, z - 1);
+        shapeGeometries.push(node);
 
         const neighbour = random.pick(neighbours);
         const [neighbourX, neighbourY, neighbourZ] = getCoords(neighbour);
 
-        const edgeObject = new THREE.Mesh(edgeGeometry, shapeMaterial);
+        const edge = edgeGeometry.clone();
 
         if (x !== neighbourX) {
-          edgeObject.rotateZ(Math.PI / 2);
-          edgeObject.position.set(Math.min(x, neighbourX) - 0.5, y - 1, z - 1);
+          edge.rotateZ(Math.PI / 2);
+          edge.translate(Math.min(x, neighbourX) - 0.5, y - 1, z - 1);
         } else if (y !== neighbourY) {
-          edgeObject.rotateY(Math.PI / 2);
-          edgeObject.position.set(x - 1, Math.min(y, neighbourY) - 0.5, z - 1);
+          edge.rotateY(Math.PI / 2);
+          edge.translate(x - 1, Math.min(y, neighbourY) - 0.5, z - 1);
         } else {
-          edgeObject.rotateX(Math.PI / 2);
-          edgeObject.position.set(x - 1, y - 1, Math.min(z, neighbourZ) - 0.5);
+          edge.rotateX(Math.PI / 2);
+          edge.translate(x - 1, y - 1, Math.min(z, neighbourZ) - 0.5);
         }
 
-        shape.add(edgeObject);
+        shapeGeometries.push(edge);
       }
     }
 
     filled.push(...newFilled);
   }
 
-  return shape;
+  const shapeGeometryCombined = mergeBufferGeometries(shapeGeometries);
+  return new THREE.Mesh(shapeGeometryCombined, shapeMaterial);
 }
 
 function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
@@ -136,7 +148,9 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
   const scale = config.shapeSize / 2;
   const offset = config.shapeOffset;
 
-  const toGenerate = 5;
+  // TODO: undo perf
+  // const toGenerate = 7;
+  const toGenerate = 3;
 
   for (let x = -toGenerate; x <= toGenerate; x++) {
     for (let y = -toGenerate; y <= toGenerate; y++) {
@@ -161,7 +175,6 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
 
   const frame = (props: FrameProps<CanvasState, SketchConfig>) => {
     if (!props.config) throw new Error('???');
-    // shapes.rotateY((props.config.rotationSpeed / 16.6) * props.delta);
 
     if (props.hasChanged) {
       const scale = config.shapeSize / 2;
@@ -174,7 +187,32 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
         shape.visible =
           shape.userData.distToCenter * offset < config.sphereRadius;
       }
+
+      const highlighter = scene.getObjectByName('highlighter');
+      if (!(highlighter instanceof THREE.Mesh)) throw new Error('???');
+
+      // TODO: do magic
     }
+  };
+
+  return { frame };
+}
+
+function initHighlighter(scene: THREE.Scene, _props: InitProps<SketchConfig>) {
+  const geometry = new THREE.PlaneGeometry(0.4, 1000);
+  const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  const highlighter = new THREE.Mesh(geometry, material);
+  highlighter.name = 'highlighter';
+  scene.add(highlighter);
+
+  // eslint-disable-next-line
+  // @ts-ignore
+  window.highlighter = highlighter;
+
+  const frame = (_props: FrameProps<CanvasState, SketchConfig>) => {
+    const camera = scene.getObjectByProperty('isCamera', true);
+    if (!camera) throw new Error('???');
+    highlighter.lookAt(camera.position);
   };
 
   return { frame };
@@ -184,7 +222,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   if (!props.renderer) throw new Error('???');
 
   props.initControls(({ pane, config }) => {
-    pane.addInput(config, 'rotationSpeed', { min: 0, max: 0.05 });
+    pane.addInput(config, 'rotationSpeed', { min: 0, max: 20 });
     pane.addInput(config, 'sphereRadius', { min: 2, max: 40 });
     pane.addInput(config, 'shapeOffset', { min: 0, max: 10 });
     pane.addInput(config, 'shapeSize', { min: 0.1, max: 10 });
@@ -196,20 +234,21 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
-  new OrbitControls(camera, props.renderer.domElement);
-
   const shapes = initShapes(scene, props);
+  const highlighter = initHighlighter(scene, props);
 
-  return { scene, camera, shapes };
+  return { scene, camera, shapes, highlighter };
 };
 
 const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { renderer, config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
+  state.camera.frame(props);
+  state.highlighter.frame(props);
   state.shapes.frame(props);
 
-  renderer.render(state.scene, state.camera);
+  renderer.render(state.scene, state.camera.camera);
 };
 
 export default toCanvasComponent<CanvasState, SketchConfig>(
