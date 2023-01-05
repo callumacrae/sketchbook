@@ -26,7 +26,6 @@ interface CanvasState {
 
 const sketchConfig = {
   rotationSpeed: 1,
-  sphereRadius: 20,
   shapeOffset: 4,
   shapeSize: 2,
   shapeActiveColor: { r: 1.0, g: 0.2, b: 0.2 },
@@ -233,7 +232,6 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
         const shape = generateShape();
         shape.scale.set(scale, scale, scale);
         shape.position.set(offsetX, offsetY, offsetZ);
-        shape.visible = distToCenter * offset < config.sphereRadius;
         shapes.add(shape);
 
         const aNormal = shape.geometry.attributes.normal;
@@ -324,7 +322,6 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
 
   props.initControls(({ pane, config }) => {
     pane.addInput(config, 'rotationSpeed', { min: 0, max: 20 });
-    pane.addInput(config, 'sphereRadius', { min: 2, max: 40 });
     pane.addInput(config, 'shapeOffset', { min: 0, max: 10 });
     pane.addInput(config, 'shapeSize', { min: 0.1, max: 10 });
     pane.addInput(config, 'shapeActiveColor', { color: { type: 'float' } });
