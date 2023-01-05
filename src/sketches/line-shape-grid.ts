@@ -96,6 +96,7 @@ const shapeMaterial = extendMaterial(THREE.MeshBasicMaterial, {
     '#include <color_fragment>': glsl`
       vec3 transformedCenter = (vec4(vCenter, 1.0) * uHighlighterMatrixWorld).xyz;
 
+      // TODO: make this a circle
       if (abs(transformedCenter.x) < 8.0 && abs(transformedCenter.z) < 8.0) {
         diffuseColor.rgb = uActiveColor;
       } else {
@@ -202,37 +203,30 @@ function generateShape() {
     filled.push(...newFilled);
   }
 
-  const shapeGeometryCombined = mergeBufferGeometries(shapeGeometries);
-  return new THREE.Mesh(shapeGeometryCombined, shapeMaterial);
+  return mergeBufferGeometries(shapeGeometries);
 }
 
 function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
   if (!config) throw new Error('???');
 
-  const shapes = new THREE.Group();
+  const shapeGeometries = [];
 
   const scale = config.shapeSize / 2;
   const offset = config.shapeOffset;
 
-  // TODO: undo perf
-  // const toGenerate = 7;
   const toGenerate = 3;
 
   for (let x = -toGenerate; x <= toGenerate; x++) {
     for (let y = -toGenerate; y <= toGenerate; y++) {
       for (let z = -toGenerate; z <= toGenerate; z++) {
-        const distToCenter = Math.sqrt(
-          Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2)
-        );
-
         const offsetX = x * offset;
         const offsetY = y * offset;
         const offsetZ = z * offset;
 
-        const shape = generateShape();
-        shape.scale.set(scale, scale, scale);
-        shape.position.set(offsetX, offsetY, offsetZ);
-        shapes.add(shape);
+        const shapeGeometry = generateShape();
+        const shape = new THREE.Mesh(shapeGeometry, shapeMaterial);
+        shapeGeometry.scale(scale, scale, scale);
+        shapeGeometry.translate(offsetX, offsetY, offsetZ);
 
         const aNormal = shape.geometry.attributes.normal;
         const aCenterArray = new Float32Array(aNormal.array.length);
@@ -242,29 +236,21 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
           aCenterArray[i * 3 + 2] = offsetZ;
         }
         const aCenter = new THREE.BufferAttribute(aCenterArray, 3);
-        shape.geometry.setAttribute('aCenter', aCenter);
+        shapeGeometry.setAttribute('aCenter', aCenter);
 
-        shape.userData.unoffsetPosition = [x, y, z];
-        shape.userData.distToCenter = distToCenter;
+        shapeGeometries.push(shapeGeometry);
       }
     }
   }
 
-  scene.add(shapes);
+  const shapesGeometry = mergeBufferGeometries(shapeGeometries);
+  const shapesObject = new THREE.Mesh(shapesGeometry, shapeMaterial);
+  scene.add(shapesObject);
 
   const frame = (props: FrameProps<CanvasState, SketchConfig>) => {
     if (!props.config) throw new Error('???');
 
     if (props.hasChanged) {
-      const scale = config.shapeSize / 2;
-      const offset = config.shapeOffset;
-
-      for (const shape of shapes.children) {
-        shape.scale.set(scale, scale, scale);
-        const [x, y, z] = shape.userData.unoffsetPosition;
-        shape.position.set(x * offset, y * offset, z * offset);
-      }
-
       const activeColor = props.config.shapeActiveColor;
       shapeMaterial.uniforms.uActiveColor.value = new THREE.Color(
         activeColor.r,
@@ -322,8 +308,6 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
 
   props.initControls(({ pane, config }) => {
     pane.addInput(config, 'rotationSpeed', { min: 0, max: 20 });
-    pane.addInput(config, 'shapeOffset', { min: 0, max: 10 });
-    pane.addInput(config, 'shapeSize', { min: 0.1, max: 10 });
     pane.addInput(config, 'shapeActiveColor', { color: { type: 'float' } });
     pane.addInput(config, 'shapeInactiveColor', { color: { type: 'float' } });
     pane.addInput(config, 'highlighterNoiseInFactor', { min: 0, max: 0.5 });
