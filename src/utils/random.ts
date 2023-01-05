@@ -61,3 +61,12 @@ export function irwinHall(n = 12) {
 
   return total;
 }
+
+export function string(len = 8) {
+  let randString = '';
+  do {
+    randString += (value() * 1e16).toString(36);
+  } while (randString.length < len);
+
+  return randString.slice(len);
+}

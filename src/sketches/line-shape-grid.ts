@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
+import SimplexNoise from 'simplex-noise';
 
 import * as random from '@/utils/random';
 import { toCanvasComponent } from '@/utils/renderers/vue';
@@ -16,6 +17,7 @@ import type {
 const glsl = String.raw;
 
 interface CanvasState {
+  simplex: SimplexNoise;
   scene: THREE.Scene;
   camera: ReturnType<typeof initCamera>;
   shapes: ReturnType<typeof initShapes>;
@@ -27,6 +29,8 @@ const sketchConfig = {
   sphereRadius: 20,
   shapeOffset: 4,
   shapeSize: 2,
+  highlighterNoiseInFactor: 1 / 50,
+  highlighterNoiseOutFactor: 0.5,
 };
 type SketchConfig = typeof sketchConfig;
 
@@ -89,8 +93,9 @@ const shapeMaterial = extendMaterial(THREE.MeshBasicMaterial, {
       vec3 transformedCenter = (vec4(vCenter, 1.0) * uHighlighterMatrixWorld).xyz;
 
       if (abs(transformedCenter.x) < 8.0 && abs(transformedCenter.z) < 8.0) {
-        diffuseColor.gb = vec2(0.0);
+        diffuseColor.rgb = vec3(1.0, 0.2, 0.2);
       } else {
+        diffuseColor.rgb = vec3(0.35, 0.3, 0.3);
       }
     `,
   },
@@ -260,15 +265,22 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
 
 function initHighlighter(scene: THREE.Scene, _props: InitProps<SketchConfig>) {
   const geometry = new THREE.PlaneGeometry(0.4, 1000);
-  const material = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+  const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const highlighter = new THREE.Mesh(geometry, material);
   highlighter.name = 'highlighter';
   scene.add(highlighter);
 
-  const frame = (_props: FrameProps<CanvasState, SketchConfig>) => {
+  const frame = (props: FrameProps<CanvasState, SketchConfig>) => {
+    const { config, timestamp, state } = props;
+
     const camera = scene.getObjectByProperty('isCamera', true);
-    if (!camera) throw new Error('???');
+    if (!camera || !config) throw new Error('???');
     highlighter.lookAt(camera.position);
+
+    const noiseInFactor = config.highlighterNoiseInFactor / 1e3;
+    const noiseOutFactor = config.highlighterNoiseOutFactor;
+    const noise = state.simplex.noise2D(timestamp * noiseInFactor, 0);
+    highlighter.rotateZ((Math.PI / 2) * (noise * noiseOutFactor + 1));
   };
 
   return { frame };
@@ -282,10 +294,16 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     pane.addInput(config, 'sphereRadius', { min: 2, max: 40 });
     pane.addInput(config, 'shapeOffset', { min: 0, max: 10 });
     pane.addInput(config, 'shapeSize', { min: 0.1, max: 10 });
+    pane.addInput(config, 'highlighterNoiseInFactor', { min: 0, max: 0.5 });
+    pane.addInput(config, 'highlighterNoiseOutFactor', { min: 0, max: 2 });
   });
 
   // TODO: Enable this and make sure none of the shapes are too nazi
   // random.setSeed('blabla');
+
+  // We use the random module to seed the noise so that if we set the random
+  // module's seed, it also seeds this module
+  const simplex = new SimplexNoise(random.string());
 
   const scene = new THREE.Scene();
 
@@ -293,7 +311,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   const shapes = initShapes(scene, props);
   const highlighter = initHighlighter(scene, props);
 
-  return { scene, camera, shapes, highlighter };
+  return { simplex, scene, camera, shapes, highlighter };
 };
 
 const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
