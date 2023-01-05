@@ -189,8 +189,7 @@ function extend<T extends THREE.Material | typeof THREE.Material>(
   if (source instanceof Function) {
     // Source is a constructor
 
-    console.log(source.prototype);
-    name = source.prototype.type;
+    name = new source().type;
     const mapping = mappings[name];
 
     if (mapping === undefined) {
