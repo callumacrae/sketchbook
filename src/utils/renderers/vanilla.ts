@@ -5,6 +5,7 @@ import type { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/f
 
 export interface Config<SketchConfig = undefined> {
   type: 'context2d' | 'threejs';
+  showLoading: boolean;
   animate: boolean;
   capture?: {
     enabled: boolean;
@@ -65,6 +66,7 @@ export async function toVanillaCanvas<
   const sketchbookConfig: Config<SketchConfig> = Object.assign(
     {
       type: 'context2d',
+      showLoading: false,
       animate: true,
       resizeDelay: 50,
       sketchConfig: {} as SketchConfig,
@@ -159,6 +161,43 @@ export async function toVanillaCanvas<
       cb({ pane: tab.pages[0], config });
     },
   };
+
+  if (sketchbookConfig.showLoading && !sketchbookConfig.capture?.enabled) {
+    if (data.renderer) {
+      const scene = new THREE.Scene();
+      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
+      scene.add(camera);
+
+      const ctx = document.createElement('canvas').getContext('2d');
+      if (!ctx) throw new Error('???');
+      ctx.canvas.width = data.width;
+      ctx.canvas.height = data.height;
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+      ctx.font = '16px Roboto Mono, Source Code Pro, Menlo, Courier, monospace';
+      ctx.fillStyle = 'white';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('loading!', data.width / 2, data.height / 2);
+
+      const plane = new THREE.PlaneGeometry(2, 2);
+      const texture = new THREE.CanvasTexture(ctx.canvas);
+      const material = new THREE.MeshBasicMaterial({ map: texture });
+      scene.add(new THREE.Mesh(plane, material));
+
+      data.renderer.render(scene, camera);
+    } else {
+      throw new Error('loading not supported for this type yet');
+    }
+
+    // TODO: Why is the setTimeout required?
+    await new Promise<void>((resolve) => {
+      setTimeout(() => {
+        data.animationFrame = requestAnimationFrame(() => resolve());
+      }, 50);
+    });
+  }
 
   const state = await init(initProps);
   if (state) {

@@ -38,6 +38,7 @@ type SketchConfig = typeof sketchConfig;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
+  showLoading: true,
   sketchConfig,
 };
 
