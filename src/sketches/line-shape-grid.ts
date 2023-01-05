@@ -29,8 +29,11 @@ const sketchConfig = {
   sphereRadius: 20,
   shapeOffset: 4,
   shapeSize: 2,
+  shapeActiveColor: { r: 1.0, g: 0.2, b: 0.2 },
+  shapeInactiveColor: { r: 0.15, g: 0.1, b: 0.1 },
   highlighterNoiseInFactor: 1 / 50,
   highlighterNoiseOutFactor: 0.5,
+  highlighterColor: { r: 1, g: 1, b: 1 },
 };
 type SketchConfig = typeof sketchConfig;
 
@@ -85,6 +88,8 @@ const shapeMaterial = extendMaterial(THREE.MeshBasicMaterial, {
 
   fragmentHeader: glsl`
     uniform mat4 uHighlighterMatrixWorld;
+    uniform vec3 uActiveColor;
+    uniform vec3 uInactiveColor;
     varying vec3 vCenter;
   `,
 
@@ -93,9 +98,9 @@ const shapeMaterial = extendMaterial(THREE.MeshBasicMaterial, {
       vec3 transformedCenter = (vec4(vCenter, 1.0) * uHighlighterMatrixWorld).xyz;
 
       if (abs(transformedCenter.x) < 8.0 && abs(transformedCenter.z) < 8.0) {
-        diffuseColor.rgb = vec3(1.0, 0.2, 0.2);
+        diffuseColor.rgb = uActiveColor;
       } else {
-        diffuseColor.rgb = vec3(0.35, 0.3, 0.3);
+        diffuseColor.rgb = uInactiveColor;
       }
     `,
   },
@@ -111,6 +116,16 @@ const shapeMaterial = extendMaterial(THREE.MeshBasicMaterial, {
     uHighlighterMatrixWorld: {
       shared: true,
       value: new THREE.Matrix4(),
+    },
+
+    uActiveColor: {
+      shared: true,
+      value: new THREE.Color(),
+    },
+
+    uInactiveColor: {
+      shared: true,
+      value: new THREE.Color(),
     },
   },
 });
@@ -251,6 +266,19 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
         const [x, y, z] = shape.userData.unoffsetPosition;
         shape.position.set(x * offset, y * offset, z * offset);
       }
+
+      const activeColor = props.config.shapeActiveColor;
+      shapeMaterial.uniforms.uActiveColor.value = new THREE.Color(
+        activeColor.r,
+        activeColor.g,
+        activeColor.b
+      );
+      const inactiveColor = props.config.shapeInactiveColor;
+      shapeMaterial.uniforms.uInactiveColor.value = new THREE.Color(
+        inactiveColor.r,
+        inactiveColor.g,
+        inactiveColor.b
+      );
     }
 
     const highlighter = scene.getObjectByName('highlighter');
@@ -281,6 +309,11 @@ function initHighlighter(scene: THREE.Scene, _props: InitProps<SketchConfig>) {
     const noiseOutFactor = config.highlighterNoiseOutFactor;
     const noise = state.simplex.noise2D(timestamp * noiseInFactor, 0);
     highlighter.rotateZ((Math.PI / 2) * (noise * noiseOutFactor + 1));
+
+    if (props.hasChanged) {
+      const color = config.highlighterColor;
+      highlighter.material.color = new THREE.Color(color.r, color.g, color.b);
+    }
   };
 
   return { frame };
@@ -294,8 +327,11 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     pane.addInput(config, 'sphereRadius', { min: 2, max: 40 });
     pane.addInput(config, 'shapeOffset', { min: 0, max: 10 });
     pane.addInput(config, 'shapeSize', { min: 0.1, max: 10 });
+    pane.addInput(config, 'shapeActiveColor', { color: { type: 'float' } });
+    pane.addInput(config, 'shapeInactiveColor', { color: { type: 'float' } });
     pane.addInput(config, 'highlighterNoiseInFactor', { min: 0, max: 0.5 });
     pane.addInput(config, 'highlighterNoiseOutFactor', { min: 0, max: 2 });
+    pane.addInput(config, 'highlighterColor', { color: { type: 'float' } });
   });
 
   // TODO: Enable this and make sure none of the shapes are too nazi
