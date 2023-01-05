@@ -27,9 +27,9 @@ interface CanvasState {
 const sketchConfig = {
   rotationSpeed: 1,
   shapeOffset: 4,
-  shapeSize: 2,
-  shapeActiveColor: { r: 1.0, g: 0.2, b: 0.2 },
-  shapeInactiveColor: { r: 0.15, g: 0.1, b: 0.1 },
+  shapeSize: 1.8,
+  shapeActiveColor: { r: 1.0, g: 0.2, b: 0.3 },
+  shapeInactiveColor: { r: 0.15, g: 0.1, b: 0.135 },
   highlighterNoiseInFactor: 1 / 50,
   highlighterNoiseOutFactor: 0.5,
   highlighterColor: { r: 1, g: 1, b: 1 },
@@ -47,9 +47,9 @@ function initCamera(
 ) {
   if (!renderer) throw new Error('???');
 
-  const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 60);
+  const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 200);
   camera.position.y = 5;
-  camera.position.z = 30;
+  camera.position.z = 32;
   scene.add(camera);
 
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -96,21 +96,13 @@ const shapeMaterial = extendMaterial(THREE.MeshBasicMaterial, {
     '#include <color_fragment>': glsl`
       vec3 transformedCenter = (vec4(vCenter, 1.0) * uHighlighterMatrixWorld).xyz;
 
-      // TODO: make this a circle
-      if (abs(transformedCenter.x) < 8.0 && abs(transformedCenter.z) < 8.0) {
+      if (sqrt(pow(transformedCenter.x, 2.0) + pow(transformedCenter.z, 2.0)) < 10.0) {
         diffuseColor.rgb = uActiveColor;
       } else {
         diffuseColor.rgb = uInactiveColor;
       }
     `,
   },
-
-  // For when instancing is used
-  // vertex: {
-  //   '#include <color_vertex>': glsl`
-  //     vColor.g = 0.0;
-  //   `,
-  // },
 
   uniforms: {
     uHighlighterMatrixWorld: {
@@ -214,7 +206,7 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
   const scale = config.shapeSize / 2;
   const offset = config.shapeOffset;
 
-  const toGenerate = 3;
+  const toGenerate = 4;
 
   for (let x = -toGenerate; x <= toGenerate; x++) {
     for (let y = -toGenerate; y <= toGenerate; y++) {
@@ -315,8 +307,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     pane.addInput(config, 'highlighterColor', { color: { type: 'float' } });
   });
 
-  // TODO: Enable this and make sure none of the shapes are too nazi
-  // random.setSeed('blabla');
+  random.setSeed('abc');
 
   // We use the random module to seed the noise so that if we set the random
   // module's seed, it also seeds this module
