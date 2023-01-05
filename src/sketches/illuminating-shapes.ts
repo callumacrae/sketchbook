@@ -39,6 +39,14 @@ type SketchConfig = typeof sketchConfig;
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
   showLoading: true,
+  capture: {
+    enabled: false,
+    duration: 15000,
+    fps: 24,
+    directory: 'line-shape-grid',
+  },
+  // width: 720,
+  // height: 720,
   sketchConfig,
 };
 

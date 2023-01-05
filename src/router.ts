@@ -85,9 +85,10 @@ const router = createRouter({
       meta: { favourite: true, link: 'https://www.shadertoy.com/view/dtX3Dj' },
     },
     {
-      path: '/line-shape-grid',
-      name: 'Line shape grid',
-      component: () => import('./sketches/line-shape-grid'),
+      path: '/illuminating-shapes',
+      name: 'Illuminating shapes',
+      component: () => import('./sketches/illuminating-shapes'),
+      meta: { favourite: true },
     },
     {
       path: '/rolling-sphere',
@@ -102,6 +103,7 @@ const router = createRouter({
         shaderToyComponent(
           (await import('./sketches/glitch-art.glsl?raw')).default
         ),
+      meta: { favourite: true },
     },
   ],
 });
