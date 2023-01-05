@@ -4,6 +4,7 @@ import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUt
 
 import * as random from '@/utils/random';
 import { toCanvasComponent } from '@/utils/renderers/vue';
+import { extendMaterial } from '@/utils/three-extend-material';
 import type {
   Config,
   InitFn,
@@ -11,6 +12,8 @@ import type {
   FrameFn,
   FrameProps,
 } from '@/utils/renderers/vanilla';
+
+const glsl = String.raw;
 
 interface CanvasState {
   scene: THREE.Scene;
@@ -39,6 +42,7 @@ function initCamera(
   if (!renderer) throw new Error('???');
 
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 60);
+  camera.position.y = 5;
   camera.position.z = 30;
   scene.add(camera);
 
@@ -61,9 +65,52 @@ const getCoords = (p: number) => [
   Math.floor(p / 9),
 ];
 
-const shapeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const nodeGeometry = new THREE.SphereGeometry(0.1, 4, 4);
-const edgeGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 4, 1, true);
+const shapeMaterial = extendMaterial(THREE.MeshBasicMaterial, {
+  class: THREE.ShaderMaterial,
+
+  vertexHeader: glsl`
+    attribute vec3 aCenter;
+    varying vec3 vCenter;
+  `,
+
+  vertex: {
+    transformEnd: glsl`
+      vCenter = aCenter;
+    `,
+  },
+
+  fragmentHeader: glsl`
+    uniform mat4 uHighlighterMatrixWorld;
+    varying vec3 vCenter;
+  `,
+
+  fragment: {
+    '#include <color_fragment>': glsl`
+      vec3 transformedCenter = (vec4(vCenter, 1.0) * uHighlighterMatrixWorld).xyz;
+
+      if (abs(transformedCenter.x) < 8.0 && abs(transformedCenter.z) < 8.0) {
+        diffuseColor.gb = vec2(0.0);
+      } else {
+      }
+    `,
+  },
+
+  // For when instancing is used
+  // vertex: {
+  //   '#include <color_vertex>': glsl`
+  //     vColor.g = 0.0;
+  //   `,
+  // },
+
+  uniforms: {
+    uHighlighterMatrixWorld: {
+      shared: true,
+      value: new THREE.Matrix4(),
+    },
+  },
+});
+const nodeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+const edgeGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 8, 1, true);
 
 function generateShape() {
   const shapeGeometries = [nodeGeometry.clone()];
@@ -159,11 +206,25 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
           Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2)
         );
 
+        const offsetX = x * offset;
+        const offsetY = y * offset;
+        const offsetZ = z * offset;
+
         const shape = generateShape();
         shape.scale.set(scale, scale, scale);
-        shape.position.set(x * offset, y * offset, z * offset);
+        shape.position.set(offsetX, offsetY, offsetZ);
         shape.visible = distToCenter * offset < config.sphereRadius;
         shapes.add(shape);
+
+        const aNormal = shape.geometry.attributes.normal;
+        const aCenterArray = new Float32Array(aNormal.array.length);
+        for (let i = 0; i < aNormal.count; i++) {
+          aCenterArray[i * 3] = offsetX;
+          aCenterArray[i * 3 + 1] = offsetY;
+          aCenterArray[i * 3 + 2] = offsetZ;
+        }
+        const aCenter = new THREE.BufferAttribute(aCenterArray, 3);
+        shape.geometry.setAttribute('aCenter', aCenter);
 
         shape.userData.unoffsetPosition = [x, y, z];
         shape.userData.distToCenter = distToCenter;
@@ -184,15 +245,14 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
         shape.scale.set(scale, scale, scale);
         const [x, y, z] = shape.userData.unoffsetPosition;
         shape.position.set(x * offset, y * offset, z * offset);
-        shape.visible =
-          shape.userData.distToCenter * offset < config.sphereRadius;
       }
-
-      const highlighter = scene.getObjectByName('highlighter');
-      if (!(highlighter instanceof THREE.Mesh)) throw new Error('???');
-
-      // TODO: do magic
     }
+
+    const highlighter = scene.getObjectByName('highlighter');
+    if (!(highlighter instanceof THREE.Mesh)) throw new Error('???');
+
+    shapeMaterial.uniforms.uHighlighterMatrixWorld.value =
+      highlighter.matrixWorld;
   };
 
   return { frame };
@@ -200,14 +260,10 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
 
 function initHighlighter(scene: THREE.Scene, _props: InitProps<SketchConfig>) {
   const geometry = new THREE.PlaneGeometry(0.4, 1000);
-  const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  const material = new THREE.MeshBasicMaterial({ color: 0x00ffff });
   const highlighter = new THREE.Mesh(geometry, material);
   highlighter.name = 'highlighter';
   scene.add(highlighter);
-
-  // eslint-disable-next-line
-  // @ts-ignore
-  window.highlighter = highlighter;
 
   const frame = (_props: FrameProps<CanvasState, SketchConfig>) => {
     const camera = scene.getObjectByProperty('isCamera', true);

@@ -97,15 +97,13 @@ function initShaderCube(scene: THREE.Scene) {
       },
       shininess: {
         value: 60,
-      }
+      },
     },
   });
 
   const cube = new THREE.Mesh(geometry, extendedMaterial);
   cube.translateY(1);
   scene.add(cube);
-
-  console.log(extendedMaterial.vertexShader);
 
   const frame: FrameFn<CanvasState, SketchConfig> = ({ config, delta }) => {
     if (!config) throw new Error('???');
