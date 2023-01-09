@@ -105,6 +105,11 @@ const router = createRouter({
         ),
       meta: { favourite: true },
     },
+    {
+      path: '/moving-mirrors',
+      name: 'Moving mirrors',
+      component: () => import('./sketches/moving-mirrors'),
+    },
   ],
 });
 
