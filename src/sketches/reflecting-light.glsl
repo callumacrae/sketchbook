@@ -1,4 +1,6 @@
 #define LIGHT_VIS_SIZE 10.0
+#define LIGHT_START_POWER 0.6
+#define LIGHT_DISTANCE 1500.0
 
 mat3 rotationMatrix(float angle) {
   float c = cos(angle);
@@ -26,22 +28,33 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   vec3 reflectedLightPos = lightPosMirrorSpace * scaleXMatrix(-1.0);
   vec3 fragCoordMirrorSpace = vec3(fragCoord, 1.0) * mirrorTransform;
 
-  float shadowIntersection = fragCoordMirrorSpace.y - fragCoordMirrorSpace.x
-    * (lightPosMirrorSpace.y - fragCoordMirrorSpace.y) / (lightPosMirrorSpace.x - fragCoordMirrorSpace.x);
-
-  float reflectionIntersection = fragCoordMirrorSpace.y - fragCoordMirrorSpace.x
-    * (reflectedLightPos.y - fragCoordMirrorSpace.y) / (reflectedLightPos.x - fragCoordMirrorSpace.x);
-
   if (abs(fragCoordMirrorSpace.x) < 3.0 &&
       abs(fragCoordMirrorSpace.y) < mirrorLength / 2.0) {
     fragColor = vec4(1.0);
   } else if (distance(fragCoord, lightPos) < LIGHT_VIS_SIZE) {
     fragColor = vec4(1.0);
-  } else if (abs(shadowIntersection) < mirrorLength / 2.0 && fragCoordMirrorSpace.x < 0.0) {
-    fragColor = vec4(vec3(0.0), 1.0);
-  } else if (abs(reflectionIntersection) < mirrorLength / 2.0 && fragCoordMirrorSpace.x > 0.0) {
-    fragColor = vec4(1.0, 0.8, 0.0, 1.0);
   } else {
-    fragColor = vec4(0.5, 0.4, 0.0, 1.0);
+    float light = 0.0;
+
+    float reflectionIntersection = fragCoordMirrorSpace.y - fragCoordMirrorSpace.x
+      * (reflectedLightPos.y - fragCoordMirrorSpace.y) / (reflectedLightPos.x - fragCoordMirrorSpace.x);
+
+    if (abs(reflectionIntersection) < mirrorLength / 2.0 && fragCoordMirrorSpace.x > 0.0) {
+      float dist = distance(fragCoord, reflectedLightPos.xy);
+      /* light += 1.0 / pow(dist / 200.0, 2.0); */
+      // This isn't physically realistic, but the inverse square law wasn't working out for me…
+      light += smoothstep(LIGHT_DISTANCE, 0.0, dist) * LIGHT_START_POWER;
+    }
+
+    float shadowIntersection = fragCoordMirrorSpace.y - fragCoordMirrorSpace.x
+      * (lightPosMirrorSpace.y - fragCoordMirrorSpace.y) / (lightPosMirrorSpace.x - fragCoordMirrorSpace.x);
+
+    if (abs(shadowIntersection) > mirrorLength / 2.0 || fragCoordMirrorSpace.x > 0.0) {
+      float dist = distance(fragCoord, lightPos);
+      /* light += 1.0 / pow(dist / 200.0, 2.0); */
+      light += smoothstep(LIGHT_DISTANCE, 0.0, dist) * LIGHT_START_POWER;
+    }
+
+    fragColor = vec4(vec3(1.0, 0.85, 0.25) * min(light, 1.0), 1.0);
   }
 }
