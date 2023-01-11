@@ -42,8 +42,8 @@ function initCamera(
 }
 
 function initLighting(scene: THREE.Scene) {
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-  directionalLight.position.set(0, 0, 10);
+  const directionalLight = new THREE.PointLight(0xffffff, 0.6);
+  directionalLight.position.set(0, 0, 17);
   scene.add(directionalLight);
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
@@ -55,7 +55,6 @@ function initFloor(scene: THREE.Scene) {
   const floorMaterial = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
   floor.rotation.z = -Math.PI / 2;
-  floor.receiveShadow = true;
   scene.add(floor);
 }
 
@@ -66,25 +65,18 @@ function createMirror() {
   mirror.rotation.order = 'ZYX';
 
   const backGeometry = new THREE.SphereGeometry(1, 32, 32, 0, Math.PI);
-  const backMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+  const backMaterial = new THREE.MeshPhongMaterial({
+    color: 0xffffff,
+    shininess: 0,
+  });
   const backObject = new THREE.Mesh(backGeometry, backMaterial);
-  backObject.castShadow = true;
-  backObject.receiveShadow = true;
   backObject.rotateX(Math.PI);
 
   const faceGeometry = new THREE.CircleGeometry(1, 32);
-  const faceMaterial = new THREE.MeshPhongMaterial({
-    color: 0xffffff,
-    emissive: new THREE.Color(0xffffff),
-  });
+  const faceMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
   const faceObject = new THREE.Mesh(faceGeometry, faceMaterial);
   faceObject.rotation.y = Math.PI;
   faceObject.rotateX(Math.PI);
-
-  const mirrorLight = new THREE.PointLight(0xffffff, 1, 40);
-  mirrorLight.position.set(0, 0, -0.3);
-  mirrorLight.castShadow = true;
-  mirror.add(mirrorLight);
 
   mirror.add(backObject);
   mirror.add(faceObject);
@@ -95,10 +87,10 @@ function createMirror() {
 function initMirrors(scene: THREE.Scene) {
   const mirrorsGroup = new THREE.Group();
 
-  const mirrorsX = 3;
-  const mirrorsY = 3;
-  const spacingX = 4.5;
-  const spacingY = 4.5;
+  const mirrorsX = 1;
+  const mirrorsY = 1;
+  const spacingX = 2.5;
+  const spacingY = 2.5;
 
   for (let x = 0; x < mirrorsX; x++) {
     for (let y = 0; y < mirrorsY; y++) {
@@ -156,8 +148,6 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     pane.addInput(config, 'noiseAngleTimeInFactor', { min: 0, max: 1 });
     pane.addInput(config, 'noiseTiltTimeInFactor', { min: 0, max: 1 });
   });
-
-  props.renderer.shadowMap.enabled = true;
 
   const scene = new THREE.Scene();
 

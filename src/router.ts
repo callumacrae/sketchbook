@@ -110,6 +110,14 @@ const router = createRouter({
       name: 'Moving mirrors',
       component: () => import('./sketches/moving-mirrors'),
     },
+    {
+      path: '/reflecting-light',
+      name: 'Reflecting light experiment',
+      component: async () =>
+        shaderToyComponent(
+          (await import('./sketches/reflecting-light.glsl?raw')).default
+        ),
+    },
   ],
 });
 
