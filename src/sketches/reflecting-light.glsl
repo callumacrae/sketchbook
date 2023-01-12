@@ -1,4 +1,5 @@
 #define LIGHT_VIS_SIZE 10.0
+#define LIGHT_VIS_GLOW_SIZE 40.0
 #define LIGHT_START_POWER 0.6
 #define LIGHT_DISTANCE 1500.0
 
@@ -28,13 +29,19 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   vec3 reflectedLightPos = lightPosMirrorSpace * scaleXMatrix(-1.0);
   vec3 fragCoordMirrorSpace = vec3(fragCoord, 1.0) * mirrorTransform;
 
+  float lightDistance = distance(fragCoord, lightPos);
+
   if (abs(fragCoordMirrorSpace.x) < 3.0 &&
       abs(fragCoordMirrorSpace.y) < mirrorLength / 2.0) {
     fragColor = vec4(1.0);
-  } else if (distance(fragCoord, lightPos) < LIGHT_VIS_SIZE) {
+  } else if (lightDistance < LIGHT_VIS_SIZE) {
     fragColor = vec4(1.0);
   } else {
     float light = 0.0;
+
+    if (lightDistance < LIGHT_VIS_SIZE + LIGHT_VIS_GLOW_SIZE) {
+      light = smoothstep(LIGHT_VIS_GLOW_SIZE, 0.0, lightDistance - LIGHT_VIS_SIZE) * (1.0 - LIGHT_START_POWER);
+    }
 
     float reflectionIntersection = fragCoordMirrorSpace.y - fragCoordMirrorSpace.x
       * (reflectedLightPos.y - fragCoordMirrorSpace.y) / (reflectedLightPos.x - fragCoordMirrorSpace.x);
