@@ -247,15 +247,6 @@ function initMirrors(scene: THREE.Scene) {
     mirrorsGroup.children.forEach((mirror) => {
       if (!(mirror instanceof THREE.Group)) return;
 
-      mirror.rotation.x = Math.PI / (3.2 + Math.sin(t) * 0.5);
-      mirror.rotation.z += 0.01;
-      floorMaterial.uniforms.uMirrorAngle.value.set(
-        mirror.rotation.x,
-        mirror.rotation.y,
-        mirror.rotation.z
-      );
-      return;
-
       const { x, y } = mirror.position;
 
       const angleNoise = state.simplex.noise3D(
