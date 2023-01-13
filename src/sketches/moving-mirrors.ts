@@ -17,6 +17,7 @@ interface CanvasState {
   simplex: SimplexNoise;
   scene: THREE.Scene;
   camera: ReturnType<typeof initCamera>;
+  lighting: ReturnType<typeof initLighting>;
   mirrors: ReturnType<typeof initMirrors>;
 }
 
@@ -24,13 +25,15 @@ const sketchConfig = {
   noiseXInFactor: 0.07,
   noiseYInFactor: 0.07,
   noiseAngleTimeInFactor: 0.1,
-  noiseTiltTimeInFactor: 0.1,
+  noiseTiltTimeInFactor: 0.05,
+  lightMoveRadius: 10,
+  lightMoveSpeed: 0.5,
 };
 type SketchConfig = typeof sketchConfig;
 
 // Unfortunately has to be done outside of the config for now
-const mirrorsX = 3;
-const mirrorsY = 3;
+const mirrorsX = 5;
+const mirrorsY = 5;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
@@ -55,6 +58,19 @@ function initLighting(scene: THREE.Scene) {
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
   scene.add(ambientLight);
+
+  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+    const { timestamp, config } = props;
+    if (!config) throw new Error('???');
+
+    const t = timestamp / 1e3;
+
+    const x = Math.sin(t * config.lightMoveSpeed) * config.lightMoveRadius;
+    const y = Math.cos(t * config.lightMoveSpeed) * config.lightMoveRadius;
+    pointLight.position.set(x, y, pointLight.position.z);
+  };
+
+  return { frame };
 }
 
 const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
@@ -72,7 +88,6 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
     uniform Mirror uMirrors[${mirrorsX * mirrorsY}];
 
     varying vec3 vMvPointLightPosition[NUM_POINT_LIGHTS];
-    varying vec4 vPositionMirrorSpace[${mirrorsX * mirrorsY}];
   `,
 
   vertexHeader: glsl`
@@ -91,10 +106,9 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
     '#include <worldpos_vertex>': glsl`
       for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
         vMvPointLightPosition[i] = (projectionMatrix * modelViewMatrix * vec4(pointLights[i].position, 1.0)).xyz;
-      }
-
-      for (int i = 0; i < ${mirrorsX * mirrorsY}; i++) {
-        vPositionMirrorSpace[i] = worldPosition * uMirrors[i].transformMatrix;
+        // I've definitely either messed up my maths or misunderstood something here…
+        vMvPointLightPosition[i].xy = vMvPointLightPosition[i].yx;
+        vMvPointLightPosition[i].x *= -1.0;
       }
     `,
   },
@@ -106,7 +120,7 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
           vec4 reflectedLightPos = vec4(vMvPointLightPosition[j], 1.0)
             * uMirrors[i].transformMatrix;
           reflectedLightPos.z *= -1.0;
-          vec4 positionMS = vPositionMirrorSpace[i];
+          vec4 positionMS = vec4(vWorldPosition, 1.0) * uMirrors[i].transformMatrix;
 
           if (positionMS.z > 0.0) {
             float lambda = positionMS.z / (positionMS.z - reflectedLightPos.z);
@@ -115,7 +129,7 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
             if (length(intersection) < uMirrors[i].radius) {
               float lightDistance = distance(reflectedLightPos.xyz, positionMS.xyz);
               reflectedLight.directSpecular += pointLights[j].color
-                * getDistanceAttenuation(lightDistance, 20.0, 1.8);
+                * getDistanceAttenuation(lightDistance, 25.0, 1.8);
             }
           }
         }
@@ -126,7 +140,7 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
   uniforms: {
     diffuse: {
       shared: true,
-      value: new THREE.Color(0xaaaaaa),
+      value: new THREE.Color(0x999999),
     },
 
     uMirrors: {
@@ -143,27 +157,25 @@ function initFloor(scene: THREE.Scene) {
   scene.add(floor);
 }
 
+const faceGeometry = new THREE.CylinderGeometry(1, 1, 0.1, 32);
+const faceMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+const backMaterial = new THREE.MeshPhongMaterial({
+  color: 0x666666,
+  shininess: 0,
+});
 function createMirror() {
   const mirror = new THREE.Group();
 
   // To ensure that angle is applied before tilt
   mirror.rotation.order = 'ZYX';
 
-  const backGeometry = new THREE.SphereGeometry(1, 32, 32, 0, Math.PI);
-  const backMaterial = new THREE.MeshPhongMaterial({
-    color: 0xffffff,
-    shininess: 0,
-  });
-  const backObject = new THREE.Mesh(backGeometry, backMaterial);
-  backObject.rotateX(Math.PI);
+  const faceObject = new THREE.Mesh(faceGeometry, [
+    backMaterial,
+    faceMaterial,
+    backMaterial,
+  ]);
+  faceObject.rotateX(Math.PI / 2);
 
-  const faceGeometry = new THREE.CircleGeometry(1, 32);
-  const faceMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
-  const faceObject = new THREE.Mesh(faceGeometry, faceMaterial);
-  faceObject.rotation.y = Math.PI;
-  faceObject.rotateX(Math.PI);
-
-  mirror.add(backObject);
   mirror.add(faceObject);
 
   return mirror;
@@ -235,10 +247,15 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   if (!props.renderer) throw new Error('???');
 
   props.initControls(({ pane, config }) => {
-    pane.addInput(config, 'noiseXInFactor', { min: 0, max: 1 });
-    pane.addInput(config, 'noiseYInFactor', { min: 0, max: 1 });
-    pane.addInput(config, 'noiseAngleTimeInFactor', { min: 0, max: 1 });
-    pane.addInput(config, 'noiseTiltTimeInFactor', { min: 0, max: 1 });
+    const mirrorFolder = pane.addFolder({ title: 'Mirrors' });
+    mirrorFolder.addInput(config, 'noiseXInFactor', { min: 0, max: 1 });
+    mirrorFolder.addInput(config, 'noiseYInFactor', { min: 0, max: 1 });
+    mirrorFolder.addInput(config, 'noiseAngleTimeInFactor', { min: 0, max: 1 });
+    mirrorFolder.addInput(config, 'noiseTiltTimeInFactor', { min: 0, max: 1 });
+
+    const lightFolder = pane.addFolder({ title: 'Light' });
+    lightFolder.addInput(config, 'lightMoveSpeed', { min: 0, max: 2 });
+    lightFolder.addInput(config, 'lightMoveRadius', { min: 0, max: 20 });
   });
 
   const scene = new THREE.Scene();
@@ -246,17 +263,24 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   const camera = initCamera(scene, props);
   new OrbitControls(camera.camera, props.renderer.domElement);
 
-  initLighting(scene);
+  const lighting = initLighting(scene);
   initFloor(scene);
   const mirrors = initMirrors(scene);
 
-  return { simplex: new SimplexNoise('seed'), scene, camera, mirrors };
+  return {
+    simplex: new SimplexNoise('seed'),
+    scene,
+    camera,
+    lighting,
+    mirrors,
+  };
 };
 
 const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { renderer, config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
+  state.lighting.frame(props);
   state.mirrors.frame(props);
 
   renderer.render(state.scene, state.camera.camera);
