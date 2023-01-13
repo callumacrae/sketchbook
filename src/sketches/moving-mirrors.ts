@@ -28,6 +28,10 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
+// Unfortunately has to be done outside of the config for now
+const mirrorsX = 3;
+const mirrorsY = 3;
+
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
   sketchConfig,
@@ -86,7 +90,13 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
   },
 
   fragmentHeader: glsl`
-    uniform vec3 uMirrorAngle;
+    struct Mirror {
+      vec3 center;
+      vec3 angle;
+      float radius;
+    };
+
+    uniform Mirror uMirrors[${mirrorsX * mirrorsY}];
 
     mat4 translateMatrix(vec3 v) {
       return mat4(
@@ -127,37 +137,36 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
 
   fragment: {
     '#include <lights_fragment_begin>': glsl`
-      vec3 mirrorCenter = vec3(0.0, 0.0, 0.5);
-      float mirrorRadius = 1.0;
-      mat4 mirrorTransform = translateMatrix(-mirrorCenter)
-        * rotationZMatrix(-uMirrorAngle.z)* rotationXMatrix(-uMirrorAngle.x) ;
-      
-      PointLight pointLightReflection;
-      IncidentLight directLightReflection;
+      for (int i = 0; i < ${mirrorsX * mirrorsY}; i++) {
+        Mirror mirror = uMirrors[i];
+        mat4 mirrorTransform = translateMatrix(-mirror.center)
+          * rotationZMatrix(-mirror.angle.z)* rotationXMatrix(-mirror.angle.x) ;
+        
+        PointLight pointLightReflection;
+        IncidentLight directLightReflection;
 
-      #pragma unroll_loop_start
-      for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
-        pointLightReflection = pointLights[i];
+        for (int j = 0; j < NUM_POINT_LIGHTS; j++) {
+          pointLightReflection = pointLights[j];
 
-        vec3 lightPos = vMvPointLightPosition[i];
+          vec3 lightPos = vMvPointLightPosition[j];
 
-        vec4 lightPosMirrorSpace = vec4(lightPos, 1.0) * mirrorTransform;
-        vec4 reflectedLightPos = lightPosMirrorSpace * scaleZMatrix(-1.0);
-        vec4 positionMirrorSpace = vec4(vWorldPosition, 1.0) * mirrorTransform;
+          vec4 lightPosMirrorSpace = vec4(lightPos, 1.0) * mirrorTransform;
+          vec4 reflectedLightPos = lightPosMirrorSpace * scaleZMatrix(-1.0);
+          vec4 positionMirrorSpace = vec4(vWorldPosition, 1.0) * mirrorTransform;
 
-        if (positionMirrorSpace.z > 0.0) {
-          float lambda = positionMirrorSpace.z / (positionMirrorSpace.z - reflectedLightPos.z);
-          vec3 intersection = mix(positionMirrorSpace.xyz, reflectedLightPos.xyz, lambda);
+          if (positionMirrorSpace.z > 0.0) {
+            float lambda = positionMirrorSpace.z / (positionMirrorSpace.z - reflectedLightPos.z);
+            vec3 intersection = mix(positionMirrorSpace.xyz, reflectedLightPos.xyz, lambda);
 
-          if (sqrt(pow(intersection.x, 2.0) + pow(intersection.y, 2.0)) < mirrorRadius) {
-            float lightDistance = distance(reflectedLightPos.xyz, positionMirrorSpace.xyz);
-            directLightReflection.color = pointLightReflection.color;
-            directLightReflection.color *= getDistanceAttenuation(lightDistance, 20.0, 1.8);
-            reflectedLight.directSpecular += directLightReflection.color;
+            if (sqrt(pow(intersection.x, 2.0) + pow(intersection.y, 2.0)) < mirror.radius) {
+              float lightDistance = distance(reflectedLightPos.xyz, positionMirrorSpace.xyz);
+              directLightReflection.color = pointLightReflection.color;
+              directLightReflection.color *= getDistanceAttenuation(lightDistance, 20.0, 1.8);
+              reflectedLight.directSpecular += directLightReflection.color;
+            }
           }
         }
       }
-      #pragma unroll_loop_end
     `,
   },
 
@@ -167,9 +176,10 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
       value: new THREE.Color(0xaaaaaa),
     },
 
-    uMirrorAngle: {
-      shared: true,
-      value: new THREE.Vector3(),
+    uMirrors: {
+      value: [
+        { radius: 1, center: new THREE.Vector3(), angle: new THREE.Vector3() },
+      ],
     },
   },
 });
@@ -210,8 +220,6 @@ function createMirror() {
 function initMirrors(scene: THREE.Scene) {
   const mirrorsGroup = new THREE.Group();
 
-  const mirrorsX = 1;
-  const mirrorsY = 1;
   const spacingX = 2.5;
   const spacingY = 2.5;
 
@@ -221,15 +229,9 @@ function initMirrors(scene: THREE.Scene) {
       mirror.position.set(
         (x - mirrorsX / 2 + 0.5) * spacingX,
         (y - mirrorsY / 2 + 0.5) * spacingY,
-        0.5
-      );
-
-      mirror.rotation.x = Math.PI / 3.6;
-      mirror.rotation.z = Math.PI / 4;
-      floorMaterial.uniforms.uMirrorAngle.value.set(
-        mirror.rotation.x,
-        mirror.rotation.y,
-        mirror.rotation.z
+        // The z position can't be reduced due to a bug which means the floor
+        // can be lit from below (TODO)
+        0.75
       );
 
       mirrorsGroup.add(mirror);
@@ -244,31 +246,37 @@ function initMirrors(scene: THREE.Scene) {
 
     const t = timestamp / 1e3;
 
-    mirrorsGroup.children.forEach((mirror) => {
-      if (!(mirror instanceof THREE.Group)) return;
+    floorMaterial.uniforms.uMirrors.value = mirrorsGroup.children
+      .map((mirror) => {
+        if (!(mirror instanceof THREE.Group)) return;
 
-      const { x, y } = mirror.position;
+        const { x, y } = mirror.position;
 
-      const angleNoise = state.simplex.noise3D(
-        x * config.noiseXInFactor,
-        y * config.noiseYInFactor,
-        t * config.noiseAngleTimeInFactor
-      );
-      mirror.rotation.z = angleNoise * Math.PI;
+        const angleNoise = state.simplex.noise3D(
+          x * config.noiseXInFactor,
+          y * config.noiseYInFactor,
+          t * config.noiseAngleTimeInFactor
+        );
+        mirror.rotation.z = angleNoise * Math.PI;
 
-      const tiltNoise = state.simplex.noise3D(
-        x * config.noiseXInFactor,
-        y * config.noiseYInFactor,
-        t * config.noiseTiltTimeInFactor + 100
-      );
-      mirror.rotation.x = (tiltNoise * Math.PI) / 2;
+        const tiltNoise = state.simplex.noise3D(
+          x * config.noiseXInFactor,
+          y * config.noiseYInFactor,
+          t * config.noiseTiltTimeInFactor + 100
+        );
+        mirror.rotation.x = (tiltNoise * Math.PI) / 2;
 
-      floorMaterial.uniforms.uMirrorAngle.value.set(
-        mirror.rotation.x,
-        mirror.rotation.y,
-        mirror.rotation.z
-      );
-    });
+        return {
+          radius: 1,
+          center: mirror.position,
+          angle: new THREE.Vector3(
+            mirror.rotation.x,
+            mirror.rotation.y,
+            mirror.rotation.z
+          ),
+        };
+      })
+      .filter(Boolean);
   };
 
   return { frame };
