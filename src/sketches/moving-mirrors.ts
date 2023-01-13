@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { Reflector } from 'three/examples/jsm/objects/Reflector';
 import SimplexNoise from 'simplex-noise';
 
 import { extendMaterial } from '@/utils/three-extend-material';
@@ -105,10 +106,10 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
   vertex: {
     '#include <worldpos_vertex>': glsl`
       for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
-        vMvPointLightPosition[i] = (projectionMatrix * modelViewMatrix * vec4(pointLights[i].position, 1.0)).xyz;
+        vMvPointLightPosition[i] = (inverse(modelViewMatrix) * vec4(pointLights[i].position, 1.0)).xyz;
         // I've definitely either messed up my maths or misunderstood something here…
         vMvPointLightPosition[i].xy = vMvPointLightPosition[i].yx;
-        vMvPointLightPosition[i].x *= -1.0;
+        vMvPointLightPosition[i].y *= -1.0;
       }
     `,
   },
@@ -174,6 +175,7 @@ function createMirror() {
     faceMaterial,
     backMaterial,
   ]);
+  faceObject.translateZ(-0.05);
   faceObject.rotateX(Math.PI / 2);
 
   mirror.add(faceObject);
