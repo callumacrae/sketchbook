@@ -64,7 +64,15 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
     #define USE_ENVMAP
     #define ENV_WORLDPOS
 
+    struct Mirror {
+      float radius;
+      mat4 transformMatrix;
+    };
+
+    uniform Mirror uMirrors[${mirrorsX * mirrorsY}];
+
     varying vec3 vMvPointLightPosition[NUM_POINT_LIGHTS];
+    varying vec4 vPositionMirrorSpace[${mirrorsX * mirrorsY}];
   `,
 
   vertexHeader: glsl`
@@ -80,89 +88,34 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
   `,
 
   vertex: {
-    transformEnd: glsl`
-      #pragma unroll_loop_start
+    '#include <worldpos_vertex>': glsl`
       for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
         vMvPointLightPosition[i] = (projectionMatrix * modelViewMatrix * vec4(pointLights[i].position, 1.0)).xyz;
       }
-      #pragma unroll_loop_end
+
+      for (int i = 0; i < ${mirrorsX * mirrorsY}; i++) {
+        vPositionMirrorSpace[i] = worldPosition * uMirrors[i].transformMatrix;
+      }
     `,
   },
-
-  fragmentHeader: glsl`
-    struct Mirror {
-      vec3 center;
-      vec3 angle;
-      float radius;
-    };
-
-    uniform Mirror uMirrors[${mirrorsX * mirrorsY}];
-
-    mat4 translateMatrix(vec3 v) {
-      return mat4(
-        1.0, 0.0, 0.0, v.x,
-        0.0, 1.0, 0.0, v.y,
-        0.0, 0.0, 1.0, v.z,
-        0.0, 0.0, 0.0, 1.0
-      );
-    }
-
-    mat4 rotationXMatrix(float angle) {
-      return mat4(
-        1.0, 0.0, 0.0, 0.0,
-        0.0, cos(angle), -sin(angle), 0.0,
-        0.0, sin(angle), cos(angle), 0.0,
-        0.0, 0.0, 0.0, 1.0
-      );
-    }
-
-    mat4 rotationZMatrix(float angle) {
-      return mat4(
-        cos(angle), -sin(angle), 0.0, 0.0,
-        sin(angle), cos(angle), 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0
-      );
-    }
-
-    mat4 scaleZMatrix(float scale) {
-      return mat4(
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, scale, 0.0,
-        0.0, 0.0, 0.0, 1.0
-      );
-    }
-  `,
 
   fragment: {
     '#include <lights_fragment_begin>': glsl`
       for (int i = 0; i < ${mirrorsX * mirrorsY}; i++) {
-        Mirror mirror = uMirrors[i];
-        mat4 mirrorTransform = translateMatrix(-mirror.center)
-          * rotationZMatrix(-mirror.angle.z)* rotationXMatrix(-mirror.angle.x) ;
-        
-        PointLight pointLightReflection;
-        IncidentLight directLightReflection;
-
         for (int j = 0; j < NUM_POINT_LIGHTS; j++) {
-          pointLightReflection = pointLights[j];
+          vec4 reflectedLightPos = vec4(vMvPointLightPosition[j], 1.0)
+            * uMirrors[i].transformMatrix;
+          reflectedLightPos.z *= -1.0;
+          vec4 positionMS = vPositionMirrorSpace[i];
 
-          vec3 lightPos = vMvPointLightPosition[j];
+          if (positionMS.z > 0.0) {
+            float lambda = positionMS.z / (positionMS.z - reflectedLightPos.z);
+            vec2 intersection = mix(positionMS.xy, reflectedLightPos.xy, lambda);
 
-          vec4 lightPosMirrorSpace = vec4(lightPos, 1.0) * mirrorTransform;
-          vec4 reflectedLightPos = lightPosMirrorSpace * scaleZMatrix(-1.0);
-          vec4 positionMirrorSpace = vec4(vWorldPosition, 1.0) * mirrorTransform;
-
-          if (positionMirrorSpace.z > 0.0) {
-            float lambda = positionMirrorSpace.z / (positionMirrorSpace.z - reflectedLightPos.z);
-            vec3 intersection = mix(positionMirrorSpace.xyz, reflectedLightPos.xyz, lambda);
-
-            if (sqrt(pow(intersection.x, 2.0) + pow(intersection.y, 2.0)) < mirror.radius) {
-              float lightDistance = distance(reflectedLightPos.xyz, positionMirrorSpace.xyz);
-              directLightReflection.color = pointLightReflection.color;
-              directLightReflection.color *= getDistanceAttenuation(lightDistance, 20.0, 1.8);
-              reflectedLight.directSpecular += directLightReflection.color;
+            if (length(intersection) < uMirrors[i].radius) {
+              float lightDistance = distance(reflectedLightPos.xyz, positionMS.xyz);
+              reflectedLight.directSpecular += pointLights[j].color
+                * getDistanceAttenuation(lightDistance, 20.0, 1.8);
             }
           }
         }
@@ -177,9 +130,8 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
     },
 
     uMirrors: {
-      value: [
-        { radius: 1, center: new THREE.Vector3(), angle: new THREE.Vector3() },
-      ],
+      shared: true,
+      value: [],
     },
   },
 });
@@ -266,15 +218,12 @@ function initMirrors(scene: THREE.Scene) {
         );
         mirror.rotation.x = (tiltNoise * Math.PI) / 2;
 
-        return {
-          radius: 1,
-          center: mirror.position,
-          angle: new THREE.Vector3(
-            mirror.rotation.x,
-            mirror.rotation.y,
-            mirror.rotation.z
-          ),
-        };
+        const transformMatrix = new THREE.Matrix4()
+          .setPosition(mirror.position.clone().negate())
+          .transpose()
+          .multiply(new THREE.Matrix4().makeRotationFromEuler(mirror.rotation));
+
+        return { radius: 1, transformMatrix };
       })
       .filter(Boolean);
   };
