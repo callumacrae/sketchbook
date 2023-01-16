@@ -68,7 +68,7 @@ function initLighting(scene: THREE.Scene) {
 
     const x = Math.sin(t * config.lightMoveSpeed) * config.lightMoveRadius;
     const y = Math.cos(t * config.lightMoveSpeed) * config.lightMoveRadius;
-    pointLight.position.set(x, y, pointLight.position.z);
+    pointLight.position.set(0, 0, pointLight.position.z);
   };
 
   return { frame };
@@ -82,8 +82,10 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
     #define ENV_WORLDPOS
 
     struct Mirror {
+      vec3 center;
       float radius;
       mat4 transformMatrix;
+      mat4 inverseTransformMatrix;
     };
 
     uniform Mirror uMirrors[${mirrorsX * mirrorsY}];
@@ -114,24 +116,60 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
     `,
   },
 
-  // TODO: optimise by checking whether the mirror is even close by - skip if not
   fragment: {
+    // MS = mirror space
+    // SS = shadow space
+    // NS = "normal" space (i.e. world space)
     '#include <lights_fragment_begin>': glsl`
       for (int i = 0; i < ${mirrorsX * mirrorsY}; i++) {
+        vec4 positionMS = vec4(vWorldPosition, 1.0) * uMirrors[i].transformMatrix;
+
+        // If the mirror isn't close by, no point calculating the intersection
+        // as the light would be negligable anyway
+        if (distance(vWorldPosition, uMirrors[i].center) > 8.0) {
+          continue;
+        }
+
         for (int j = 0; j < NUM_POINT_LIGHTS; j++) {
           vec4 reflectedLightPos = vec4(vMvPointLightPosition[j], 1.0)
             * uMirrors[i].transformMatrix;
           reflectedLightPos.z *= -1.0;
-          vec4 positionMS = vec4(vWorldPosition, 1.0) * uMirrors[i].transformMatrix;
+          vec4 reflectedLightPosNS = reflectedLightPos
+            * uMirrors[i].inverseTransformMatrix;
 
           if (positionMS.z > 0.0) {
             float lambda = positionMS.z / (positionMS.z - reflectedLightPos.z);
             vec2 intersection = mix(positionMS.xy, reflectedLightPos.xy, lambda);
 
             if (length(intersection) < uMirrors[i].radius) {
-              float lightDistance = distance(reflectedLightPos.xyz, positionMS.xyz);
-              reflectedLight.directSpecular += pointLights[j].color
-                * getDistanceAttenuation(lightDistance, 25.0, 1.8);
+              // Check for shadows from other mirrors
+
+              // This is a float so that anti-aliasing can be added later
+              float shadow = 0.0;
+              for (int k = 0; k < ${mirrorsX * mirrorsY}; k++) {
+                if (k == i) continue;
+                if (distance(uMirrors[i].center, uMirrors[k].center) > 5.0) continue;
+
+                vec4 mirrorPosSS = vec4(uMirrors[i].center, 1.0) * uMirrors[k].transformMatrix;
+                vec4 positionSS = vec4(vWorldPosition, 1.0) * uMirrors[k].transformMatrix;
+                if (mirrorPosSS.z < 0.0 ? positionSS.z < 0.0 : positionSS.z > 0.0) continue;
+
+                vec4 reflectedLightPosSS = reflectedLightPosNS * uMirrors[k].transformMatrix;
+
+                float lambda2 = positionSS.z / (positionSS.z - reflectedLightPosSS.z);
+                vec2 intersection2 = mix(positionSS.xy, reflectedLightPosSS.xy, lambda2);
+
+                if (length(intersection2) < uMirrors[k].radius) {
+                  shadow = 1.0;
+                  break;
+                }
+              }
+
+              if (shadow == 0.0) {
+                float lightDistance = distance(reflectedLightPos.xyz, positionMS.xyz);
+                reflectedLight.directSpecular += pointLights[j].color
+                  * getDistanceAttenuation(lightDistance, 25.0, 1.8);
+              }
             }
           }
         }
@@ -182,14 +220,14 @@ function createMirror() {
   faceObject.rotateX(Math.PI / 2);
   mirror.add(faceObject);
 
-  const actualMirror = new Reflector(new THREE.CircleGeometry(1, 32), {
-    color: 0xffffff,
-    textureWidth: 512,
-    textureHeight: 512,
-  });
-  actualMirror.translateZ(0.051);
-  // actualMirror.visible = false;
-  mirror.add(actualMirror);
+  // const actualMirror = new Reflector(new THREE.CircleGeometry(1, 32), {
+  //   color: 0xffffff,
+  //   textureWidth: 512,
+  //   textureHeight: 512,
+  // });
+  // actualMirror.translateZ(0.051);
+  // // actualMirror.visible = false;
+  // mirror.add(actualMirror);
 
   return mirror;
 }
@@ -248,7 +286,12 @@ function initMirrors(scene: THREE.Scene) {
           .transpose()
           .multiply(new THREE.Matrix4().makeRotationFromEuler(mirror.rotation));
 
-        return { radius: 1, transformMatrix };
+        return {
+          center: mirror.position,
+          radius: 1,
+          transformMatrix,
+          inverseTransformMatrix: transformMatrix.clone().invert(),
+        };
       })
       .filter(Boolean);
   };
