@@ -327,9 +327,10 @@ export async function toVanillaCanvas<
       data.renderer.setPixelRatio(dpr);
     }
     const canvasState = data.canvasState as any;
-    if (canvasState?.camera instanceof THREE.Camera) {
-      canvasState.camera.aspect = data.width / data.height;
-      canvasState.camera.updateProjectionMatrix();
+    const camera = canvasState?.camera?.camera || canvasState?.camera;
+    if (camera instanceof THREE.PerspectiveCamera) {
+      camera.aspect = data.width / data.height;
+      camera.updateProjectionMatrix();
     }
   }
 
