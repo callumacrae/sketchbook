@@ -132,7 +132,9 @@ export async function toVanillaCanvas<
 
       const pane = new Pane({
         title: 'Controls',
-        expanded: !window.frameElement,
+        expanded:
+          !window.frameElement &&
+          Math.min(window.innerWidth, window.innerHeight) > 600,
       });
       pane.registerPlugin(EssentialsPlugin);
       data.pane = pane;

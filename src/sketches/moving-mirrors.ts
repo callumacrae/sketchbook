@@ -150,6 +150,10 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
                 if (k == i) continue;
                 if (distance(uMirrors[i].center, uMirrors[k].center) > 5.0) continue;
 
+                vec4 shadowMirrorPosMS = vec4(uMirrors[k].center, 1.0)
+                  * uMirrors[i].transformMatrix;
+                if (shadowMirrorPosMS.z < 0.0) continue;
+
                 vec4 mirrorPosSS = vec4(uMirrors[i].center, 1.0) * uMirrors[k].transformMatrix;
                 vec4 positionSS = vec4(vWorldPosition, 1.0) * uMirrors[k].transformMatrix;
                 if (mirrorPosSS.z < 0.0 ? positionSS.z < 0.0 : positionSS.z > 0.0) continue;
