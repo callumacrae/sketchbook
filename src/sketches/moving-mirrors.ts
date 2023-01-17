@@ -33,8 +33,8 @@ const sketchConfig = {
 type SketchConfig = typeof sketchConfig;
 
 // Unfortunately has to be done outside of the config for now
-const mirrorsX = 1;
-const mirrorsY = 1;
+const mirrorsX = 5;
+const mirrorsY = 5;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
@@ -68,7 +68,7 @@ function initLighting(scene: THREE.Scene) {
 
     const x = Math.sin(t * config.lightMoveSpeed) * config.lightMoveRadius;
     const y = Math.cos(t * config.lightMoveSpeed) * config.lightMoveRadius;
-    pointLight.position.set(0, 0, pointLight.position.z);
+    pointLight.position.set(x, y, pointLight.position.z);
   };
 
   return { frame };
@@ -170,8 +170,9 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
 
           if (shadow == 0.0) {
             float lightDistance = distance(reflectedLightPos.xyz, positionMS.xyz);
-            reflectedLight.directSpecular += pointLights[j].color
-              * getDistanceAttenuation(lightDistance, 25.0, 1.8);
+            float dotNL = saturate(dot(vec3(0.0, 0.0, 1.0), normalize(reflectedLightPosNS.xyz)));
+            reflectedLight.directSpecular += pointLights[j].color * dotNL
+              * getDistanceAttenuation(lightDistance, 29.0, 1.7);
           }
         }
       }
