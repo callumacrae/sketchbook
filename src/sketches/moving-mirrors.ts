@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { Reflector } from 'three/examples/jsm/objects/Reflector';
 import SimplexNoise from 'simplex-noise';
 
 import { extendMaterial } from '@/utils/three-extend-material';
@@ -33,8 +32,8 @@ const sketchConfig = {
 type SketchConfig = typeof sketchConfig;
 
 // Unfortunately has to be done outside of the config for now
-const mirrorsX = 3;
-const mirrorsY = 3;
+const mirrorsX = 5;
+const mirrorsY = 5;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
@@ -68,7 +67,7 @@ function initLighting(scene: THREE.Scene) {
 
     const x = Math.sin(t * config.lightMoveSpeed) * config.lightMoveRadius;
     const y = Math.cos(t * config.lightMoveSpeed) * config.lightMoveRadius;
-    pointLight.position.set(0, 0, pointLight.position.z);
+    pointLight.position.set(x, y, pointLight.position.z);
   };
 
   return { frame };
