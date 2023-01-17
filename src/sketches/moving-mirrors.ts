@@ -33,8 +33,8 @@ const sketchConfig = {
 type SketchConfig = typeof sketchConfig;
 
 // Unfortunately has to be done outside of the config for now
-const mirrorsX = 3;
-const mirrorsY = 3;
+const mirrorsX = 5;
+const mirrorsY = 5;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
@@ -53,12 +53,24 @@ function initCamera(
 }
 
 function initLighting(scene: THREE.Scene) {
-  const pointLight = new THREE.PointLight(0xffffff, 0.8);
+  const twoLights = true;
+
+  const pointLight = new THREE.PointLight(twoLights ? 0xff0000 : 0xffffff, 0.8);
   pointLight.castShadow = true;
-  pointLight.position.set(0, 0, 17);
+  pointLight.position.set(0, 0, 13);
   pointLight.shadow.mapSize.width = 1024;
   pointLight.shadow.mapSize.height = 1024;
   scene.add(pointLight);
+
+  let pointLight2: THREE.PointLight | undefined;
+  if (twoLights) {
+    pointLight2 = new THREE.PointLight(0x0000ff, 1);
+    pointLight2.castShadow = true;
+    pointLight2.position.set(0, 0, 13);
+    pointLight2.shadow.mapSize.width = 1024;
+    pointLight2.shadow.mapSize.height = 1024;
+    scene.add(pointLight2);
+  }
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
   scene.add(ambientLight);
@@ -72,6 +84,10 @@ function initLighting(scene: THREE.Scene) {
     const x = Math.sin(t * config.lightMoveSpeed) * config.lightMoveRadius;
     const y = Math.cos(t * config.lightMoveSpeed) * config.lightMoveRadius;
     pointLight.position.set(x, y, pointLight.position.z);
+
+    if (pointLight2) {
+      pointLight2.position.set(-x, -y, pointLight.position.z);
+    }
   };
 
   return { frame };
@@ -130,7 +146,7 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
 
         // If the mirror isn't close by, no point calculating the intersection
         // as the light would be negligable anyway
-        if (distance(vWorldPosition, uMirrors[i].center) > 8.0) continue;
+        if (distance(vWorldPosition, uMirrors[i].center) > 10.0) continue;
 
         for (int j = 0; j < NUM_POINT_LIGHTS; j++) {
           vec4 reflectedLightPos = vec4(vMvPointLightPosition[j], 1.0)
