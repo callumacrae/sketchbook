@@ -39,6 +39,14 @@ const mirrorsY = 5;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
+  // capture: {
+  //   enabled: false,
+  //   duration: 15000,
+  //   fps: 24,
+  //   directory: 'moving-mirrors-b-w',
+  // },
+  // width: 1000,
+  // height: 1000,
   sketchConfig,
 };
 
@@ -342,14 +350,20 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
-  new OrbitControls(camera.camera, props.renderer.domElement);
+  const controls = new OrbitControls(camera.camera, props.renderer.domElement);
+  controls.minPolarAngle = 0.1;
+  controls.maxPolarAngle = Math.PI - 0.1;
+  controls.minAzimuthAngle = Math.PI / -2 + 0.1;
+  controls.maxAzimuthAngle = Math.PI / 2 - 0.1;
+  controls.minDistance = 4;
+  controls.maxDistance = 50;
 
   const lighting = initLighting(scene);
   initFloor(scene);
   const mirrors = initMirrors(scene);
 
   return {
-    simplex: new SimplexNoise('seed'),
+    simplex: new SimplexNoise(),
     scene,
     camera,
     lighting,
