@@ -29,6 +29,7 @@ const sketchConfig = {
   noiseTiltTimeInFactor: 0.05,
   lightMoveRadius: 10,
   lightMoveSpeed: 0.5,
+  lightMulti: true,
 };
 type SketchConfig = typeof sketchConfig;
 
@@ -53,24 +54,19 @@ function initCamera(
 }
 
 function initLighting(scene: THREE.Scene) {
-  const twoLights = true;
-
-  const pointLight = new THREE.PointLight(twoLights ? 0xff0000 : 0xffffff, 0.8);
+  const pointLight = new THREE.PointLight(0xff0000, 0.8);
   pointLight.castShadow = true;
   pointLight.position.set(0, 0, 13);
   pointLight.shadow.mapSize.width = 1024;
   pointLight.shadow.mapSize.height = 1024;
   scene.add(pointLight);
 
-  let pointLight2: THREE.PointLight | undefined;
-  if (twoLights) {
-    pointLight2 = new THREE.PointLight(0x0000ff, 1);
-    pointLight2.castShadow = true;
-    pointLight2.position.set(0, 0, 13);
-    pointLight2.shadow.mapSize.width = 1024;
-    pointLight2.shadow.mapSize.height = 1024;
-    scene.add(pointLight2);
-  }
+  const pointLight2 = new THREE.PointLight(0x0000ff, 1);
+  pointLight2.castShadow = true;
+  pointLight2.position.set(0, 0, 13);
+  pointLight2.shadow.mapSize.width = 1024;
+  pointLight2.shadow.mapSize.height = 1024;
+  scene.add(pointLight2);
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
   scene.add(ambientLight);
@@ -78,6 +74,11 @@ function initLighting(scene: THREE.Scene) {
   const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
     const { timestamp, config } = props;
     if (!config) throw new Error('???');
+
+    if (props.hasChanged) {
+      pointLight.color.set(config.lightMulti ? 0xff0000 : 0xffffff);
+      pointLight2.visible = config.lightMulti;
+    }
 
     const t = timestamp / 1e3;
 
@@ -267,8 +268,6 @@ function initMirrors(scene: THREE.Scene) {
       mirror.position.set(
         (x - mirrorsX / 2 + 0.5) * spacingX,
         (y - mirrorsY / 2 + 0.5) * spacingY,
-        // The z position can't be reduced due to a bug which means the floor
-        // can be lit from below (TODO)
         0.5
       );
 
@@ -335,6 +334,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     const lightFolder = pane.addFolder({ title: 'Light' });
     lightFolder.addInput(config, 'lightMoveSpeed', { min: 0, max: 2 });
     lightFolder.addInput(config, 'lightMoveRadius', { min: 0, max: 20 });
+    lightFolder.addInput(config, 'lightMulti');
   });
 
   props.renderer.shadowMap.enabled = true;
