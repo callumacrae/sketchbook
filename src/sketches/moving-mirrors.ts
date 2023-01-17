@@ -33,8 +33,8 @@ const sketchConfig = {
 type SketchConfig = typeof sketchConfig;
 
 // Unfortunately has to be done outside of the config for now
-const mirrorsX = 5;
-const mirrorsY = 5;
+const mirrorsX = 3;
+const mirrorsY = 3;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
@@ -53,8 +53,11 @@ function initCamera(
 }
 
 function initLighting(scene: THREE.Scene) {
-  const pointLight = new THREE.PointLight(0xffffff, 0.6);
+  const pointLight = new THREE.PointLight(0xffffff, 0.8);
+  pointLight.castShadow = true;
   pointLight.position.set(0, 0, 17);
+  pointLight.shadow.mapSize.width = 1024;
+  pointLight.shadow.mapSize.height = 1024;
   scene.add(pointLight);
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
@@ -195,6 +198,7 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
 function initFloor(scene: THREE.Scene) {
   const floorGeometry = new THREE.PlaneGeometry(100, 100);
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+  floor.receiveShadow = true;
   floor.rotation.z = -Math.PI / 2;
   scene.add(floor);
 
@@ -220,6 +224,7 @@ function createMirror() {
   ]);
   faceObject.translateZ(-0.05);
   faceObject.rotateX(Math.PI / 2);
+  faceObject.castShadow = true;
   mirror.add(faceObject);
 
   // const actualMirror = new Reflector(new THREE.CircleGeometry(1, 32), {
@@ -315,6 +320,8 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     lightFolder.addInput(config, 'lightMoveSpeed', { min: 0, max: 2 });
     lightFolder.addInput(config, 'lightMoveRadius', { min: 0, max: 20 });
   });
+
+  props.renderer.shadowMap.enabled = true;
 
   const scene = new THREE.Scene();
 
