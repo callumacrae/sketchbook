@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+// import { Reflector } from 'three/examples/jsm/objects/Reflector';
 import SimplexNoise from 'simplex-noise';
 
 import { extendMaterial } from '@/utils/three-extend-material';
@@ -24,7 +25,7 @@ interface CanvasState {
 const sketchConfig = {
   noiseXInFactor: 0.07,
   noiseYInFactor: 0.07,
-  noiseAngleTimeInFactor: 0.1,
+  noiseAngleTimeInFactor: 0.05,
   noiseTiltTimeInFactor: 0.05,
   lightMoveRadius: 10,
   lightMoveSpeed: 0.5,
@@ -32,8 +33,8 @@ const sketchConfig = {
 type SketchConfig = typeof sketchConfig;
 
 // Unfortunately has to be done outside of the config for now
-const mirrorsX = 5;
-const mirrorsY = 5;
+const mirrorsX = 1;
+const mirrorsY = 1;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
@@ -67,7 +68,7 @@ function initLighting(scene: THREE.Scene) {
 
     const x = Math.sin(t * config.lightMoveSpeed) * config.lightMoveRadius;
     const y = Math.cos(t * config.lightMoveSpeed) * config.lightMoveRadius;
-    pointLight.position.set(x, y, pointLight.position.z);
+    pointLight.position.set(0, 0, pointLight.position.z);
   };
 
   return { frame };
@@ -122,12 +123,11 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
     '#include <lights_fragment_begin>': glsl`
       for (int i = 0; i < ${mirrorsX * mirrorsY}; i++) {
         vec4 positionMS = vec4(vWorldPosition, 1.0) * uMirrors[i].transformMatrix;
+        if (positionMS.z <= 0.0) continue;
 
         // If the mirror isn't close by, no point calculating the intersection
         // as the light would be negligable anyway
-        if (distance(vWorldPosition, uMirrors[i].center) > 8.0) {
-          continue;
-        }
+        if (distance(vWorldPosition, uMirrors[i].center) > 8.0) continue;
 
         for (int j = 0; j < NUM_POINT_LIGHTS; j++) {
           vec4 reflectedLightPos = vec4(vMvPointLightPosition[j], 1.0)
@@ -135,45 +135,43 @@ const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
           reflectedLightPos.z *= -1.0;
           vec4 reflectedLightPosNS = reflectedLightPos
             * uMirrors[i].inverseTransformMatrix;
+          
+          if (reflectedLightPosNS.z <= 0.0) continue;
 
-          if (positionMS.z > 0.0) {
-            float lambda = positionMS.z / (positionMS.z - reflectedLightPos.z);
-            vec2 intersection = mix(positionMS.xy, reflectedLightPos.xy, lambda);
+          float lambda = positionMS.z / (positionMS.z - reflectedLightPos.z);
+          vec2 intersection = mix(positionMS.xy, reflectedLightPos.xy, lambda);
+          if (length(intersection) >= uMirrors[i].radius) continue;
 
-            if (length(intersection) < uMirrors[i].radius) {
-              // Check for shadows from other mirrors
+          // Check for shadows from other mirrors
+          // This is a float so that anti-aliasing can be added later
+          float shadow = 0.0;
+          for (int k = 0; k < ${mirrorsX * mirrorsY}; k++) {
+            if (k == i) continue;
+            if (distance(uMirrors[i].center, uMirrors[k].center) > 5.0) continue;
 
-              // This is a float so that anti-aliasing can be added later
-              float shadow = 0.0;
-              for (int k = 0; k < ${mirrorsX * mirrorsY}; k++) {
-                if (k == i) continue;
-                if (distance(uMirrors[i].center, uMirrors[k].center) > 5.0) continue;
+            vec4 shadowMirrorPosMS = vec4(uMirrors[k].center, 1.0)
+              * uMirrors[i].transformMatrix;
+            if (shadowMirrorPosMS.z < 0.0) continue;
 
-                vec4 shadowMirrorPosMS = vec4(uMirrors[k].center, 1.0)
-                  * uMirrors[i].transformMatrix;
-                if (shadowMirrorPosMS.z < 0.0) continue;
+            vec4 mirrorPosSS = vec4(uMirrors[i].center, 1.0) * uMirrors[k].transformMatrix;
+            vec4 positionSS = vec4(vWorldPosition, 1.0) * uMirrors[k].transformMatrix;
+            if (mirrorPosSS.z < 0.0 ? positionSS.z < 0.0 : positionSS.z > 0.0) continue;
 
-                vec4 mirrorPosSS = vec4(uMirrors[i].center, 1.0) * uMirrors[k].transformMatrix;
-                vec4 positionSS = vec4(vWorldPosition, 1.0) * uMirrors[k].transformMatrix;
-                if (mirrorPosSS.z < 0.0 ? positionSS.z < 0.0 : positionSS.z > 0.0) continue;
+            vec4 reflectedLightPosSS = reflectedLightPosNS * uMirrors[k].transformMatrix;
 
-                vec4 reflectedLightPosSS = reflectedLightPosNS * uMirrors[k].transformMatrix;
+            float lambda2 = positionSS.z / (positionSS.z - reflectedLightPosSS.z);
+            vec2 intersection2 = mix(positionSS.xy, reflectedLightPosSS.xy, lambda2);
 
-                float lambda2 = positionSS.z / (positionSS.z - reflectedLightPosSS.z);
-                vec2 intersection2 = mix(positionSS.xy, reflectedLightPosSS.xy, lambda2);
-
-                if (length(intersection2) < uMirrors[k].radius) {
-                  shadow = 1.0;
-                  break;
-                }
-              }
-
-              if (shadow == 0.0) {
-                float lightDistance = distance(reflectedLightPos.xyz, positionMS.xyz);
-                reflectedLight.directSpecular += pointLights[j].color
-                  * getDistanceAttenuation(lightDistance, 25.0, 1.8);
-              }
+            if (length(intersection2) < uMirrors[k].radius) {
+              shadow = 1.0;
+              break;
             }
+          }
+
+          if (shadow == 0.0) {
+            float lightDistance = distance(reflectedLightPos.xyz, positionMS.xyz);
+            reflectedLight.directSpecular += pointLights[j].color
+              * getDistanceAttenuation(lightDistance, 25.0, 1.8);
           }
         }
       }
@@ -249,7 +247,7 @@ function initMirrors(scene: THREE.Scene) {
         (y - mirrorsY / 2 + 0.5) * spacingY,
         // The z position can't be reduced due to a bug which means the floor
         // can be lit from below (TODO)
-        0.75
+        0.5
       );
 
       mirrorsGroup.add(mirror);
