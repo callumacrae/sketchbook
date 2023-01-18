@@ -12,7 +12,7 @@ export function toCanvasComponent<
   sketchbookConfig: Partial<Config<SketchConfig>> = {}
 ) {
   return defineComponent({
-    render: () => h('canvas', { ref: 'canvas' }),
+    render: () => h('canvas', { ref: 'canvas', id: 'sketch' }),
     async mounted() {
       const canvas = this.$refs.canvas as HTMLCanvasElement | null;
       const { teardown } = await toVanillaCanvas<CanvasState, SketchConfig>(

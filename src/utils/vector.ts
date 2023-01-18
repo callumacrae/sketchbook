@@ -9,7 +9,7 @@ export default class Vector {
     this.ay = ay;
   }
 
-  getMagnitude() {
+  length() {
     return Math.pow(Math.pow(this.ax, 2) + Math.pow(this.ay, 2), 0.5);
   }
 
@@ -19,7 +19,7 @@ export default class Vector {
    * @param newMagnitude The magnitude of the new vector.
    */
   restrictMagnitude(newMagnitude: number) {
-    const ratio = newMagnitude / this.getMagnitude();
+    const ratio = newMagnitude / this.length();
     return new Vector(this.ax * ratio, this.ay * ratio);
   }
 
@@ -38,6 +38,22 @@ export default class Vector {
       this.ax + random.irwinHall() * factor,
       this.ay + random.irwinHall() * factor
     );
+  }
+
+  add(other: Vector) {
+    return new Vector(this.ax + other.ax, this.ay + other.ay);
+  }
+
+  sub(other: Vector) {
+    return new Vector(this.ax - other.ax, this.ay - other.ay);
+  }
+
+  dot(other: Vector) {
+    return this.ax * other.ax + this.ay * other.ay;
+  }
+
+  scale(factor: number) {
+    return new Vector(this.ax * factor, this.ay * factor);
   }
 
   /**

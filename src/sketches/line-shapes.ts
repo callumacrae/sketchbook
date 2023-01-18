@@ -80,7 +80,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
     a * factor + b * (1 - factor);
 
   const samplePoint = (point: VectorAry, untransformedPoint: VectorAry) => {
-    const distFromOrigin = Vector.between(origin, point).getMagnitude();
+    const distFromOrigin = Vector.between(origin, point).length();
 
     let pointValue = distFromOrigin < maxDist;
 

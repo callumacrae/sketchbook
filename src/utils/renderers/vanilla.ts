@@ -15,6 +15,7 @@ export interface Config<SketchConfig = undefined> {
   };
   width?: number;
   height?: number;
+  useDpr?: boolean;
   pageBg?: string;
   resizeDelay: number;
   sketchConfig: SketchConfig;
@@ -30,6 +31,7 @@ export interface InitProps<SketchConfig = undefined> {
   renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
+  dpr: number;
   timestamp: number;
   config?: SketchConfig;
   initControls: (cb: (props: InitControlsProps<SketchConfig>) => void) => void;
@@ -40,6 +42,7 @@ export interface FrameProps<CanvasState, SketchConfig = undefined> {
   renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
+  dpr: number;
   state: CanvasState;
   timestamp: number;
   delta: number;
@@ -77,6 +80,7 @@ export async function toVanillaCanvas<
   const data = {
     width: 0,
     height: 0,
+    dpr: 0,
     hasChanged: true,
     sketchbookConfig: sketchbookConfig,
     canvas: null as HTMLCanvasElement | null,
@@ -123,6 +127,7 @@ export async function toVanillaCanvas<
     renderer: data.renderer,
     width: data.width,
     height: data.height,
+    dpr: data.dpr,
     timestamp: 0,
     config,
     initControls: (cb) => {
@@ -246,6 +251,7 @@ export async function toVanillaCanvas<
         renderer: data.renderer,
         width: data.width,
         height: data.height,
+        dpr: data.dpr,
         state: data.canvasState as CanvasState,
         timestamp,
         delta: timestamp - data.previousFrameTime,
@@ -308,12 +314,15 @@ export async function toVanillaCanvas<
 
     const config = data.sketchbookConfig;
 
-    const dpr = window.devicePixelRatio;
-    const dprMultiplier = config.type === 'threejs' ? 1 : dpr;
-    data.width = config?.width ?? window.innerWidth * dprMultiplier;
-    data.height = config?.height ?? window.innerHeight * dprMultiplier;
+    const useDpr = config.useDpr ?? config.type === 'threejs' ? true : false;
+    const dpr = useDpr ? window.devicePixelRatio : 1;
+    data.width = (config?.width ?? window.innerWidth) * dpr;
+    data.height = (config?.height ?? window.innerHeight) * dpr;
+    data.dpr = dpr;
     canvasEl.width = data.width;
     canvasEl.height = data.height;
+    canvasEl.style.width = `${data.width / dpr}px`;
+    canvasEl.style.height = `${data.height / dpr}px`;
 
     canvasEl.classList.toggle(
       'custom-size',

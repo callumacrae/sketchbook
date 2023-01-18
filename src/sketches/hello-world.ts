@@ -1,20 +1,25 @@
 import { toCanvasComponent } from '@/utils/renderers/vue';
-import type { InitFn, FrameFn } from '@/utils/renderers/vanilla';
+import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 interface CanvasState {
   num: number;
 }
 
-export const config = {
+const sketchConfig = {
   var: 1,
 };
+type SketchConfig = typeof sketchConfig;
 
-const init: InitFn<CanvasState> = ({ width }) => {
+const sketchbookConfig: Partial<Config<SketchConfig>> = {
+  sketchConfig,
+};
+
+const init: InitFn<CanvasState, SketchConfig> = ({ width }) => {
   console.log(width);
   return { num: 0.25 + Math.random() * 0.5 };
 };
 
-const frame: FrameFn<CanvasState> = ({
+const frame: FrameFn<CanvasState, SketchConfig> = ({
   ctx,
   state,
   width,
@@ -36,4 +41,8 @@ const frame: FrameFn<CanvasState> = ({
   ctx.fill();
 };
 
-export default toCanvasComponent<CanvasState>(init, frame);
+export default toCanvasComponent<CanvasState, SketchConfig>(
+  init,
+  frame,
+  sketchbookConfig
+);

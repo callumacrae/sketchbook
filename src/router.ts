@@ -109,6 +109,10 @@ const router = createRouter({
       path: '/moving-mirrors',
       name: 'Moving mirrors',
       component: () => import('./sketches/moving-mirrors'),
+      meta: {
+        favourite: true,
+        link: 'https://codepen.io/callumacrae/full/qByPVNr',
+      },
     },
     {
       path: '/reflecting-light',
@@ -117,6 +121,11 @@ const router = createRouter({
         shaderToyComponent(
           (await import('./sketches/reflecting-light.glsl?raw')).default
         ),
+    },
+    {
+      path: '/pickup-sticks',
+      name: 'Pick-up sticks',
+      component: () => import('./sketches/pickup-sticks'),
     },
   ],
 });
