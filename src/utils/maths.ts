@@ -31,3 +31,7 @@ export function scale(
 export function clamp(range: [number, number], value: number) {
   return Math.max(Math.min(...range), Math.min(value, Math.max(...range)));
 }
+
+export function saturate(value: number) {
+  return clamp([0, 1], value);
+}

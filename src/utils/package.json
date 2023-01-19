@@ -4,7 +4,7 @@
   "description": "Utils for creative dev",
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest"
   },
   "exports": {
     "import": "./built/index.js",
@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@tweakpane/core": "^1.1.1",
-    "typescript": "^4.9.4"
+    "typescript": "^4.9.4",
+    "vitest": "^0.27.2"
   }
 }

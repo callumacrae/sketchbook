@@ -7,6 +7,7 @@ import type {
 } from '@/utils/renderers/vanilla';
 
 import Vector from '@/utils/vector';
+import Line from '@/utils/line';
 import * as random from '@/utils/random';
 
 interface Circle {
@@ -14,14 +15,9 @@ interface Circle {
   radius: number;
 }
 
-interface Stick {
-  from: Vector;
-  to: Vector;
-}
-
 interface CanvasState {
   circles: Circle[];
-  sticks: Stick[];
+  sticks: Line[];
   needsRerender: boolean;
 }
 
@@ -31,7 +27,7 @@ const sketchConfig = {
   sticksPerFrame: 3,
   minLineLength: 0.01,
   maxLineLength: 0.1,
-  collisionStrategy: 'allow' as 'allow' | 'takeOld' | 'takeNew' | 'preferOld',
+  collisionStrategy: 'takeOld' as 'allow' | 'takeOld' | 'takeNew' | 'preferOld',
   retries: 5,
   circlePattern: 'grid' as 'grid' | 'bigCenter',
   debugCircles: false,
@@ -52,9 +48,9 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
 const init: InitFn<CanvasState, SketchConfig> = (props) => {
   props.initControls(({ pane, config }) => {
     pane.addInput(config, 'minSticks', { min: 1, max: 10000, step: 1 });
-    pane.addInput(config, 'maxSticks', { min: 1, max: 10000, step: 1 });
+    pane.addInput(config, 'maxSticks', { min: 1, max: 50000, step: 1 });
     pane.addInput(config, 'sticksPerFrame', { min: 1, max: 100, step: 1 });
-    pane.addInput(config, 'minLineLength', { min: 0.01, max: 0.5 });
+    pane.addInput(config, 'minLineLength', { min: 0.005, max: 0.5 });
     pane.addInput(config, 'maxLineLength', { min: 0.01, max: 0.5 });
     pane.addInput(config, 'collisionStrategy', {
       options: {
@@ -77,30 +73,6 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { circles: [], sticks: [], needsRerender: true };
 };
 
-function lineDistFromPoint(a: Vector, b: Vector, c: Vector) {
-  const ab = b.sub(a);
-  const ac = c.sub(a);
-
-  const t = ac.dot(ab) / ab.dot(ab);
-  if (t < 0) return ac.length();
-  if (t > 1) return c.sub(b).length();
-
-  const proj = a.add(ab.scale(t));
-  return c.sub(proj).length();
-}
-
-function doLinesIntersect(a: Vector, b: Vector, c: Vector, d: Vector) {
-  const det = (b.ax - a.ax) * (d.ay - c.ay) - (b.ay - a.ay) * (d.ax - c.ax);
-  if (det === 0) return false;
-
-  const lambda =
-    ((d.ay - c.ay) * (d.ax - a.ax) + (c.ax - d.ax) * (d.ay - a.ay)) / det;
-  const gamma =
-    ((a.ay - b.ay) * (d.ax - a.ax) + (b.ax - a.ax) * (d.ay - a.ay)) / det;
-
-  return 0 < lambda && lambda < 1 && 0 < gamma && gamma < 1;
-}
-
 function generateStick(
   props: FrameProps<CanvasState, SketchConfig>,
   attempt: number
@@ -108,31 +80,30 @@ function generateStick(
   const { config, state, width, height, dpr } = props;
   if (!config) throw new Error('???');
 
+  const halfStickWidthU = (config.stickWidth * dpr) / 2 / width;
+  const halfStickWidthV = (config.stickWidth * dpr) / 2 / height;
   const center = new Vector(
-    random.range(config.minLineLength, 1 - config.minLineLength),
-    random.range(config.minLineLength, 1 - config.minLineLength)
+    random.range(halfStickWidthU, 1 - halfStickWidthU),
+    random.range(halfStickWidthV, 1 - halfStickWidthV)
   );
   const angle = random.range(0, Math.PI * 2);
   const length = random.range(config.minLineLength, config.maxLineLength);
+  const stick = Line.fromAngle(center, angle, length);
 
-  const direction = new Vector(Math.cos(angle), Math.sin(angle));
-  const a = center.add(direction.scale(-length / 2));
-  const b = center.add(direction.scale(length / 2));
-
-  // TODO: why doesn't this always work?!
-  const bufferU = (1 / width) * ((config.stickWidth * dpr) / 2 + 2);
-  const bufferV = (1 / height) * ((config.stickWidth * dpr) / 2 + 2);
+  const bounds = stick.bounds();
+  const bufferU = (config.stickWidth * dpr) / 2 / width;
+  const bufferV = (config.stickWidth * dpr) / 2 / height;
   if (
-    a.ax < bufferU ||
-    a.ax > 1 - bufferU ||
-    a.ay < bufferV ||
-    a.ay > 1 - bufferV
-  )
+    bounds.topLeft.x < bufferU ||
+    bounds.bottomRight.x > 1 - bufferU ||
+    bounds.topLeft.y < bufferV ||
+    bounds.bottomRight.y > 1 - bufferV
+  ) {
     return false;
+  }
 
   for (const circle of state.circles) {
-    const dist = lineDistFromPoint(a, b, circle.center);
-    if (dist < circle.radius) return false;
+    if (stick.distToPoint(circle.center) < circle.radius) return false;
   }
 
   let collisionStrategy = config.collisionStrategy;
@@ -140,22 +111,25 @@ function generateStick(
     collisionStrategy = attempt < config.retries ? 'takeOld' : 'takeNew';
   }
 
+  const maxDistUV = (config.stickWidth * dpr) / width;
   if (collisionStrategy === 'takeOld') {
-    for (const stick of state.sticks) {
-      if (doLinesIntersect(a, b, stick.from, stick.to)) return false;
+    for (const otherStick of state.sticks) {
+      if (stick.distToLine(otherStick) < maxDistUV) {
+        return false;
+      }
     }
   }
 
   if (collisionStrategy === 'takeNew') {
-    for (const [i, stick] of state.sticks.entries()) {
-      if (doLinesIntersect(a, b, stick.from, stick.to)) {
+    for (const [i, otherStick] of state.sticks.entries()) {
+      if (stick.distToLine(otherStick) < maxDistUV) {
         state.sticks.splice(i, 1);
         state.needsRerender = true;
       }
     }
   }
 
-  state.sticks.push({ from: a, to: b });
+  state.sticks.push(stick);
   return true;
 }
 
@@ -215,9 +189,9 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
     }
   }
 
-  const drawStick = (from: Vector, to: Vector) => {
-    ctx.moveTo(from.ax * width, from.ay * height);
-    ctx.lineTo(to.ax * width, to.ay * height);
+  const drawStick = (stick: Line) => {
+    ctx.moveTo(stick.a.x * width, stick.a.y * height);
+    ctx.lineTo(stick.b.x * width, stick.b.y * height);
   };
 
   ctx.lineWidth = config.stickWidth * dpr;
@@ -229,7 +203,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
       const newSticks = state.sticks.slice(-newSticksCount);
       ctx.beginPath();
       for (const stick of newSticks) {
-        drawStick(stick.from, stick.to);
+        drawStick(stick);
       }
       ctx.stroke();
     }
@@ -241,7 +215,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
 
   ctx.beginPath();
   for (const stick of state.sticks) {
-    drawStick(stick.from, stick.to);
+    drawStick(stick);
   }
   ctx.stroke();
 

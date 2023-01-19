@@ -45,20 +45,20 @@ export default function generatePath(points: Coord[], config: Config) {
         // skews it a little bit back towards the point it's supposed to be going
         // so that it's not too over the top
         newDirection = Vector.average(
-          perfect.restrictMagnitude(config.BIAS_TO_PERFECT),
-          currentDirection.restrictMagnitude(1 - config.BIAS_TO_PERFECT)
+          perfect.setMagnitude(config.BIAS_TO_PERFECT),
+          currentDirection.setMagnitude(1 - config.BIAS_TO_PERFECT)
         );
       } else {
         newDirection = perfect;
       }
 
       newDirection = newDirection
-        .restrictMagnitude(config.SEGMENT_LENGTH)
+        .setMagnitude(config.SEGMENT_LENGTH)
         .randomiseByFactor(config.RANDOM_FACTOR);
 
       const newPoint: Coord = [
-        math.round(currentPoint[0] + newDirection.ax, config.ROUND_FACTOR),
-        math.round(currentPoint[1] + newDirection.ay, config.ROUND_FACTOR),
+        math.round(currentPoint[0] + newDirection.x, config.ROUND_FACTOR),
+        math.round(currentPoint[1] + newDirection.y, config.ROUND_FACTOR),
       ];
 
       path.push(newPoint);
