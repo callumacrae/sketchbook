@@ -101,6 +101,8 @@ export async function toVanillaCanvas<
   }
 
   const config = sketchbookConfig.sketchConfig as SketchConfig | undefined;
+  // Store as a string as it has to be copied every time it's used anyway
+  const initialConfig = JSON.stringify(config);
 
   if (sketchbookConfig.pageBg) {
     document.body.style.background = sketchbookConfig.pageBg;
@@ -139,10 +141,19 @@ export async function toVanillaCanvas<
         title: 'Controls',
         expanded:
           !window.frameElement &&
-          Math.min(window.innerWidth, window.innerHeight) > 600,
+          Math.min(window.innerWidth, window.innerHeight) > 600 &&
+          localStorage.getItem(`closed-${location.pathname}`) !== 'true',
       });
       pane.registerPlugin(EssentialsPlugin);
       data.pane = pane;
+
+      pane.on('fold', ({ expanded }) => {
+        localStorage.setItem(`closed-${location.pathname}`, String(!expanded));
+      });
+      const presetName = `preset-${location.pathname}`;
+      pane.on('change', () => {
+        localStorage.setItem(presetName, JSON.stringify(pane.exportPreset()));
+      });
 
       const tab = pane.addTab({
         pages: [{ title: 'Sketch config' }, { title: 'Performance' }],
@@ -166,6 +177,19 @@ export async function toVanillaCanvas<
       });
 
       cb({ pane: tab.pages[0], config });
+
+      tab.pages[0].addButton({ title: 'Reset' }).on('click', () => {
+        pane.importPreset(JSON.parse(initialConfig));
+      });
+
+      const preset = localStorage.getItem(presetName);
+      if (preset) {
+        try {
+          pane.importPreset(JSON.parse(preset));
+        } catch (err) {
+          console.error('Failed to set from preset', err);
+        }
+      }
     },
   };
 
