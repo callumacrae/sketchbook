@@ -29,7 +29,7 @@ const sketchConfig = {
   maxLineLength: 0.1,
   collisionStrategy: 'takeOld' as 'allow' | 'takeOld' | 'takeNew' | 'preferOld',
   retries: 5,
-  circlePattern: 'grid' as 'grid' | 'bigCenter',
+  circlePattern: 'random' as 'none' | 'grid' | 'bigCenter' | 'random',
   debugCircles: false,
   stickWidth: 1.7,
   stickColor: '#bd6a6a',
@@ -62,7 +62,12 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     });
     pane.addInput(config, 'retries', { min: 0, max: 50, step: 1 });
     pane.addInput(config, 'circlePattern', {
-      options: { grid: 'grid', bigCenter: 'bigCenter' },
+      options: {
+        none: 'none',
+        grid: 'grid',
+        bigCenter: 'bigCenter',
+        random: 'random',
+      },
     });
     pane.addInput(config, 'debugCircles');
     pane.addInput(config, 'stickWidth', { min: 0.5, max: 10 });
@@ -139,7 +144,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   if (!ctx || !config) throw new Error('???');
 
   if (props.hasChanged) {
-    const circles = [];
+    const circles: Circle[] = [];
     if (props.config?.circlePattern === 'bigCenter') {
       circles.push(
         { center: new Vector(0.5, 0.5), radius: 0.2 },
@@ -161,6 +166,19 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
             ),
             radius: 0.09,
           });
+        }
+      }
+    } else if (props.config?.circlePattern === 'random') {
+      while (circles.length < 10) {
+        const center = new Vector(random.range(0, 1), random.range(0, 1));
+        const radius = random.range(0.05, 0.3);
+
+        const doesOverlap = circles.some(
+          (circle) => circle.center.distTo(center) < circle.radius + radius
+        );
+
+        if (!doesOverlap) {
+          circles.push({ center, radius });
         }
       }
     }

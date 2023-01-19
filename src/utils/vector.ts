@@ -4,9 +4,9 @@ export default class Vector {
   x: number;
   y: number;
 
-  constructor(ax: number, ay: number) {
-    this.x = ax;
-    this.y = ay;
+  constructor(x: number, y: number) {
+    this.x = x;
+    this.y = y;
   }
 
   length() {
