@@ -61,5 +61,9 @@ describe('line.distToLine', () => {
       0.141,
       3
     );
+    expect(line.distToLine(new Line([1.1, 0.1], [2.1, 0.05]))).toBeCloseTo(
+      0.141,
+      3
+    );
   });
 });

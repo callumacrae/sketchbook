@@ -68,11 +68,12 @@ export default class Line {
       return 0;
     }
 
-    if (thisIntersection < 0 || thisIntersection > 1) {
-      return Math.min(other.distToPoint(a), other.distToPoint(b));
-    }
-
-    return Math.min(this.distToPoint(c), this.distToPoint(d));
+    return Math.min(
+      other.distToPoint(a),
+      other.distToPoint(b),
+      this.distToPoint(c),
+      this.distToPoint(d)
+    );
   }
 
   bounds() {
