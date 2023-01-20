@@ -22,13 +22,13 @@ interface CanvasState {
 }
 
 const sketchConfig = {
-  minSticks: 250,
+  minSticks: 500,
   maxSticks: 10000,
-  sticksPerFrame: 3,
-  minLineLength: 0.01,
+  sticksPerFrame: 4,
+  minLineLength: 0.007,
   maxLineLength: 0.1,
   collisionStrategy: 'takeOld' as 'allow' | 'takeOld' | 'takeNew' | 'preferOld',
-  retries: 5,
+  retries: 8,
   circlePattern: 'random' as 'none' | 'grid' | 'bigCenter' | 'random',
   debugCircles: false,
   stickWidth: 1.7,
@@ -38,9 +38,9 @@ const sketchConfig = {
 type SketchConfig = typeof sketchConfig;
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
-  width: 600,
-  height: 600,
-  useDpr: true,
+  // width: 600,
+  // height: 600,
+  // useDpr: true,
   pageBg: '#aaa',
   sketchConfig,
 };
@@ -85,24 +85,24 @@ function generateStick(
   const { config, state, width, height, dpr } = props;
   if (!config) throw new Error('???');
 
-  const halfStickWidthU = (config.stickWidth * dpr) / 2 / width;
-  const halfStickWidthV = (config.stickWidth * dpr) / 2 / height;
+  const size = Math.min(width, height);
+
+  const halfStickWidthUv = (config.stickWidth * dpr) / 2 / size;
   const center = new Vector(
-    random.range(halfStickWidthU, 1 - halfStickWidthU),
-    random.range(halfStickWidthV, 1 - halfStickWidthV)
+    random.range(halfStickWidthUv, 1 - halfStickWidthUv),
+    random.range(halfStickWidthUv, 1 - halfStickWidthUv)
   );
   const angle = random.range(0, Math.PI * 2);
   const length = random.range(config.minLineLength, config.maxLineLength);
   const stick = Line.fromAngle(center, angle, length);
 
   const bounds = stick.bounds();
-  const bufferU = (config.stickWidth * dpr) / 2 / width;
-  const bufferV = (config.stickWidth * dpr) / 2 / height;
+  const bufferUv = (config.stickWidth * dpr) / 2 / size;
   if (
-    bounds.topLeft.x < bufferU ||
-    bounds.bottomRight.x > 1 - bufferU ||
-    bounds.topLeft.y < bufferV ||
-    bounds.bottomRight.y > 1 - bufferV
+    bounds.topLeft.x < bufferUv ||
+    bounds.bottomRight.x > 1 - bufferUv ||
+    bounds.topLeft.y < bufferUv ||
+    bounds.bottomRight.y > 1 - bufferUv
   ) {
     return false;
   }
@@ -116,10 +116,10 @@ function generateStick(
     collisionStrategy = attempt < config.retries ? 'takeOld' : 'takeNew';
   }
 
-  const maxDistUV = (config.stickWidth * dpr) / width;
+  const maxDistUv = (config.stickWidth * dpr) / size;
   if (collisionStrategy === 'takeOld') {
     for (const otherStick of state.sticks) {
-      if (stick.distToLine(otherStick) < maxDistUV) {
+      if (stick.distToLine(otherStick) < maxDistUv) {
         return false;
       }
     }
@@ -127,7 +127,7 @@ function generateStick(
 
   if (collisionStrategy === 'takeNew') {
     for (const [i, otherStick] of state.sticks.entries()) {
-      if (stick.distToLine(otherStick) < maxDistUV) {
+      if (stick.distToLine(otherStick) < maxDistUv) {
         state.sticks.splice(i, 1);
         state.needsRerender = true;
       }
@@ -140,6 +140,8 @@ function generateStick(
 
 const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { ctx, config, width, height, dpr, state } = props;
+
+  const size = Math.min(width, height);
 
   if (!ctx || !config) throw new Error('???');
 
@@ -207,9 +209,25 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
     }
   }
 
+  function uvToXy(uv: Vector): [number, number];
+  function uvToXy(u: number, v: number): [number, number];
+  function uvToXy(uOrVector: number | Vector, v?: number): [number, number] {
+    const xOffset = (width - size) / 2;
+    const yOffset = (height - size) / 2;
+
+    if (uOrVector instanceof Vector) {
+      return [uOrVector.x * size + xOffset, uOrVector.y * size + yOffset];
+    }
+
+    // There is no way this can happen shut up typescript
+    if (v === undefined) throw new Error('???');
+
+    return [uOrVector * size + xOffset, v * size + yOffset];
+  }
+
   const drawStick = (stick: Line) => {
-    ctx.moveTo(stick.a.x * width, stick.a.y * height);
-    ctx.lineTo(stick.b.x * width, stick.b.y * height);
+    ctx.moveTo(...uvToXy(stick.a));
+    ctx.lineTo(...uvToXy(stick.b));
   };
 
   ctx.lineWidth = config.stickWidth * dpr;
@@ -243,8 +261,8 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
     for (const circle of state.circles) {
       const [cx, cy] = circle.center.toArray();
       ctx.beginPath();
-      const radius = circle.radius * Math.min(width, height);
-      ctx.arc(cx * width, cy * height, radius, 0, Math.PI * 2);
+      const xy = uvToXy(cx, cy);
+      ctx.arc(xy[0], xy[1], circle.radius * size, 0, Math.PI * 2);
       ctx.stroke();
     }
   }

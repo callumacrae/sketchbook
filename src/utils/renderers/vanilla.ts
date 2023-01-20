@@ -153,6 +153,7 @@ export async function toVanillaCanvas<
       const presetName = `preset-${location.pathname}`;
       pane.on('change', () => {
         localStorage.setItem(presetName, JSON.stringify(pane.exportPreset()));
+        data.hasChanged = true;
       });
 
       const tab = pane.addTab({
@@ -171,10 +172,6 @@ export async function toVanillaCanvas<
         tab.pages[1].addMonitor(data.renderer.info.memory, 'textures');
         tab.pages[1].addMonitor(data.renderer.info.memory, 'geometries');
       }
-
-      pane.on('change', () => {
-        data.hasChanged = true;
-      });
 
       cb({ pane: tab.pages[0], config });
 
