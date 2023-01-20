@@ -126,6 +126,15 @@ const router = createRouter({
       path: '/pickup-sticks',
       name: 'Pick-up sticks',
       component: () => import('./sketches/pickup-sticks'),
+      meta: { link: 'https://codepen.io/callumacrae/details/poZpbPY' },
+    },
+    {
+      path: '/inverted-kaleidoscope',
+      name: 'Inverted kaleidoscope (glsl)',
+      component: async () =>
+        shaderToyComponent(
+          (await import('./sketches/inverted-kaleidoscope.glsl?raw')).default
+        ),
     },
   ],
 });
