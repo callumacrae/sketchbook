@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { InputParams } from 'tweakpane';
+import type { FolderApi, InputParams } from 'tweakpane';
 
 import { toCanvasComponent } from './vue';
 import type { Config, InitFn, FrameFn } from './vanilla';
@@ -33,27 +33,50 @@ export function shaderToyComponent(glsl: string) {
     sketchConfig,
   };
 
-  const originalConfig: Record<string, RegExpMatchArray> = {};
+  const originalConfig: Record<
+    string,
+    { match: RegExpMatchArray; folder: string | null }
+  > = {};
   const glslLines = glsl.split('\n');
-  for (const line of glslLines) {
-    const match = line.match(/^#define\s+(\w+)\s+(.*?)(?:\s+\/\/\s+(.+))?$/);
-    if (match) {
-      originalConfig[match[1]] = match;
+  let currentFolder: string | null = null;
 
-      if (match[3] === 'no-config') {
+  for (const line of glslLines) {
+    const folderMatch = line.match(/^\/\/\s*(.+)$/);
+    if (folderMatch) {
+      currentFolder = folderMatch[1];
+      continue;
+    }
+
+    const defineMatch = line.match(
+      /^#define\s+(\w+)\s+(.*?)(?:\s+\/\/\s+(.+))?$/
+    );
+    if (defineMatch) {
+      originalConfig[defineMatch[1]] = {
+        match: defineMatch,
+        folder: currentFolder,
+      };
+
+      if (defineMatch[3] === 'no-config') {
         continue;
       }
 
-      sketchConfig[match[1]] = parseValue(match[2]);
+      sketchConfig[defineMatch[1]] = parseValue(defineMatch[2]);
     }
   }
 
   const init: InitFn<CanvasState, SketchConfig> = (props) => {
     props.initControls(({ pane, config }) => {
+      const folders: Record<string, FolderApi> = {};
+
       for (const key of Object.keys(config)) {
         const options: InputParams = {};
 
-        const match = originalConfig[key];
+        const { match, folder } = originalConfig[key];
+
+        if (folder && !folders[folder]) {
+          folders[folder] = pane.addFolder({ title: folder });
+        }
+
         if (typeof config[key] === 'number' && match[3]?.includes('-')) {
           const [min, max] = match[3].split(/\s*-\s*/).map(Number);
           options.min = min;
@@ -72,7 +95,7 @@ export function shaderToyComponent(glsl: string) {
           );
         }
 
-        pane.addInput(config, key, options);
+        (folder ? folders[folder] : pane).addInput(config, key, options);
       }
     });
 
@@ -107,13 +130,11 @@ export function shaderToyComponent(glsl: string) {
     if (hasChanged) {
       const fragmentShader = state.material.fragmentShader.replace(
         /#define\s+(\w+)\s+(.*?)(?:\s+\/\/\s+(.+))?$/gm,
-        (match, key, _value, comment) => {
-          if (comment === 'no-config') {
-            return match;
-          }
+        (match, key) => {
+          if (!(key in config)) return match;
 
           // This ensures floats are passed in with a decimal point
-          if (/^\d+\.\d+$/.test(originalConfig[key][2])) {
+          if (/^\d+\.\d+$/.test(originalConfig[key].match[2])) {
             const formatted =
               config[key] % 1 ? config[key] : config[key].toFixed(1);
             return `#define ${key} ${formatted}`;

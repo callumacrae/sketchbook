@@ -1,10 +1,14 @@
+// Background config
 #define SQUARE_SIZE 0.01 // 0.001 - 0.05
 #define RAND_REPEAT_CHANCE 0.3 // 0.0 - 0.5
 #define BG_NOISE_FACTOR 3.8 // 0.0 - 10.0
 #define BG_RAND_TO_NOISE_RATIO 0.3 // 0.0 - 1.0
 #define BG_BLEND_MODE 5 // normal:0, multiply:1, screen:2, overlay:3, hard light:4, soft light:5
+#define COLOR_SATURATION 0.5 // 0.0 - 1.0
+#define COLOR_VALUE 0.75 // 0.0 - 1.0
 #define DEBUG_BACKGROUND false
 
+// Viewer config
 #define BASE_TRIANGLE_SIZE 0.08 // 0.01 - 0.4
 #define POSITION_NOISE_FACTOR 1.0 // 0.0 - 10.0
 #define ANGLE_NOISE_FACTOR 0.5 // 0.0 - 10.0
@@ -136,5 +140,5 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
   /* h = h < 0.75 && h > 0.25 ? 0.0 : 0.5; */
 
-  fragColor = vec4(hsv2rgb(vec3(h, 0.55, 0.75)), 1.0);
+  fragColor = vec4(hsv2rgb(vec3(h, COLOR_SATURATION, COLOR_VALUE)), 1.0);
 }
