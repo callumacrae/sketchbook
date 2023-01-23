@@ -96,7 +96,6 @@ export default {
 }
 
 .index {
-  margin-right: 100px;
   width: 250px;
   overflow: auto;
 }
@@ -137,6 +136,7 @@ li:last-child {
 }
 
 .preview {
+  margin-left: 100px;
   position: relative;
 
   width: 50vw;
@@ -168,5 +168,14 @@ li:last-child {
 
 .preview--has-link .preview__link {
   transform: translateY(0);
+}
+
+@media only screen and (max-width: 768px) {
+  .index {
+    width: auto;
+  }
+  .preview {
+    display: none;
+  }
 }
 </style>
