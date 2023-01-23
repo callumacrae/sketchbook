@@ -344,8 +344,6 @@ export async function toVanillaCanvas<
     canvasEl.style.width = `${data.width / dpr}px`;
     canvasEl.style.height = `${data.height / dpr}px`;
 
-    console.log(data.width, canvasEl.width, canvasEl.style.width);
-
     canvasEl.classList.toggle(
       'custom-size',
       !!(config?.width && config?.height)

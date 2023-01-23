@@ -1,11 +1,12 @@
 #define SQUARE_SIZE 0.01 // 0.001 - 0.05
 #define RAND_REPEAT_CHANCE 0.3 // 0.0 - 0.5
-#define BG_NOISE_FACTOR 3.0 // 0.0 - 10.0
-#define BG_RAND_TO_NOISE_RATIO 0.6 // 0.0 - 1.0
+#define BG_NOISE_FACTOR 3.8 // 0.0 - 10.0
+#define BG_RAND_TO_NOISE_RATIO 0.3 // 0.0 - 1.0
+#define BG_BLEND_MODE 5 // normal:0, multiply:1, screen:2, overlay:3, hard light:4, soft light:5
 #define DEBUG_BACKGROUND false
 
 #define BASE_TRIANGLE_SIZE 0.08 // 0.01 - 0.4
-#define POSITION_NOISE_FACTOR 0.7 // 0.0 - 10.0
+#define POSITION_NOISE_FACTOR 1.0 // 0.0 - 10.0
 #define ANGLE_NOISE_FACTOR 0.5 // 0.0 - 10.0
 
 #define PI 3.1415926535897932384626433832795 // no-config
@@ -39,11 +40,19 @@ mat3 scaleMatrix(float x, float y) {
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   vec2 uv = fragCoord / iResolution.xy;
 
+  // Means that a 1x1 square in UV units is always a square
+  // Be careful, this means that u and v can now be outside of [0, 1]
+  if (iResolution.x > iResolution.y) {
+    uv.x *= iResolution.x / iResolution.y;
+  } else {
+    uv.y *= iResolution.y / iResolution.x;
+  }
+
   vec2 triangleFrom = vec2(
-      snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(2), 0.0)) * 0.4 + 0.5,
-      snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(5), 0.0)) * 0.4 + 0.5
+      snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(1), 0.0)) * 0.4 + 0.5,
+      snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(2), 0.0)) * 0.4 + 0.5
       );
-  float triangleAngle = snoise(vec2(iTime * ANGLE_NOISE_FACTOR / 100.0 + rand(4), 0.0)) * PI * 3.0;
+  float triangleAngle = snoise(vec2(iTime * ANGLE_NOISE_FACTOR / 100.0 + rand(8), 0.0)) * PI * 3.0;
   float triangleSize = BASE_TRIANGLE_SIZE;
 
   float triangleHeight = triangleSize / 2.0 / tan(PI / 6.0);
@@ -91,7 +100,41 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
   float hRand = rand(randIndex);
   float hNoise = snoise(xy * BG_NOISE_FACTOR / 100.0) * 0.5 + 0.5;
-  float h = mix(hNoise, hRand, BG_RAND_TO_NOISE_RATIO);
+
+#if BG_BLEND_MODE == 0
+  // Normal blend mode
+  float hBlend = (hRand + hNoise) / 2.0;
+#elif BG_BLEND_MODE == 1
+  // Multiply blend mode
+  float hBlend = hRand * hNoise;
+#elif BG_BLEND_MODE == 2
+  // Screen blend mode
+  float hBlend = 1.0 - (1.0 - hRand) * (1.0 - hNoise);
+#elif BG_BLEND_MODE == 3
+  // Overlay blend mode
+  float hBlend = hRand < 0.5
+    ? 2.0 * hRand * hNoise
+    : 1.0 - 2.0 * (1.0 - hRand) * (1.0 - hNoise);
+#elif BG_BLEND_MODE == 4
+  // Hard light blend mode
+  float hBlend = hNoise < 0.5
+    ? 2.0 * hRand * hNoise
+    : 1.0 - 2.0 * (1.0 - hRand) * (1.0 - hNoise);
+#elif BG_BLEND_MODE == 5
+  // Soft light blend mode
+  float hBlend = hNoise < 0.5
+    ? hRand - (1.0 - 2.0 * hNoise) * hRand * (1.0 - hRand)
+    : hRand + (2.0 * hNoise - 1.0) * (sqrt(hRand) - hRand);
+#endif
+
+  float h;
+  if (BG_RAND_TO_NOISE_RATIO > 0.5) {
+    h = mix(hBlend, hRand, BG_RAND_TO_NOISE_RATIO * 2.0 - 1.0);
+  } else {
+    h = mix(hNoise, hBlend, BG_RAND_TO_NOISE_RATIO * 2.0);
+  }
+
+  /* h = h < 0.75 && h > 0.25 ? 0.0 : 0.5; */
 
   fragColor = vec4(hsv2rgb(vec3(h, 0.55, 0.75)), 1.0);
 }

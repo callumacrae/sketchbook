@@ -18,6 +18,12 @@ interface CanvasState {
   uniforms: typeof uniforms;
 }
 
+const parseValue = (value: string) => {
+  if (['true', 'false'].includes(value)) return value === 'true';
+  if (/^[\d.]+$/.test(value)) return Number(value);
+  return value;
+};
+
 export function shaderToyComponent(glsl: string) {
   const sketchConfig: Record<string, any> = {};
   type SketchConfig = typeof sketchConfig;
@@ -38,13 +44,7 @@ export function shaderToyComponent(glsl: string) {
         continue;
       }
 
-      if (['true', 'false'].includes(match[2])) {
-        sketchConfig[match[1]] = match[2] === 'true';
-      } else if (/^[\d.]+$/.test(match[2])) {
-        sketchConfig[match[1]] = Number(match[2]);
-      } else {
-        sketchConfig[match[1]] = match[2];
-      }
+      sketchConfig[match[1]] = parseValue(match[2]);
     }
   }
 
@@ -54,10 +54,22 @@ export function shaderToyComponent(glsl: string) {
         const options: InputParams = {};
 
         const match = originalConfig[key];
-        if (typeof config[key] === 'number' && match[3]) {
+        if (typeof config[key] === 'number' && match[3]?.includes('-')) {
           const [min, max] = match[3].split(/\s*-\s*/).map(Number);
           options.min = min;
           options.max = max;
+        } else if (match[3]?.includes(',') || match[3]?.includes(' or ')) {
+          const inputOptions = match[3].split(/\s*,\s*|\s+or\s+/);
+          options.options = Object.fromEntries(
+            inputOptions.map((n) => {
+              if (n.includes(':')) {
+                const [key, value] = n.split(/\s*:\s*/g);
+                return [key, parseValue(value)];
+              }
+
+              return [n, parseValue(n)];
+            })
+          );
         }
 
         pane.addInput(config, key, options);
