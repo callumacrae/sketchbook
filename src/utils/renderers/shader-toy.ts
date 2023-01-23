@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { InputParams } from 'tweakpane';
 
 import { toCanvasComponent } from './vue';
 import type { Config, InitFn, FrameFn } from './vanilla';
@@ -12,21 +13,56 @@ const uniforms = {
 interface CanvasState {
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
+  fragmentShader: string;
+  material: THREE.ShaderMaterial;
   uniforms: typeof uniforms;
 }
 
-const sketchConfig = {};
-type SketchConfig = typeof sketchConfig;
-
-const sketchbookConfig: Partial<Config<SketchConfig>> = {
-  type: 'threejs',
-  sketchConfig,
-};
-
 export function shaderToyComponent(glsl: string) {
+  const sketchConfig: Record<string, any> = {};
+  type SketchConfig = typeof sketchConfig;
+
+  const sketchbookConfig: Partial<Config<SketchConfig>> = {
+    type: 'threejs',
+    sketchConfig,
+  };
+
+  const originalConfig: Record<string, RegExpMatchArray> = {};
+  const glslLines = glsl.split('\n');
+  for (const line of glslLines) {
+    const match = line.match(/^#define\s+(\w+)\s+(.*?)(?:\s+\/\/\s+(.+))?$/);
+    if (match) {
+      originalConfig[match[1]] = match;
+
+      if (match[3] === 'no-config') {
+        continue;
+      }
+
+      if (['true', 'false'].includes(match[2])) {
+        sketchConfig[match[1]] = match[2] === 'true';
+      } else if (/^[\d.]+$/.test(match[2])) {
+        sketchConfig[match[1]] = Number(match[2]);
+      } else {
+        sketchConfig[match[1]] = match[2];
+      }
+    }
+  }
+
   const init: InitFn<CanvasState, SketchConfig> = (props) => {
-    // props.initControls(({ pane, config }) => {
-    // });
+    props.initControls(({ pane, config }) => {
+      for (const key of Object.keys(config)) {
+        const options: InputParams = {};
+
+        const match = originalConfig[key];
+        if (typeof config[key] === 'number' && match[3]) {
+          const [min, max] = match[3].split(/\s*-\s*/).map(Number);
+          options.min = min;
+          options.max = max;
+        }
+
+        pane.addInput(config, key, options);
+      }
+    });
 
     const scene = new THREE.Scene();
 
@@ -34,27 +70,50 @@ export function shaderToyComponent(glsl: string) {
     scene.add(camera);
 
     const fragmentShader = `
-    uniform vec3 iResolution;
-    uniform float iTime;
-    uniform vec3 iMouse;
+      uniform vec3 iResolution;
+      uniform float iTime;
+      uniform vec3 iMouse;
 
-    ${glsl}
+      ${glsl}
 
-    void main() {
-      mainImage(gl_FragColor, gl_FragCoord.xy);
-    }
-  `;
+      void main() {
+        mainImage(gl_FragColor, gl_FragCoord.xy);
+      }
+    `;
 
     const plane = new THREE.PlaneGeometry(2, 2);
     const material = new THREE.ShaderMaterial({ fragmentShader, uniforms });
     scene.add(new THREE.Mesh(plane, material));
 
-    return { scene, camera, uniforms };
+    return { scene, camera, fragmentShader, material, uniforms };
   };
 
   const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-    const { renderer, config, state, timestamp } = props;
+    const { renderer, config, state, timestamp, hasChanged } = props;
     if (!renderer || !config) throw new Error('???');
+
+    if (hasChanged) {
+      const fragmentShader = state.material.fragmentShader.replace(
+        /#define\s+(\w+)\s+(.*?)(?:\s+\/\/\s+(.+))?$/gm,
+        (match, key, _value, comment) => {
+          if (comment === 'no-config') {
+            return match;
+          }
+
+          // This ensures floats are passed in with a decimal point
+          if (/^\d+\.\d+$/.test(originalConfig[key][2])) {
+            const formatted =
+              config[key] % 1 ? config[key] : config[key].toFixed(1);
+            return `#define ${key} ${formatted}`;
+          }
+
+          return `#define ${key} ${config[key]}`;
+        }
+      );
+
+      state.material.fragmentShader = fragmentShader;
+      state.material.needsUpdate = true;
+    }
 
     state.uniforms.iTime.value = timestamp / 1000;
     state.uniforms.iResolution.value.set(props.width, props.height, 1);

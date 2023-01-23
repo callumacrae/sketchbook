@@ -1,8 +1,14 @@
-#define SQUARE_SIZE 0.01
-#define REPEAT_CHANCE 0.3
+#define SQUARE_SIZE 0.005 // 0.001 - 0.05
+#define RAND_REPEAT_CHANCE 0.3 // 0.0 - 0.5
+#define BG_NOISE_FACTOR 3.0 // 0.0 - 10.0
+#define BG_RAND_TO_NOISE_RATIO 0.6 // 0.0 - 1.0
 #define DEBUG_BACKGROUND false
 
-#define PI 3.1415926535897932384626433832795
+#define BASE_TRIANGLE_SIZE 0.05 // 0.01 - 0.2
+#define POSITION_NOISE_FACTOR 0.7 // 0.0 - 10.0
+#define ANGLE_NOISE_FACTOR 0.5 // 0.0 - 10.0
+
+#define PI 3.1415926535897932384626433832795 // no-config
 
 /** VENDOR START **/
 
@@ -33,60 +39,59 @@ mat3 scaleMatrix(float x, float y) {
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   vec2 uv = fragCoord / iResolution.xy;
 
-  vec2 triangleFrom = vec2(0.5, 0.5);
-  float triangleAngle = 0.0;
-  float triangleSize = 0.1;
+  vec2 triangleFrom = vec2(
+      snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(2), 0.0)) * 0.4 + 0.5,
+      snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(5), 0.0)) * 0.4 + 0.5
+      );
+  float triangleAngle = snoise(vec2(iTime * ANGLE_NOISE_FACTOR / 100.0 + rand(4), 0.0)) * PI * 3.0;
+  float triangleSize = BASE_TRIANGLE_SIZE;
 
   float triangleHeight = triangleSize / 2.0 / tan(PI / 6.0);
 
   vec2 uvTS = (rotationMatrix(triangleAngle) * vec3(uv - triangleFrom, 1.0)).xy;
 
-  uvTS.y = mod(uvTS.y, triangleHeight * 2.0);
-  if (uvTS.y > triangleHeight) {
-    uvTS.y = 2.0 * triangleHeight - uvTS.y;
-  }
-  float offsetX = floor((uvTS.x + triangleSize / 2.0) / triangleSize);
-  uvTS.x -= offsetX * triangleSize;
-
-  if (abs(uvTS.x) > triangleSize / 2.0) {
-    fragColor = vec4(0.0, 0.0, 0.0, 1.0);
-    return;
-  }
-
-
-  float originY = triangleSize * sqrt(3.0) / 3.0;
-  mat3 rotation = translationMatrix(0.0, originY) * rotationMatrix(PI / -1.5 * offsetX) * translationMatrix(0.0, -originY);
-  uvTS = (rotation * vec3(uvTS, 1.0)).xy;
-
-  float maxXForY = uvTS.y / triangleHeight * triangleSize / 2.0;
-
-  if (abs(uvTS.x) > maxXForY) {
-    mat3 reflect = rotationMatrix(radians(uvTS.x > 0.0 ? -60.0 : 60.0)) * scaleMatrix(-1.0, 1.0);
-    uvTS = (reflect * vec3(uvTS, 1.0)).xy;
-  }
-
-  if (uvTS.y > triangleHeight) {
-    /* uvTS.y = triangleHeight - uvTS.y; */
-    if (uvTS.y > triangleHeight + 0.01) {
-      fragColor = vec4(1.0, 0.0, 0.0, 1.0);
-      return;
+  if (!DEBUG_BACKGROUND) {
+    uvTS.y = mod(uvTS.y, triangleHeight * 2.0);
+    if (uvTS.y > triangleHeight) {
+      uvTS.y = 2.0 * triangleHeight - uvTS.y;
     }
-    fragColor = vec4(0.0, 0.0, 0.0, 1.0);
-    return;
+
+    float modX = mod((uvTS.x + triangleSize / 2.0), triangleSize);
+    float maxWidthAtX = uvTS.y / triangleHeight * triangleSize;
+    // Inverted = point side up (the origin triangle is point side down)
+    bool isInverted = abs(modX - triangleSize / 2.0) > maxWidthAtX / 2.0;
+
+    float offsetX = floor((uvTS.x + (isInverted ? 0.0 : triangleSize / 2.0)) / triangleSize);
+    uvTS.x -= offsetX * triangleSize;
+
+    if (isInverted) {
+      mat3 reflect = rotationMatrix(radians(-60.0)) * scaleMatrix(-1.0, 1.0);
+      uvTS = (reflect * vec3(uvTS, 1.0)).xy;
+    }
+
+    float originY = triangleSize * sqrt(3.0) / 3.0;
+    mat3 rotation = translationMatrix(0.0, originY) * rotationMatrix(radians(-120.0) * offsetX) * translationMatrix(0.0, -originY);
+    uvTS = (rotation * vec3(uvTS, 1.0)).xy;
   }
 
   float size = SQUARE_SIZE * max(iResolution.x, iResolution.y);
   uv = (rotationMatrix(-triangleAngle) * vec3(uvTS, 1.0)).xy + triangleFrom;
   vec2 xy = uv * iResolution.xy / size;
+  xy.x = floor(xy.x);
+  xy.y = floor(xy.y);
 
-  float index = floor(xy.x) + floor(xy.y) * (1.0 / SQUARE_SIZE);
+  float randIndex = xy.x + xy.y * (1.0 / SQUARE_SIZE);
+
   // Make it so there's two or three in a row sometimes
-  if (rand((index - 1.0) * 234.5) > (1.0 - REPEAT_CHANCE / 2.0)) {
-    index -= 2.0;
-  } else if (rand(index * 234.5) > (1.0 - REPEAT_CHANCE)) {
-    index -= 1.0;
+  if (rand(randIndex - 1.0) > (1.0 - RAND_REPEAT_CHANCE / 2.0)) {
+    randIndex -= 2.0;
+  } else if (rand(randIndex) > (1.0 - RAND_REPEAT_CHANCE)) {
+    randIndex -= 1.0;
   }
-  float h = rand(index);
+
+  float hRand = rand(randIndex);
+  float hNoise = snoise(xy * BG_NOISE_FACTOR / 100.0) * 0.5 + 0.5;
+  float h = mix(hNoise, hRand, BG_RAND_TO_NOISE_RATIO);
 
   fragColor = vec4(hsv2rgb(vec3(h, 0.55, 0.75)), 1.0);
 }
