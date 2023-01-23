@@ -52,14 +52,18 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     uv.y *= iResolution.y / iResolution.x;
   }
 
-  vec2 triangleFrom = vec2(
+  float triangleSize = BASE_TRIANGLE_SIZE;
+  float triangleHeight = triangleSize / 2.0 / tan(PI / 6.0);
+  vec2 triangleFrom;
+  if (iMouse.z > 0.0) {
+    triangleFrom = iMouse.xy / iResolution.xy;
+  } else {
+    triangleFrom = vec2(
       snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(1), 0.0)) * 0.4 + 0.5,
       snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(2), 0.0)) * 0.4 + 0.5
       );
+  }
   float triangleAngle = snoise(vec2(iTime * ANGLE_NOISE_FACTOR / 100.0 + rand(8), 0.0)) * PI * 3.0;
-  float triangleSize = BASE_TRIANGLE_SIZE;
-
-  float triangleHeight = triangleSize / 2.0 / tan(PI / 6.0);
 
   vec2 uvTS = (rotationMatrix(triangleAngle) * vec3(uv - triangleFrom, 1.0)).xy;
 
