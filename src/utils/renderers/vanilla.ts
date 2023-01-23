@@ -108,8 +108,6 @@ export async function toVanillaCanvas<
     document.body.style.background = sketchbookConfig.pageBg;
   }
 
-  setSize();
-
   if (sketchbookConfig.type === 'context2d') {
     data.ctx = canvasEl.getContext('2d');
 
@@ -121,8 +119,9 @@ export async function toVanillaCanvas<
       canvas: canvasEl,
       antialias: true,
     });
-    data.renderer.setSize(data.width, data.height);
   }
+
+  setSize();
 
   const initProps: InitProps<SketchConfig> = {
     ctx: data.ctx,
@@ -335,7 +334,7 @@ export async function toVanillaCanvas<
 
     const config = data.sketchbookConfig;
 
-    const useDpr = config.useDpr ?? config.type === 'threejs' ? true : false;
+    const useDpr = config.useDpr ?? config.type === 'threejs' ? false : true;
     const dpr = useDpr ? window.devicePixelRatio : 1;
     data.width = (config?.width ?? window.innerWidth) * dpr;
     data.height = (config?.height ?? window.innerHeight) * dpr;
@@ -344,6 +343,8 @@ export async function toVanillaCanvas<
     canvasEl.height = data.height;
     canvasEl.style.width = `${data.width / dpr}px`;
     canvasEl.style.height = `${data.height / dpr}px`;
+
+    console.log(data.width, canvasEl.width, canvasEl.style.width);
 
     canvasEl.classList.toggle(
       'custom-size',

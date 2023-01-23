@@ -25,8 +25,8 @@ const sketchConfig = {
   minSticks: 500,
   maxSticks: 10000,
   sticksPerFrame: 4,
-  minLineLength: 0.007,
-  maxLineLength: 0.1,
+  minLineLength: 0.0035,
+  maxLineLength: 0.05,
   collisionStrategy: 'takeOld' as 'allow' | 'takeOld' | 'takeNew' | 'preferOld',
   retries: 8,
   circlePattern: 'random' as 'none' | 'grid' | 'bigCenter' | 'random',
@@ -50,8 +50,8 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     pane.addInput(config, 'minSticks', { min: 1, max: 10000, step: 1 });
     pane.addInput(config, 'maxSticks', { min: 1, max: 50000, step: 1 });
     pane.addInput(config, 'sticksPerFrame', { min: 1, max: 100, step: 1 });
-    pane.addInput(config, 'minLineLength', { min: 0.005, max: 0.5 });
-    pane.addInput(config, 'maxLineLength', { min: 0.01, max: 0.5 });
+    pane.addInput(config, 'minLineLength', { min: 0.0025, max: 0.25 });
+    pane.addInput(config, 'maxLineLength', { min: 0.005, max: 0.25 });
     pane.addInput(config, 'collisionStrategy', {
       options: {
         allow: 'allow',
@@ -116,7 +116,7 @@ function generateStick(
     collisionStrategy = attempt < config.retries ? 'takeOld' : 'takeNew';
   }
 
-  const maxDistUv = (config.stickWidth * dpr) / size;
+  const maxDistUv = (config.stickWidth * dpr * 1.2) / size;
   if (collisionStrategy === 'takeOld') {
     for (const otherStick of state.sticks) {
       if (stick.distToLine(otherStick) < maxDistUv) {

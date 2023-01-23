@@ -1,10 +1,10 @@
-#define SQUARE_SIZE 0.005 // 0.001 - 0.05
+#define SQUARE_SIZE 0.01 // 0.001 - 0.05
 #define RAND_REPEAT_CHANCE 0.3 // 0.0 - 0.5
 #define BG_NOISE_FACTOR 3.0 // 0.0 - 10.0
 #define BG_RAND_TO_NOISE_RATIO 0.6 // 0.0 - 1.0
 #define DEBUG_BACKGROUND false
 
-#define BASE_TRIANGLE_SIZE 0.05 // 0.01 - 0.2
+#define BASE_TRIANGLE_SIZE 0.08 // 0.01 - 0.4
 #define POSITION_NOISE_FACTOR 0.7 // 0.0 - 10.0
 #define ANGLE_NOISE_FACTOR 0.5 // 0.0 - 10.0
 
