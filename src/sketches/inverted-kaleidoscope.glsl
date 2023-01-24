@@ -2,7 +2,7 @@
 #define SQUARE_SIZE 0.01 // 0.001 - 0.05
 #define RAND_REPEAT_CHANCE 0.3 // 0.0 - 0.5
 #define BG_NOISE_FACTOR 3.8 // 0.0 - 10.0
-#define BG_RAND_TO_NOISE_RATIO 0.3 // 0.0 - 1.0
+#define BG_RAND_TO_NOISE_RATIO 0.4 // 0.0 - 1.0
 #define BG_BLEND_MODE 3 // normal:0, multiply:1, screen:2, overlay:3, hard light:4, soft light:5
 #define COLOR_SATURATION 0.5 // 0.0 - 1.0
 #define COLOR_VALUE 0.75 // 0.0 - 1.0
