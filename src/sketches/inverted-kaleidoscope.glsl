@@ -3,7 +3,7 @@
 #define RAND_REPEAT_CHANCE 0.3 // 0.0 - 0.5
 #define BG_NOISE_FACTOR 3.8 // 0.0 - 10.0
 #define BG_RAND_TO_NOISE_RATIO 0.3 // 0.0 - 1.0
-#define BG_BLEND_MODE 5 // normal:0, multiply:1, screen:2, overlay:3, hard light:4, soft light:5
+#define BG_BLEND_MODE 3 // normal:0, multiply:1, screen:2, overlay:3, hard light:4, soft light:5
 #define COLOR_SATURATION 0.5 // 0.0 - 1.0
 #define COLOR_VALUE 0.75 // 0.0 - 1.0
 #define DEBUG_BACKGROUND false
@@ -11,7 +11,8 @@
 // Viewer config
 #define BASE_TRIANGLE_SIZE 0.08 // 0.01 - 0.4
 #define POSITION_NOISE_FACTOR 1.0 // 0.0 - 10.0
-#define ANGLE_NOISE_FACTOR 0.5 // 0.0 - 10.0
+#define ANGLE_NOISE_IN_FACTOR 2.5 // 0.0 - 10.0
+#define ANGLE_NOISE_OUT_FACTOR 0.25 // 0.0 - 10.0
 
 #define PI 3.1415926535897932384626433832795 // no-config
 
@@ -40,7 +41,6 @@ mat3 scaleMatrix(float x, float y) {
   return mat3(x, 0, 0, 0, y, 0, 0, 0, 1);
 }
 
-// TS = triangle space
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   vec2 uv = fragCoord / iResolution.xy;
 
@@ -59,12 +59,15 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     triangleFrom = iMouse.xy / iResolution.xy;
   } else {
     triangleFrom = vec2(
-      snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(1), 0.0)) * 0.4 + 0.5,
-      snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(2), 0.0)) * 0.4 + 0.5
-      );
+      snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(1), 0.0)),
+      snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(2), 0.0))
+    ) * 0.4 + 0.5;
   }
-  float triangleAngle = snoise(vec2(iTime * ANGLE_NOISE_FACTOR / 100.0 + rand(8), 0.0)) * PI * 3.0;
+  float triangleAngle = snoise(
+    vec2(iTime * ANGLE_NOISE_IN_FACTOR / 100.0 + rand(8), 0.0)
+  ) * PI * 2.0 * ANGLE_NOISE_OUT_FACTOR;
 
+  // TS = triangle space
   vec2 uvTS = (rotationMatrix(triangleAngle) * vec3(uv - triangleFrom, 1.0)).xy;
 
   if (!DEBUG_BACKGROUND) {
