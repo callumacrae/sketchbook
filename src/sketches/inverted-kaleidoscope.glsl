@@ -9,7 +9,7 @@
 #define DEBUG_BACKGROUND false
 
 // Viewer config
-#define BASE_TRIANGLE_SIZE 0.08 // 0.01 - 0.4
+#define BASE_TRIANGLE_SIZE 0.1 // 0.01 - 0.4
 #define POSITION_NOISE_FACTOR 1.0 // 0.0 - 10.0
 #define ANGLE_NOISE_IN_FACTOR 2.5 // 0.0 - 10.0
 #define ANGLE_NOISE_OUT_FACTOR 0.25 // 0.0 - 10.0
@@ -61,7 +61,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     triangleFrom = vec2(
       snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(1), 0.0)),
       snoise(vec2(iTime * POSITION_NOISE_FACTOR / 100.0 + rand(2), 0.0))
-    ) * 0.4 + 0.5;
+    ) * 0.2 + 0.5;
   }
   float triangleAngle = snoise(
     vec2(iTime * ANGLE_NOISE_IN_FACTOR / 100.0 + rand(8), 0.0)
