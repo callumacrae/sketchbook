@@ -102,7 +102,20 @@ export async function toVanillaCanvas<
 
   const config = sketchbookConfig.sketchConfig as SketchConfig | undefined;
   // Store as a string as it has to be copied every time it's used anyway
-  const initialConfig = JSON.stringify(config);
+  const flattenedConfig: Record<string, any> = {};
+  const flattenConfig = (config: Record<string, any>) => {
+    for (const [key, value] of Object.entries(config)) {
+      if (typeof value === 'object') {
+        flattenConfig(value);
+      } else {
+        flattenedConfig[key] = value;
+      }
+    }
+  };
+  if (config) {
+    flattenConfig(config);
+  }
+  const initialConfig = JSON.stringify(flattenedConfig);
 
   if (sketchbookConfig.pageBg) {
     document.body.style.background = sketchbookConfig.pageBg;
@@ -354,6 +367,15 @@ export async function toVanillaCanvas<
     if (data.renderer) {
       data.renderer.setSize(data.width, data.height);
       data.renderer.setPixelRatio(dpr);
+    }
+    if (
+      typeof data.canvasState === 'object' &&
+      data.canvasState &&
+      'composer' in data.canvasState
+    ) {
+      const composer: any = data.canvasState.composer;
+      composer.setSize(data.width, data.height);
+      composer.setPixelRatio(dpr);
     }
     const canvasState = data.canvasState as any;
     const camera = canvasState?.camera?.camera || canvasState?.camera;

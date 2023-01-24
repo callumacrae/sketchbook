@@ -135,6 +135,12 @@ const router = createRouter({
         shaderToyComponent(
           (await import('./sketches/inverted-kaleidoscope.glsl?raw')).default
         ),
+      meta: { favourite: true, link: 'https://www.shadertoy.com/view/dtXSWr' },
+    },
+    {
+      path: '/rainy-street-lamp',
+      name: 'Rainy street lamp',
+      component: () => import('./sketches/rainy-street-lamp'),
     },
   ],
 });
