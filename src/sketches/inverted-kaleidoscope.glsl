@@ -10,7 +10,7 @@
 
 // Viewer config
 #define BASE_TRIANGLE_SIZE 0.1 // 0.01 - 0.4
-#define POSITION_NOISE_FACTOR 1.0 // 0.0 - 10.0
+#define POSITION_NOISE_FACTOR 2.0 // 0.0 - 10.0
 #define ANGLE_NOISE_IN_FACTOR 2.5 // 0.0 - 10.0
 #define ANGLE_NOISE_OUT_FACTOR 0.25 // 0.0 - 10.0
 
