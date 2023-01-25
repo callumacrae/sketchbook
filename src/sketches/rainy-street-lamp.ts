@@ -5,6 +5,8 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
 
+import { extendMaterial } from '@/utils/three-extend-material';
+import * as random from '@/utils/random';
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
@@ -13,17 +15,25 @@ import type {
   FrameFn,
 } from '@/utils/renderers/vanilla';
 
+const glsl = String.raw;
+
 interface CanvasState {
   composer: EffectComposer;
   scene: THREE.Scene;
   camera: ReturnType<typeof initCamera>;
   lighting: Awaited<ReturnType<typeof initLighting>>;
+  rain: Awaited<ReturnType<typeof initRain>>;
   bloom: Awaited<ReturnType<typeof initBloom>>;
 }
 
 const sketchConfig = {
-  lightColor: 0xcf9851,
-  exposure: 1,
+  lightColor: 0xe2af6c,
+  lightBrightness: 1,
+  exposure: 1.2,
+  rain: {
+    maxSpeed: 35,
+    drops: 2500,
+  },
   bloom: {
     enabled: true,
     threshold: 0,
@@ -77,6 +87,8 @@ async function initLighting(
   const leftLampObject = new THREE.Mesh(lightGeometry, lightMaterial);
   leftLamp.add(leftLampObject);
   const pointLightLeft = new THREE.PointLight(0xf6f5af, 1);
+  // TODO: why isn't decay working?
+  pointLightLeft.distance = 10;
   leftLamp.add(pointLightLeft);
   leftLamp.position.set(0, 16.15, -2.73);
   scene.add(leftLamp);
@@ -91,10 +103,131 @@ async function initLighting(
 
   const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
     if (props.hasChanged && config) {
-      leftLampObject.material.color.set(config.lightColor);
+      // TODO should lightMaterial be 100% colour?
+      lightMaterial.color.set(config.lightColor);
       pointLightLeft.color.set(config.lightColor);
+      pointLightLeft.intensity = config.lightBrightness;
       pointLightRight.color.set(config.lightColor);
+      pointLightRight.intensity = config.lightBrightness;
     }
+  };
+
+  return { frame };
+}
+
+const rainGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.5, 4);
+const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
+  class: THREE.ShaderMaterial,
+
+  vertexHeader: glsl`
+    uniform float uCount;
+    uniform float uTime;
+    uniform float uMaxSpeed;
+
+    attribute vec2 aRandom;
+
+    mat4 translationMatrix(vec3 translation) {
+      return mat4(
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        translation.x, translation.y, translation.z, 1.0
+      );
+    }
+  `,
+
+  vertex: {
+    project_vertex: {
+      '@mvPosition = instanceMatrix * mvPosition;': glsl`
+        float initialPositionY = rand(fract(aRandom + 0.2)) * 20.0 + 6.0;
+
+        float speed = uMaxSpeed + rand(fract(aRandom + 0.6)) * 5.0;
+        initialPositionY -= uTime * speed;
+        float fallNum = floor(initialPositionY / 20.0);
+        float fallNumRand = fract(fallNum / 12345.678);
+        initialPositionY = mod(initialPositionY, 20.0) + 6.0;
+
+        vec3 initialPosition = vec3(
+          rand(fract(aRandom + fallNumRand)) * 20.0 - 10.0,
+          initialPositionY,
+          rand(fract(aRandom + fallNumRand + 0.4)) * 20.0 - 10.0
+        );
+
+        // TODO: vary raindrop size (and terminal velocity accordingly)
+        // TODO: vary raindrop angle, both overall and with simplex noise
+        mvPosition = translationMatrix(initialPosition) * mvPosition;
+      `,
+    },
+  },
+
+  fragment: {
+    lights_lambert_pars_fragment: {
+      // This stops the raindrops from being brighter on one side than the other
+      '@float dotNL =': glsl`float dotNL = 0.3;`,
+    },
+  },
+
+  uniforms: {
+    uCount: {
+      value: 0,
+      shared: true,
+    },
+
+    uTime: {
+      value: 0,
+      shared: true,
+    },
+
+    uMaxSpeed: {
+      value: sketchConfig.rain.maxSpeed,
+      shared: true,
+    },
+  },
+});
+
+function initRain(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
+  if (!config) throw new Error('???');
+
+  let rainObject = new THREE.InstancedMesh(
+    rainGeometry,
+    rainMaterial,
+    config.rain.drops
+  );
+
+  const initRainInner = () => {
+    const randNumsArray = new Float32Array(rainObject.count * 2);
+    const randomNums = new THREE.InstancedBufferAttribute(randNumsArray, 2);
+    rainGeometry.setAttribute('aRandom', randomNums);
+
+    rainMaterial.uniforms.uCount.value = rainObject.count;
+
+    for (let i = 0; i < randNumsArray.length; i++) {
+      randNumsArray[i] = random.value();
+    }
+
+    scene.add(rainObject);
+  };
+
+  initRainInner();
+
+  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+    if (props.hasChanged && props.config) {
+      rainMaterial.uniforms.uMaxSpeed.value = props.config.rain.maxSpeed;
+
+      if (props.config.rain.drops < rainObject.count) {
+        rainObject.count = props.config.rain.drops;
+      } else if (props.config.rain.drops > rainObject.count) {
+        scene.remove(rainObject);
+        rainObject = new THREE.InstancedMesh(
+          rainGeometry,
+          rainMaterial,
+          config.rain.drops
+        );
+        initRainInner();
+      }
+    }
+
+    rainMaterial.uniforms.uTime.value = props.timestamp / 1e3;
   };
 
   return { frame };
@@ -142,23 +275,29 @@ function initBloom(
 const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   props.initControls(({ pane, config }) => {
     pane.addInput(config, 'lightColor', { view: 'color' });
+    pane.addInput(config, 'lightBrightness', { min: 0, max: 1 });
     pane.addInput(config, 'exposure', { min: 0, max: 2 });
 
-    pane.addSeparator();
+    const rainFolder = pane.addFolder({ title: 'Rain' });
+    rainFolder.addInput(config.rain, 'maxSpeed', { min: 6, max: 50 });
+    rainFolder.addInput(config.rain, 'drops', { min: 100, max: 10000 });
 
-    pane.addInput(config.bloom, 'enabled');
-    pane.addInput(config.bloom, 'threshold', { min: 0, max: 1 });
-    pane.addInput(config.bloom, 'strength', { min: 0, max: 3 });
-    pane.addInput(config.bloom, 'radius', { min: 0, max: 1 });
+    const bloomFolder = pane.addFolder({ title: 'Bloom' });
+
+    bloomFolder.addInput(config.bloom, 'enabled');
+    bloomFolder.addInput(config.bloom, 'threshold', { min: 0, max: 1 });
+    bloomFolder.addInput(config.bloom, 'strength', { min: 0, max: 3 });
+    bloomFolder.addInput(config.bloom, 'radius', { min: 0, max: 1 });
   });
 
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
   const lighting = await initLighting(scene, props);
+  const rain = initRain(scene, props);
   const bloom = initBloom(scene, props);
 
-  return { composer: bloom.composer, scene, camera, lighting, bloom };
+  return { composer: bloom.composer, scene, camera, lighting, rain, bloom };
 };
 
 const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
@@ -166,6 +305,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   if (!renderer || !config) throw new Error('???');
 
   state.lighting.frame(props);
+  state.rain.frame(props);
   state.bloom.frame(props);
 
   state.composer.render();

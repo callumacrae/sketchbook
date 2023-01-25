@@ -29,6 +29,14 @@ export function shaderToyComponent(glsl: string) {
 
   const sketchbookConfig: Partial<Config<SketchConfig>> = {
     type: 'threejs',
+    width: 1000,
+    height: 1000,
+    capture: {
+      enabled: false,
+      duration: 15000,
+      fps: 24,
+      directory: location.pathname.slice(1),
+    },
     sketchConfig,
   };
 
