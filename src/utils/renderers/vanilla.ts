@@ -15,7 +15,7 @@ export interface Config<SketchConfig = undefined> {
   };
   width?: number;
   height?: number;
-  useDpr?: boolean;
+  antialias?: boolean;
   pageBg?: string;
   resizeDelay: number;
   sketchConfig: SketchConfig;
@@ -130,7 +130,7 @@ export async function toVanillaCanvas<
   } else {
     data.renderer = new THREE.WebGLRenderer({
       canvas: canvasEl,
-      antialias: true,
+      antialias: sketchbookConfig.antialias !== false,
     });
   }
 
@@ -347,15 +347,15 @@ export async function toVanillaCanvas<
 
     const config = data.sketchbookConfig;
 
-    const useDpr = config.useDpr ?? config.type === 'threejs' ? false : true;
-    const dpr = useDpr ? window.devicePixelRatio : 1;
-    data.width = (config?.width ?? window.innerWidth) * dpr;
-    data.height = (config?.height ?? window.innerHeight) * dpr;
-    data.dpr = dpr;
+    const canvasDpr = config.type !== 'threejs' ? window.devicePixelRatio : 1;
+    const threeDpr = config.type === 'threejs' ? window.devicePixelRatio : 1;
+    data.width = (config?.width ?? window.innerWidth) * canvasDpr;
+    data.height = (config?.height ?? window.innerHeight) * canvasDpr;
+    data.dpr = window.devicePixelRatio;
     canvasEl.width = data.width;
     canvasEl.height = data.height;
-    canvasEl.style.width = `${data.width / dpr}px`;
-    canvasEl.style.height = `${data.height / dpr}px`;
+    canvasEl.style.width = `${data.width / canvasDpr}px`;
+    canvasEl.style.height = `${data.height / canvasDpr}px`;
 
     canvasEl.classList.toggle(
       'custom-size',
@@ -366,7 +366,7 @@ export async function toVanillaCanvas<
 
     if (data.renderer) {
       data.renderer.setSize(data.width, data.height);
-      data.renderer.setPixelRatio(dpr);
+      data.renderer.setPixelRatio(threeDpr);
     }
     if (
       typeof data.canvasState === 'object' &&
@@ -375,7 +375,7 @@ export async function toVanillaCanvas<
     ) {
       const composer: any = data.canvasState.composer;
       composer.setSize(data.width, data.height);
-      composer.setPixelRatio(dpr);
+      composer.setPixelRatio(threeDpr);
     }
     const canvasState = data.canvasState as any;
     const camera = canvasState?.camera?.camera || canvasState?.camera;
