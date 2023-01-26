@@ -62,6 +62,24 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
+const presets = {
+  default: { rain: { ...sketchConfig.rain }, wind: { ...sketchConfig.wind } },
+  'light rain': {
+    rain: {
+      maxSpeed: 6,
+      drops: 5000,
+    },
+    wind: {
+      windStrength: 1.5,
+      strengthVariation1: 0.3,
+      strengthVariation2In: 0.2,
+      strengthVariation2Out: 0.6,
+      gustFrequency: 2.5,
+      gustStrength: 1.52,
+    },
+  },
+};
+
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
   antialias: false,
@@ -277,8 +295,17 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
     lights_lambert_pars_fragment: {
       // This stops the raindrops from being brighter on one side than the other
       // and hides them if they've intersected
-      '@float dotNL =': glsl`float dotNL = uLightFactor * (1.0 - vIsBelowLight);`,
+      '@float dotNL =': glsl`
+        float dotNL = uLightFactor;
+      `,
     },
+    '?#include <output_fragment>': glsl`
+      diffuseColor.a = 1.0 - vIsBelowLight;
+    `,
+  },
+
+  material: {
+    transparent: true,
   },
 
   uniforms: {
@@ -412,7 +439,7 @@ function initRain(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
     rainMaterial.uniforms.uWindStrength.value =
       props.config.wind.windStrength * strengthVariation2;
 
-    rainMaterial.uniforms.uTime.value = props.timestamp / 1e3 / 2;
+    rainMaterial.uniforms.uTime.value = props.timestamp / 1e3;
   };
 
   return { frame };
