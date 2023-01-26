@@ -1,3 +1,4 @@
+import SimplexNoise from 'simplex-noise';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -43,7 +44,14 @@ const sketchConfig = {
   },
   wind: {
     direction: Math.PI * (14 / 8),
-    windStrength: 4,
+    windStrength: 3,
+    // Variation 1 = random variation per individual raindrop
+    strengthVariation1: 0.2,
+    // Variation 2 = variation in overall wind speed applied to all raindrops
+    strengthVariation2In: 0.25,
+    strengthVariation2Out: 1,
+    gustFrequency: 4,
+    gustStrength: 4,
   },
   bloom: {
     enabled: true,
@@ -68,7 +76,7 @@ function initCamera(
 
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
   camera.position.y = 4.6;
-  camera.position.x = -3.5;
+  camera.position.x = -2.5;
   scene.add(camera);
 
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -139,6 +147,9 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
     uniform float uMaxSpeed;
     uniform float uWindDirection;
     uniform float uWindStrength;
+    uniform float uWindStrengthVariation1;
+    uniform float uGustFrequency;
+    uniform float uGustStrength;
     uniform vec3 uPointLightPositions[NUM_POINT_LIGHTS];
 
     attribute vec2 aRandom;
@@ -184,44 +195,57 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
         0.0, 0.0, 0.0, 1.0
       );
     }
+
+    // https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
+    vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+    float snoise(vec2 v){ const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439); vec2 i  = floor(v + dot(v, C.yy) ); vec2 x0 = v -   i + dot(i, C.xx); vec2 i1; i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0); vec4 x12 = x0.xyxy + C.xxzz; x12.xy -= i1; i = mod(i, 289.0); vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 )); vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0); m = m*m ; m = m*m ; vec3 x = 2.0 * fract(p * C.www) - 1.0; vec3 h = abs(x) - 0.5; vec3 ox = floor(x + 0.5); vec3 a0 = x - ox; m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h ); vec3 g; g.x  = a0.x  * x0.x  + h.x  * x0.y; g.yz = a0.yz * x12.xz + h.yz * x12.yw; return 130.0 * dot(m, g); }
   `,
 
   vertex: {
     project_vertex: {
       '@mvPosition = instanceMatrix * mvPosition;': glsl`
-        float initialPositionY = rand(fract(aRandom + 0.2)) * 6.0 + 1.83;
+        float positionY = rand(fract(aRandom + 0.2)) * 6.0 + 1.83;
 
         float size = rand(fract(aRandom + 0.1)) * 0.4 + 0.6;
 
-        float speed = uMaxSpeed * (rand(fract(aRandom + 0.6)) * 0.2 + 0.8) * (size / 2.0 + 0.5);
-        initialPositionY -= uTime * speed;
-        float fallNum = floor(initialPositionY / 6.0);
+        float speed = uMaxSpeed * (rand(fract(aRandom + 0.6)) * 0.4 + 0.6) * (size / 2.0 + 0.5);
+        positionY -= uTime * speed;
+        float fallNum = floor(positionY / 6.0);
         float fallNumRand = fract(fallNum / 12345.678);
-        initialPositionY = mod(initialPositionY, 6.0) + 1.83;
+        positionY = mod(positionY, 6.0) + 1.83;
 
         int lightIndex = int(floor(rand(fract(aRandom + fallNumRand + 0.34)) * float(NUM_POINT_LIGHTS)));
         vec3 lightPosition = uPointLightPositions[lightIndex];
         float distFromLight = rand(fract(aRandom + fallNumRand));
         float angleAroundLight = rand(fract(aRandom + fallNumRand + 0.4)) * PI2;
 
-        vec3 initialPosition = vec3(
+        vec3 position = vec3(
           lightPosition.x + distFromLight * sin(angleAroundLight),
-          initialPositionY,
+          positionY,
           lightPosition.z + distFromLight * cos(angleAroundLight)
         );
 
-        // The ideal shutter speed is twice the frame rate, but setting it to
-        // the same as the frame rate looks better!
-        float distPerFrame = speed / 60.0;
+        float gustNoise = snoise(vec2(
+          uTime * 0.4 * pow(uGustFrequency / 4.0, 0.5)
+          + position.z / 200.0 * speed
+          + positionY / 400.0 * speed
+        ));
+        float gustStrength = smoothstep(1.0 - uGustFrequency * 0.15, 1.0, gustNoise) * uGustStrength;
+        float windStrength = uWindStrength + gustStrength;
+        float angle = PI / 2.5 * (1.0 - pow(1.0 - saturate(windStrength / 10.0), 3.0))
+          + (rand(fract(aRandom + 0.87)) - 0.5) * uWindStrengthVariation1;
 
-        // TODO: vary raindrop angle, both overall and with simplex noise
+        // The ideal shutter speed is apparently twice the frame rate (120fps),
+        // but setting it to the same as the frame rate looks better!
+        float distPerFrame = (speed + windStrength) / 60.0;
+
         // TODO: check for collisions with lamp
 
         mvPosition = translationMatrix(lightPosition)
           * rotationYMatrix(uWindDirection)
-          * rotationXMatrix(PI / 16.0 * uWindStrength)
+          * rotationXMatrix(angle)
           * translationMatrix(-lightPosition)
-          * translationMatrix(initialPosition)
+          * translationMatrix(position)
           * scaleMatrix(vec3(size, distPerFrame, size))
           * mvPosition;
       `,
@@ -270,6 +294,21 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
       share: true,
     },
 
+    uWindStrengthVariation1: {
+      value: sketchConfig.wind.strengthVariation1,
+      share: true,
+    },
+
+    uGustFrequency: {
+      value: sketchConfig.wind.gustFrequency,
+      share: true,
+    },
+
+    uGustStrength: {
+      value: sketchConfig.wind.gustStrength,
+      share: true,
+    },
+
     uPointLightPositions: {
       value: [],
       shared: true,
@@ -302,16 +341,24 @@ function initRain(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
 
   initRainInner();
 
+  const simplex = new SimplexNoise();
+
   const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-    if (props.hasChanged && props.config) {
+    if (!props.config) throw new Error('???');
+
+    if (props.hasChanged) {
       const scale = props.config.rain.width / oldRainGeometryScale;
       rainGeometry.scale(scale, 1, scale);
       oldRainGeometryScale = props.config.rain.width;
       rainMaterial.uniforms.uMaxSpeed.value = props.config.rain.maxSpeed;
       rainMaterial.uniforms.uLightFactor.value = props.config.rain.lightFactor;
       rainMaterial.uniforms.uWindDirection.value = props.config.wind.direction;
-      rainMaterial.uniforms.uWindStrength.value =
-        props.config.wind.windStrength;
+      rainMaterial.uniforms.uWindStrengthVariation1.value =
+        props.config.wind.strengthVariation1;
+      rainMaterial.uniforms.uGustFrequency.value =
+        props.config.wind.gustFrequency;
+      rainMaterial.uniforms.uGustStrength.value =
+        props.config.wind.gustStrength;
 
       const pointLightPositions: THREE.Vector3[] = [];
       scene.traverseVisible((obj) => {
@@ -336,7 +383,18 @@ function initRain(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
       }
     }
 
-    rainMaterial.uniforms.uTime.value = props.timestamp / 1e3;
+    const strengthVariation2Noise = simplex.noise2D(
+      (props.timestamp / 1e3) * props.config.wind.strengthVariation2In,
+      0
+    );
+    // range is [1 - varOut / 2, 1 + varOut / 2]
+    const strengthVariation2 =
+      props.config.wind.strengthVariation2Out * (strengthVariation2Noise / 2) +
+      1;
+    rainMaterial.uniforms.uWindStrength.value =
+      props.config.wind.windStrength * strengthVariation2;
+
+    rainMaterial.uniforms.uTime.value = props.timestamp / 1e3 / 2;
   };
 
   return { frame };
@@ -392,13 +450,24 @@ const init: InitFn<CanvasState, SketchConfig> = async (props) => {
 
     const rainFolder = pane.addFolder({ title: 'Rain' });
     rainFolder.addInput(config.rain, 'maxSpeed', { min: 0.1, max: 20 });
-    rainFolder.addInput(config.rain, 'drops', { min: 100, max: 100000 });
+    rainFolder.addInput(config.rain, 'drops', { min: 100, max: 30000 });
     rainFolder.addInput(config.rain, 'width', { min: 0.0005, max: 0.01 });
     rainFolder.addInput(config.rain, 'lightFactor', { min: 0.1, max: 1 });
 
     const windFolder = pane.addFolder({ title: 'Wind' });
     windFolder.addInput(config.wind, 'direction', { min: 0, max: Math.PI * 2 });
     windFolder.addInput(config.wind, 'windStrength', { min: 0, max: 7 });
+    windFolder.addInput(config.wind, 'strengthVariation1', { min: 0, max: 1 });
+    windFolder.addInput(config.wind, 'strengthVariation2In', {
+      min: 0,
+      max: 0.5,
+    });
+    windFolder.addInput(config.wind, 'strengthVariation2Out', {
+      min: 0,
+      max: 2,
+    });
+    windFolder.addInput(config.wind, 'gustFrequency', { min: 0, max: 10 });
+    windFolder.addInput(config.wind, 'gustStrength', { min: 0, max: 10 });
 
     const rendererFolder = pane.addFolder({ title: 'Renderer' });
     rendererFolder.addInput(config, 'toneMapping', {

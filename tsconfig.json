@@ -5,6 +5,7 @@
   "compilerOptions": {
     "lib": ["esnext", "DOM", "DOM.Iterable"],
     "baseUrl": ".",
+    "esModuleInterop": true,
     "paths": {
       "@/*": ["./src/*"]
     }
