@@ -31,7 +31,7 @@ interface CanvasState {
 const sketchConfig = {
   light: {
     color: 0xe2af6c,
-    brightness: 1,
+    brightness: 0.8,
     decay: 3,
   },
   toneMappingExposure: 1.2,
@@ -56,7 +56,7 @@ const sketchConfig = {
   bloom: {
     enabled: true,
     threshold: 0,
-    strength: 2,
+    strength: 1.8,
     radius: 1,
   },
 };
@@ -141,6 +141,10 @@ let oldRainGeometryScale = 1;
 const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
   class: THREE.ShaderMaterial,
 
+  header: glsl`
+    varying float vIsBelowLight;
+  `,
+
   vertexHeader: glsl`
     uniform float uCount;
     uniform float uTime;
@@ -204,31 +208,31 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
   vertex: {
     project_vertex: {
       '@mvPosition = instanceMatrix * mvPosition;': glsl`
-        float positionY = rand(fract(aRandom + 0.2)) * 6.0 + 1.83;
+        float positionBeforeWindY = rand(fract(aRandom + 0.2)) * 6.0 + 1.83;
 
         float size = rand(fract(aRandom + 0.1)) * 0.4 + 0.6;
 
         float speed = uMaxSpeed * (rand(fract(aRandom + 0.6)) * 0.4 + 0.6) * (size / 2.0 + 0.5);
-        positionY -= uTime * speed;
-        float fallNum = floor(positionY / 6.0);
+        positionBeforeWindY -= uTime * speed;
+        float fallNum = floor(positionBeforeWindY / 6.0);
         float fallNumRand = fract(fallNum / 12345.678);
-        positionY = mod(positionY, 6.0) + 1.83;
+        positionBeforeWindY = mod(positionBeforeWindY, 6.0) + 1.83;
 
         int lightIndex = int(floor(rand(fract(aRandom + fallNumRand + 0.34)) * float(NUM_POINT_LIGHTS)));
         vec3 lightPosition = uPointLightPositions[lightIndex];
         float distFromLight = rand(fract(aRandom + fallNumRand));
         float angleAroundLight = rand(fract(aRandom + fallNumRand + 0.4)) * PI2;
 
-        vec3 position = vec3(
+        vec3 positionBeforeWind = vec3(
           lightPosition.x + distFromLight * sin(angleAroundLight),
-          positionY,
+          positionBeforeWindY,
           lightPosition.z + distFromLight * cos(angleAroundLight)
         );
 
         float gustNoise = snoise(vec2(
           uTime * 0.4 * pow(uGustFrequency / 4.0, 0.5)
-          + position.z / 200.0 * speed
-          + positionY / 400.0 * speed
+          + positionBeforeWind.z / 200.0 * speed
+          + positionBeforeWindY / 400.0 * speed
         ));
         float gustStrength = smoothstep(1.0 - uGustFrequency * 0.15, 1.0, gustNoise) * uGustStrength;
         float windStrength = uWindStrength + gustStrength;
@@ -239,15 +243,28 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
         // but setting it to the same as the frame rate looks better!
         float distPerFrame = (speed + windStrength) / 60.0;
 
-        // TODO: check for collisions with lamp
+        mat4 rotationMatrix = rotationYMatrix(uWindDirection) * rotationXMatrix(angle);
+
+        vec3 direction = (rotationMatrix * vec4(0, 1, 0, 1)).xyz;
 
         mvPosition = translationMatrix(lightPosition)
-          * rotationYMatrix(uWindDirection)
-          * rotationXMatrix(angle)
+          * rotationMatrix
           * translationMatrix(-lightPosition)
-          * translationMatrix(position)
+          * translationMatrix(positionBeforeWind)
           * scaleMatrix(vec3(size, distPerFrame, size))
           * mvPosition;
+
+        // Adapted from http://paulbourke.net/geometry/circlesphere/index.html#linesphere
+        vec3 P = mvPosition.xyz;
+        vec3 D = direction;
+        vec3 C = lightPosition;
+        float r = 0.3; // TODO: probably shouldn't be hardcoded
+
+        float a = D.x * D.x + D.y * D.y + D.z * D.z;
+        float b = 2.0 * (D.x * (P.x - C.x) + D.y * (P.y - C.y) + D.z * (P.z - C.z));
+        float c = pow(P.x - C.x, 2.0) + pow(P.y - C.y, 2.0) + pow(P.z - C.z, 2.0) - pow(r, 2.0);
+
+        vIsBelowLight = b * b - 4.0 * a * c >= 0.0 && positionBeforeWindY <= lightPosition.y ? 1.0 : 0.0;
       `,
     },
   },
@@ -259,7 +276,8 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
   fragment: {
     lights_lambert_pars_fragment: {
       // This stops the raindrops from being brighter on one side than the other
-      '@float dotNL =': glsl`float dotNL = uLightFactor;`,
+      // and hides them if they've intersected
+      '@float dotNL =': glsl`float dotNL = uLightFactor * (1.0 - vIsBelowLight);`,
     },
   },
 
