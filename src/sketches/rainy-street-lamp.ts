@@ -28,20 +28,27 @@ interface CanvasState {
 }
 
 const sketchConfig = {
-  lightColor: 0xe2af6c,
-  lightBrightness: 1,
-  lightDecay: 3,
+  light: {
+    color: 0xe2af6c,
+    brightness: 1,
+    decay: 3,
+  },
   toneMappingExposure: 1.2,
   toneMapping: THREE.ReinhardToneMapping,
   rain: {
     maxSpeed: 11,
     drops: 10000,
     width: 0.0015,
+    lightFactor: 0.3,
+  },
+  wind: {
+    direction: Math.PI * (14 / 8),
+    windStrength: 4,
   },
   bloom: {
     enabled: true,
     threshold: 0,
-    strength: 2.1,
+    strength: 2,
     radius: 1,
   },
 };
@@ -107,14 +114,14 @@ async function initLighting(
 
   const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
     if (props.hasChanged && config) {
-      lightMaterial.emissive = new THREE.Color(config.lightColor);
-      lightMaterial.emissiveIntensity = config.lightBrightness;
-      pointLightLeft.color.set(config.lightColor);
-      pointLightLeft.intensity = config.lightBrightness;
-      pointLightLeft.decay = config.lightDecay;
-      pointLightRight.color.set(config.lightColor);
-      pointLightRight.intensity = config.lightBrightness;
-      pointLightRight.decay = config.lightDecay;
+      lightMaterial.emissive = new THREE.Color(config.light.color);
+      lightMaterial.emissiveIntensity = config.light.brightness;
+      pointLightLeft.color.set(config.light.color);
+      pointLightLeft.intensity = config.light.brightness;
+      pointLightLeft.decay = config.light.decay;
+      pointLightRight.color.set(config.light.color);
+      pointLightRight.intensity = config.light.brightness;
+      pointLightRight.decay = config.light.decay;
     }
   };
 
@@ -130,7 +137,8 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
     uniform float uCount;
     uniform float uTime;
     uniform float uMaxSpeed;
-    uniform mat4 uBaseAngle;
+    uniform float uWindDirection;
+    uniform float uWindStrength;
     uniform vec3 uPointLightPositions[NUM_POINT_LIGHTS];
 
     attribute vec2 aRandom;
@@ -149,6 +157,30 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
         scale.x, 0.0, 0.0, 0.0,
         0.0, scale.y, 0.0, 0.0,
         0.0, 0.0, scale.z, 0.0,
+        0.0, 0.0, 0.0, 1.0
+      );
+    }
+
+    mat4 rotationXMatrix(float angle) {
+      float s = sin(angle);
+      float c = cos(angle);
+
+      return mat4(
+        1.0, 0.0, 0.0, 0.0,
+        0.0, c, s, 0.0,
+        0.0, -s, c, 0.0,
+        0.0, 0.0, 0.0, 1.0
+      );
+    }
+
+    mat4 rotationYMatrix(float angle) {
+      float s = sin(angle);
+      float c = cos(angle);
+
+      return mat4(
+        c, 0.0, s, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        -s, 0.0, c, 0.0,
         0.0, 0.0, 0.0, 1.0
       );
     }
@@ -183,19 +215,27 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
         float distPerFrame = speed / 60.0;
 
         // TODO: vary raindrop angle, both overall and with simplex noise
+        // TODO: check for collisions with lamp
 
-        mvPosition = translationMatrix(lightPosition) * uBaseAngle
-          * translationMatrix(-lightPosition) * translationMatrix(initialPosition)
-          * scaleMatrix(vec3(size, distPerFrame, size)) * mvPosition;
+        mvPosition = translationMatrix(lightPosition)
+          * rotationYMatrix(uWindDirection)
+          * rotationXMatrix(PI / 16.0 * uWindStrength)
+          * translationMatrix(-lightPosition)
+          * translationMatrix(initialPosition)
+          * scaleMatrix(vec3(size, distPerFrame, size))
+          * mvPosition;
       `,
     },
   },
 
+  fragmentHeader: glsl`
+    uniform float uLightFactor;
+  `,
+
   fragment: {
     lights_lambert_pars_fragment: {
       // This stops the raindrops from being brighter on one side than the other
-      // TOOD: this is super buggy for some reason?
-      '@float dotNL =': glsl`float dotNL = 0.3;`,
+      '@float dotNL =': glsl`float dotNL = uLightFactor;`,
     },
   },
 
@@ -215,11 +255,19 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
       shared: true,
     },
 
-    uBaseAngle: {
-      value: new THREE.Matrix4().makeRotationFromEuler(
-        new THREE.Euler(Math.PI / 8, Math.PI / 4, 0, 'YXZ')
-      ),
+    uLightFactor: {
+      value: sketchConfig.rain.lightFactor,
       shared: true,
+    },
+
+    uWindDirection: {
+      value: sketchConfig.wind.direction,
+      share: true,
+    },
+
+    uWindStrength: {
+      value: sketchConfig.wind.windStrength,
+      share: true,
     },
 
     uPointLightPositions: {
@@ -260,6 +308,10 @@ function initRain(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
       rainGeometry.scale(scale, 1, scale);
       oldRainGeometryScale = props.config.rain.width;
       rainMaterial.uniforms.uMaxSpeed.value = props.config.rain.maxSpeed;
+      rainMaterial.uniforms.uLightFactor.value = props.config.rain.lightFactor;
+      rainMaterial.uniforms.uWindDirection.value = props.config.wind.direction;
+      rainMaterial.uniforms.uWindStrength.value =
+        props.config.wind.windStrength;
 
       const pointLightPositions: THREE.Vector3[] = [];
       scene.traverseVisible((obj) => {
@@ -333,10 +385,23 @@ function initBloom(
 
 const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   props.initControls(({ pane, config }) => {
-    pane.addInput(config, 'lightColor', { view: 'color' });
-    pane.addInput(config, 'lightBrightness', { min: 0, max: 1 });
-    pane.addInput(config, 'lightDecay', { min: 0, max: 10 });
-    pane.addInput(config, 'toneMapping', {
+    const lightFolder = pane.addFolder({ title: 'Lights' });
+    lightFolder.addInput(config.light, 'color', { view: 'color' });
+    lightFolder.addInput(config.light, 'brightness', { min: 0, max: 1 });
+    lightFolder.addInput(config.light, 'decay', { min: 0, max: 10 });
+
+    const rainFolder = pane.addFolder({ title: 'Rain' });
+    rainFolder.addInput(config.rain, 'maxSpeed', { min: 0.1, max: 20 });
+    rainFolder.addInput(config.rain, 'drops', { min: 100, max: 100000 });
+    rainFolder.addInput(config.rain, 'width', { min: 0.0005, max: 0.01 });
+    rainFolder.addInput(config.rain, 'lightFactor', { min: 0.1, max: 1 });
+
+    const windFolder = pane.addFolder({ title: 'Wind' });
+    windFolder.addInput(config.wind, 'direction', { min: 0, max: Math.PI * 2 });
+    windFolder.addInput(config.wind, 'windStrength', { min: 0, max: 7 });
+
+    const rendererFolder = pane.addFolder({ title: 'Renderer' });
+    rendererFolder.addInput(config, 'toneMapping', {
       options: {
         none: THREE.NoToneMapping,
         linear: THREE.LinearToneMapping,
@@ -345,15 +410,9 @@ const init: InitFn<CanvasState, SketchConfig> = async (props) => {
         'aces filmic': THREE.ACESFilmicToneMapping,
       },
     });
-    pane.addInput(config, 'toneMappingExposure', { min: 0, max: 2 });
-
-    const rainFolder = pane.addFolder({ title: 'Rain' });
-    rainFolder.addInput(config.rain, 'maxSpeed', { min: 0.1, max: 20 });
-    rainFolder.addInput(config.rain, 'drops', { min: 100, max: 100000 });
-    rainFolder.addInput(config.rain, 'width', { min: 0.0005, max: 0.01 });
+    rendererFolder.addInput(config, 'toneMappingExposure', { min: 0, max: 2 });
 
     const bloomFolder = pane.addFolder({ title: 'Bloom' });
-
     bloomFolder.addInput(config.bloom, 'enabled');
     bloomFolder.addInput(config.bloom, 'threshold', { min: 0, max: 1 });
     bloomFolder.addInput(config.bloom, 'strength', { min: 0, max: 3 });
