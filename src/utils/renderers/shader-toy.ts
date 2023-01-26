@@ -29,8 +29,6 @@ export function shaderToyComponent(glsl: string) {
 
   const sketchbookConfig: Partial<Config<SketchConfig>> = {
     type: 'threejs',
-    width: 1000,
-    height: 1000,
     capture: {
       enabled: false,
       duration: 15000,
@@ -39,6 +37,11 @@ export function shaderToyComponent(glsl: string) {
     },
     sketchConfig,
   };
+
+  if (location.pathname.slice(1) === 'glitch-art') {
+    sketchbookConfig.width = 500;
+    sketchbookConfig.height = 500;
+  }
 
   const originalConfig: Record<
     string,
@@ -187,7 +190,11 @@ export function shaderToyComponent(glsl: string) {
     }
 
     state.uniforms.iTime.value = timestamp / 1000;
-    state.uniforms.iResolution.value.set(props.width, props.height, 1);
+    state.uniforms.iResolution.value.set(
+      props.width * props.dpr,
+      props.height * props.dpr,
+      1
+    );
 
     renderer.render(state.scene, state.camera);
   };

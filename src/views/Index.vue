@@ -11,7 +11,7 @@ const routes = computed(() => {
   return router.options.routes.filter((route) => route.name !== 'home');
 });
 
-const shouldFilter = ref(false);
+const shouldFilter = ref(true);
 const filteredRoutes = computed(() => {
   return shouldFilter.value
     ? routes.value.filter((route) => route.meta?.favourite)
