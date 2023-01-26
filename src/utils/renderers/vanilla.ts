@@ -24,6 +24,7 @@ export interface Config<SketchConfig = undefined> {
 export interface InitControlsProps<SketchConfig> {
   pane: TabPageApi;
   config: SketchConfig;
+  actualPane: Pane;
 }
 
 export interface InitProps<SketchConfig = undefined> {
@@ -185,7 +186,7 @@ export async function toVanillaCanvas<
         tab.pages[1].addMonitor(data.renderer.info.memory, 'geometries');
       }
 
-      cb({ pane: tab.pages[0], config });
+      cb({ pane: tab.pages[0], config, actualPane: pane });
 
       tab.pages[0].addButton({ title: 'Reset' }).on('click', () => {
         pane.importPreset(JSON.parse(initialConfig));

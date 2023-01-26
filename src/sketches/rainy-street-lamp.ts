@@ -37,8 +37,8 @@ const sketchConfig = {
   toneMappingExposure: 1.2,
   toneMapping: THREE.ReinhardToneMapping,
   rain: {
-    maxSpeed: 11,
-    drops: 10000,
+    maxSpeed: 6,
+    drops: 7000,
     width: 0.0015,
     lightFactor: 0.3,
   },
@@ -63,20 +63,30 @@ const sketchConfig = {
 type SketchConfig = typeof sketchConfig;
 
 const presets = {
-  default: { rain: { ...sketchConfig.rain }, wind: { ...sketchConfig.wind } },
+  default: { ...sketchConfig.rain, ...sketchConfig.wind },
   'light rain': {
-    rain: {
-      maxSpeed: 6,
-      drops: 5000,
-    },
-    wind: {
-      windStrength: 1.5,
-      strengthVariation1: 0.3,
-      strengthVariation2In: 0.2,
-      strengthVariation2Out: 0.6,
-      gustFrequency: 2.5,
-      gustStrength: 1.52,
-    },
+    ...sketchConfig.rain,
+    maxSpeed: 4,
+    drops: 4000,
+    ...sketchConfig.wind,
+    windStrength: 1.5,
+    strengthVariation1: 0.3,
+    strengthVariation2In: 0.2,
+    strengthVariation2Out: 0.6,
+    gustFrequency: 2.5,
+    gustStrength: 1.52,
+  },
+  'snow?': {
+    ...sketchConfig.rain,
+    maxSpeed: 0.6,
+    drops: 12000,
+    width: 0.0025,
+    ...sketchConfig.wind,
+    windStrength: 1.8,
+    strengthVariation1: 0.55,
+    strengthVariation2In: 0.25,
+    strengthVariation2Out: 0.55,
+    gustStrength: 0,
   },
 };
 
@@ -94,7 +104,7 @@ function initCamera(
 
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
   camera.position.y = 4.6;
-  camera.position.x = -2.5;
+  camera.position.x = -2.8;
   scene.add(camera);
 
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -248,9 +258,9 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
         );
 
         float gustNoise = snoise(vec2(
-          uTime * 0.4 * pow(uGustFrequency / 4.0, 0.5)
-          + positionBeforeWind.z / 200.0 * speed
-          + positionBeforeWindY / 400.0 * speed
+          uTime * 0.2 * pow(uGustFrequency / 4.0, 0.5)
+          + positionBeforeWind.z / 100.0 * speed
+          + positionBeforeWindY / 100.0 * speed
         ));
         float gustStrength = smoothstep(1.0 - uGustFrequency * 0.15, 1.0, gustNoise) * uGustStrength;
         float windStrength = uWindStrength + gustStrength;
@@ -487,7 +497,20 @@ function initBloom(
 }
 
 const init: InitFn<CanvasState, SketchConfig> = async (props) => {
-  props.initControls(({ pane, config }) => {
+  const controlsInitedAt = Date.now();
+  props.initControls(({ pane, config, actualPane }) => {
+    pane
+      .addInput({ 'Load preset': 'default' }, 'Load preset', {
+        options: Object.fromEntries(Object.keys(presets).map((p) => [p, p])),
+      })
+      .on('change', ({ value }) => {
+        if (!(value in presets)) return;
+        // Checking time so that we don't load preset on localStorage preset load
+        if (Date.now() < controlsInitedAt + 1000) return;
+        actualPane.importPreset(
+          JSON.parse(JSON.stringify(presets[value as keyof typeof presets]))
+        );
+      });
     const lightFolder = pane.addFolder({ title: 'Lights' });
     lightFolder.addInput(config.light, 'color', { view: 'color' });
     lightFolder.addInput(config.light, 'brightness', { min: 0, max: 1 });
