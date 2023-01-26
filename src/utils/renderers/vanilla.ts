@@ -348,11 +348,12 @@ export async function toVanillaCanvas<
 
     const config = data.sketchbookConfig;
 
-    const canvasDpr = config.type !== 'threejs' ? window.devicePixelRatio : 1;
-    const threeDpr = config.type === 'threejs' ? window.devicePixelRatio : 1;
+    const dpr = config.capture?.enabled ? 1 : window.devicePixelRatio;
+    const canvasDpr = config.type !== 'threejs' ? dpr : 1;
+    const threeDpr = config.type === 'threejs' ? dpr : 1;
     data.width = (config?.width ?? window.innerWidth) * canvasDpr;
     data.height = (config?.height ?? window.innerHeight) * canvasDpr;
-    data.dpr = window.devicePixelRatio;
+    data.dpr = dpr;
     canvasEl.width = data.width;
     canvasEl.height = data.height;
     canvasEl.style.width = `${data.width / canvasDpr}px`;
