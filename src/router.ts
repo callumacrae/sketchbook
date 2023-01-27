@@ -141,6 +141,10 @@ const router = createRouter({
       path: '/rainy-street-lamp',
       name: 'Rainy street lamp',
       component: () => import('./sketches/rainy-street-lamp'),
+      meta: {
+        favourite: true,
+        link: 'https://codepen.io/callumacrae/full/LYBrjEP',
+      },
     },
   ],
 });
