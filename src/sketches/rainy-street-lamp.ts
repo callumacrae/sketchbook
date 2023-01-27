@@ -49,8 +49,8 @@ const sketchConfig = {
     // Variation 2 = variation in overall wind speed applied to all raindrops
     strengthVariation2In: 0.25,
     strengthVariation2Out: 1,
-    gustFrequency: 4,
-    gustStrength: 4,
+    gustFrequency: 5,
+    gustStrength: 5,
   },
   bloom: {
     enabled: true,
