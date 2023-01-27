@@ -44,7 +44,7 @@ const sketchConfig = {
   },
   wind: {
     direction: Math.PI * (14 / 8),
-    windStrength: 3,
+    windStrength: 2,
     // Variation 1 = random variation per individual raindrop
     strengthVariation1: 0.2,
     // Variation 2 = variation in overall wind speed applied to all raindrops
@@ -271,28 +271,16 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
         // but setting it to the same as the frame rate looks better!
         float distPerFrame = (speed + windStrength) / 60.0;
 
-        mat4 rotationMatrix = rotationYMatrix(uWindDirection) * rotationXMatrix(angle);
-
-        vec3 direction = (rotationMatrix * vec4(0, 1, 0, 1)).xyz;
-
         mvPosition = translationMatrix(lightPosition)
-          * rotationMatrix
+          * rotationYMatrix(uWindDirection) * rotationXMatrix(angle)
           * translationMatrix(-lightPosition)
           * translationMatrix(positionBeforeWind)
           * scaleMatrix(vec3(size, distPerFrame, size))
           * mvPosition;
 
-        // Adapted from http://paulbourke.net/geometry/circlesphere/index.html#linesphere
-        vec3 P = mvPosition.xyz;
-        vec3 D = direction;
-        vec3 C = lightPosition;
         float r = 0.3; // TODO: probably shouldn't be hardcoded
-
-        float a = D.x * D.x + D.y * D.y + D.z * D.z;
-        float b = 2.0 * (D.x * (P.x - C.x) + D.y * (P.y - C.y) + D.z * (P.z - C.z));
-        float c = pow(P.x - C.x, 2.0) + pow(P.y - C.y, 2.0) + pow(P.z - C.z, 2.0) - pow(r, 2.0);
-
-        vIsBelowLight = b * b - 4.0 * a * c >= 0.0 && positionBeforeWindY <= lightPosition.y ? 1.0 : 0.0;
+        vIsBelowLight = positionBeforeWindY <= lightPosition.y
+          && distance(positionBeforeWind.xz, lightPosition.xz) < r ? 1.0 : 0.0;
       `,
     },
   },
