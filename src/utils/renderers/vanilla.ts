@@ -15,7 +15,7 @@ export interface Config<SketchConfig = undefined> {
   };
   width?: number;
   height?: number;
-  antialias?: boolean;
+  postprocessing?: boolean;
   pageBg?: string;
   resizeDelay: number;
   sketchConfig: SketchConfig;
@@ -131,8 +131,11 @@ export async function toVanillaCanvas<
   } else {
     data.renderer = new THREE.WebGLRenderer({
       canvas: canvasEl,
-      antialias: sketchbookConfig.antialias !== false,
+      antialias: !sketchbookConfig.postprocessing,
+      stencil: !sketchbookConfig.postprocessing,
+      depth: !sketchbookConfig.postprocessing,
     });
+    data.renderer.info.autoReset = false;
   }
 
   setSize();
@@ -180,6 +183,7 @@ export async function toVanillaCanvas<
       }) as FpsGraphBladeApi;
 
       if (data.renderer) {
+        // data.renderer.info.autoReset = false;
         tab.pages[1].addMonitor(data.renderer.info.render, 'triangles');
         tab.pages[1].addMonitor(data.renderer.info.render, 'calls');
         tab.pages[1].addMonitor(data.renderer.info.memory, 'textures');
@@ -293,6 +297,11 @@ export async function toVanillaCanvas<
         // hasChanged can be used to see if the config has changed
         hasChanged: data.hasChanged,
       };
+
+      if (data.renderer) {
+        // Auto reset doesn't work when postprocessing is used
+        data.renderer.info.reset();
+      }
 
       const newState = await frame(frameProps);
       if (newState) {

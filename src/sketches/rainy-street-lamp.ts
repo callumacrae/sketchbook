@@ -5,7 +5,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
-import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass';
 
 import { extendMaterial } from '@/utils/three-extend-material';
 import * as random from '@/utils/random';
@@ -92,7 +91,7 @@ const presets = {
 
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
-  antialias: false,
+  postprocessing: true,
   sketchConfig,
 };
 
@@ -114,7 +113,7 @@ function initCamera(
   return { camera };
 }
 
-const lightGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+const lightGeometry = new THREE.SphereGeometry(0.3, 16, 16);
 const lightMaterial = new THREE.MeshStandardMaterial();
 
 async function initLighting(
@@ -164,7 +163,7 @@ async function initLighting(
   return { frame };
 }
 
-const rainGeometry = new THREE.CylinderGeometry(1, 1, 1, 4);
+const rainGeometry = new THREE.CylinderGeometry(1, 1, 1, 4, 1, true);
 let oldRainGeometryScale = 1;
 const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
   class: THREE.ShaderMaterial,
@@ -445,7 +444,7 @@ function initRain(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
 
 function initBloom(
   scene: THREE.Scene,
-  { config, renderer, width, height, dpr }: InitProps<SketchConfig>
+  { config, renderer, width, height }: InitProps<SketchConfig>
 ) {
   if (!renderer || !config) throw new Error('???');
 
@@ -455,7 +454,6 @@ function initBloom(
   if (!(camera instanceof THREE.PerspectiveCamera)) throw new Error('???');
 
   const renderPass = new RenderPass(scene, camera);
-  const smaaPass = new SMAAPass(width * dpr, height * dpr);
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(width, height),
     config.bloom.strength,
@@ -465,7 +463,6 @@ function initBloom(
 
   const composer = new EffectComposer(renderer);
   composer.addPass(renderPass);
-  composer.addPass(smaaPass);
   composer.addPass(bloomPass);
 
   const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
