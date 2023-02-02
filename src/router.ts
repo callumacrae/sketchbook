@@ -15,6 +15,11 @@ const router = createRouter({
       component: () => import('./sketches/hello-world'),
     },
     {
+      path: '/normal-lines',
+      name: 'Normal lines',
+      component: () => import('./sketches/normal-lines'),
+    },
+    {
       path: '/line-shapes',
       name: 'Line shapes',
       component: () => import('./sketches/line-shapes'),
@@ -145,6 +150,11 @@ const router = createRouter({
         favourite: true,
         link: 'https://codepen.io/callumacrae/full/LYBrjEP',
       },
+    },
+    {
+      path: '/generated-lightning',
+      name: 'Generated lightning',
+      component: () => import('./sketches/generated-lightning'),
     },
   ],
 });

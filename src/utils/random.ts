@@ -19,6 +19,10 @@ export function value() {
   return currentRandom();
 }
 
+export function chance(chance = 0.5) {
+  return value() < chance;
+}
+
 export function range(min: number, max: number) {
   return min + value() * (max - min);
 }
