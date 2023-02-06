@@ -79,6 +79,7 @@ function generateLightning(
       for (const tip of lightningTips) {
         lightningTipYSum += Math.abs(tip.pos.y);
       }
+      // TODO: make this biasable
       const randomY = random.range(0, lightningTipYSum);
       let lightningTipYSumSoFar = 0;
       for (const tip of lightningTips) {
@@ -209,18 +210,24 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
     state.lightning = generateLightning(props, state.simplex);
   }
 
-  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, width, height);
 
-  ctx.beginPath();
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'white';
   const drawLightning = (lightning: LightningNode) => {
     for (const next of lightning.next) {
+      ctx.lineWidth = next.isReturn
+        ? 10
+        : 1 + (next.charge / state.lightning.charge) * 15;
+      ctx.beginPath();
       ctx.moveTo(lightning.pos.x, lightning.pos.y);
       ctx.lineTo(next.pos.x, next.pos.y);
+      ctx.stroke();
       drawLightning(next);
     }
   };
   drawLightning(state.lightning);
-  ctx.stroke();
 
   return state;
 };
