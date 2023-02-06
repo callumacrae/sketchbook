@@ -1,5 +1,3 @@
-import * as random from './random';
-
 export default class Vector {
   x: number;
   y: number;
@@ -33,6 +31,12 @@ export default class Vector {
     return new Vector(this.x * factor, this.y * factor);
   }
 
+  rotate(angle: number) {
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    return new Vector(this.x * c - this.y * s, this.x * s + this.y * c);
+  }
+
   distTo(other: Vector) {
     return Math.sqrt(
       Math.pow(this.x - other.x, 2) + Math.pow(this.y - other.y, 2)
@@ -43,17 +47,8 @@ export default class Vector {
     return this.scale(newMagnitude / this.length());
   }
 
-  /**
-   * Changes a vector slightly by a random amount. Uses a random function with a
-   * normal distribution, so it's usually not that different.
-   *
-   * @param factor Standard deviation of the normal distribution function used.
-   */
-  randomiseByFactor(factor = 1) {
-    return new Vector(
-      this.x + random.irwinHall() * factor,
-      this.y + random.irwinHall() * factor
-    );
+  normalize() {
+    return this.setMagnitude(1);
   }
 
   /**
