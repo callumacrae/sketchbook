@@ -18,6 +18,7 @@ interface LightningNode {
   depth: number;
   isReturn?: boolean;
   branchDirection: Vector;
+  charge: number; // Basically the total number of children of this node
   next: LightningNode[];
   parent: LightningNode | null;
 }
@@ -28,10 +29,10 @@ interface CanvasState {
 }
 
 const sketchConfig = {
-  branchFactor: 0.02,
+  branchFactor: 0.04,
   wobble: {
     segmentLength: 20,
-    biasToPerfect: 0.3,
+    biasToPerfect: 0.5,
     biasToPerfectVariance: 0.5,
     randomFactor: 5,
   },
@@ -41,6 +42,12 @@ type SketchConfig = typeof sketchConfig;
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   sketchConfig,
 };
+
+function doUpwards(node: LightningNode, cb: (node: LightningNode) => void) {
+  if (!node.parent) return;
+  cb(node.parent);
+  doUpwards(node.parent, cb);
+}
 
 function generateLightning(
   {
@@ -56,6 +63,7 @@ function generateLightning(
     pos: new Vector(width / 2, 0),
     depth: 0,
     branchDirection: new Vector(0, 1),
+    charge: 1,
     next: [],
     parent: null,
   };
@@ -84,7 +92,6 @@ function generateLightning(
 
     const lightningTip = lightningTips[lightningTipIndex];
 
-    // TODO: use branch direction as perfect
     // TODO: bias towards specific points on ground?
     const perfectDirection = lightningTip.branchDirection;
     const currentDirection = lightningTip.parent
@@ -107,12 +114,18 @@ function generateLightning(
       pos: getPoint(),
       depth: lightningTip.depth + 1,
       branchDirection: lightningTip.branchDirection,
+      charge: 1,
       next: [],
       parent: lightningTip,
     };
 
     lightningTip.next.push(newLightning);
-    lightningTips.splice(lightningTipIndex, 1, newLightning);
+    if (lightningTip.pos.x < 0 || lightningTip.pos.x > width) {
+      lightningTips.splice(lightningTipIndex, 1);
+    } else {
+      lightningTips.splice(lightningTipIndex, 1, newLightning);
+    }
+    doUpwards(newLightning, (l) => l.charge++);
 
     if (newLightning.pos.y >= height * 0.9) {
       break;
@@ -131,11 +144,15 @@ function generateLightning(
         pos: getPoint(),
         depth: lightningTip.depth + 1,
         branchDirection,
+        charge: 1,
         next: [],
         parent: lightningTip,
       };
       lightningTip.next.push(newLightningFork);
-      lightningTips.push(newLightningFork);
+      if (lightningTip.pos.x > 0 && lightningTip.pos.x < width) {
+        lightningTips.push(newLightningFork);
+      }
+      doUpwards(newLightningFork, (l) => l.charge++);
 
       if (newLightningFork.pos.y >= height * 0.9) {
         break;
@@ -143,8 +160,31 @@ function generateLightning(
     }
   }
 
-  // TODO complete all close lightningTips paths to the ground with no branching,
-  // marking them as isReturn
+  const lightningTipsToClose = lightningTips.filter(
+    (tip) => tip.pos.y >= height * 0.87 && tip.branchDirection.y > 0
+  );
+  for (const tipToClose of lightningTipsToClose) {
+    let tip = tipToClose;
+    tip.isReturn = true;
+    doUpwards(tip, (l) => (l.isReturn = true));
+    do {
+      const newLightning = {
+        pos: getNextPoint(tip.branchDirection, tip.branchDirection, tip.pos, {
+          ...config.wobble,
+          biasToPerfect: 1,
+        }),
+        depth: tip.depth + 1,
+        branchDirection: tip.branchDirection,
+        charge: 1,
+        next: [],
+        parent: tip,
+        isReturn: true,
+      };
+      tip.next.push(newLightning);
+      doUpwards(newLightning, (l) => l.charge++);
+      tip = newLightning;
+    } while (tip.pos.y < height);
+  }
 
   return lightningRoot;
 }
