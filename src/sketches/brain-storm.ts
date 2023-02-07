@@ -61,7 +61,7 @@ const getIsInverse = (t: number) =>
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height }: InitProps<SketchConfig>
+  { width, height }: InitProps<CanvasState, SketchConfig>
 ) {
   const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 1000);
   camera.position.z = 450;
@@ -77,7 +77,7 @@ function initLighting(scene: THREE.Scene) {
 
 function initFigure(
   scene: THREE.Scene,
-  { config, width, height }: InitProps<SketchConfig>
+  { config, width, height }: InitProps<CanvasState, SketchConfig>
 ) {
   if (!config) throw new Error('????');
 
@@ -149,7 +149,7 @@ function initFigure(
 
 async function initSphere(
   scene: THREE.Scene,
-  { config }: InitProps<SketchConfig>
+  { config }: InitProps<CanvasState, SketchConfig>
 ) {
   const loader = new FontLoader();
   const font = await new Promise<Font>((resolve) => {

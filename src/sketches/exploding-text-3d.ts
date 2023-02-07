@@ -39,7 +39,7 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height }: InitProps<SketchConfig>
+  { width, height }: InitProps<CanvasState, SketchConfig>
 ) {
   const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 1000);
   camera.position.z = 300;
@@ -152,7 +152,7 @@ function initGeometry(geometry: THREE.BufferGeometry) {
 
 async function initLetters(
   scene: THREE.Scene,
-  _props: InitProps<SketchConfig>
+  _props: InitProps<CanvasState, SketchConfig>
 ) {
   const loader = new GLTFLoader();
 

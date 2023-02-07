@@ -52,7 +52,7 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height }: InitProps<SketchConfig>
+  { width, height }: InitProps<CanvasState, SketchConfig>
 ) {
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
   camera.position.z = 17;

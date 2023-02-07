@@ -38,7 +38,9 @@ export interface InitProps<CanvasState, SketchConfig = undefined> {
   initControls(cb?: (props: InitControlsProps<SketchConfig>) => void): void;
   addEvent<K extends keyof HTMLElementEventMap>(
     type: K,
-    cb: (props: EventProps<CanvasState, SketchConfig, HTMLElementEventMap[K]>) => boolean | void
+    cb: (
+      props: EventProps<CanvasState, SketchConfig, HTMLElementEventMap[K]>
+    ) => boolean | void
   ): void;
 }
 

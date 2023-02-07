@@ -97,7 +97,7 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
 
 function initCamera(
   scene: THREE.Scene,
-  { renderer, width, height }: InitProps<SketchConfig>
+  { renderer, width, height }: InitProps<CanvasState, SketchConfig>
 ) {
   if (!renderer) throw new Error('???');
 
@@ -118,7 +118,7 @@ const lightMaterial = new THREE.MeshStandardMaterial();
 
 async function initLighting(
   scene: THREE.Scene,
-  { config }: InitProps<SketchConfig>
+  { config }: InitProps<CanvasState, SketchConfig>
 ) {
   const loader = new GLTFLoader();
   const lampModel = await loader.loadAsync(
@@ -358,7 +358,10 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
   },
 });
 
-function initRain(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
+function initRain(
+  scene: THREE.Scene,
+  { config }: InitProps<CanvasState, SketchConfig>
+) {
   if (!config) throw new Error('???');
 
   let rainObject = new THREE.InstancedMesh(
@@ -444,7 +447,7 @@ function initRain(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
 
 function initBloom(
   scene: THREE.Scene,
-  { config, renderer, width, height }: InitProps<SketchConfig>
+  { config, renderer, width, height }: InitProps<CanvasState, SketchConfig>
 ) {
   if (!renderer || !config) throw new Error('???');
 

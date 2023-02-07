@@ -36,7 +36,7 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
 
 function initCamera(
   scene: THREE.Scene,
-  { config, width, height }: InitProps<SketchConfig>
+  { config, width, height }: InitProps<CanvasState, SketchConfig>
 ) {
   if (!config) throw new Error('???');
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);

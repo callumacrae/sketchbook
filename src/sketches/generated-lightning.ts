@@ -60,7 +60,9 @@ function generateLightning(
     config,
     width,
     height,
-  }: InitProps<SketchConfig> | FrameProps<CanvasState, SketchConfig>
+  }:
+    | InitProps<CanvasState, SketchConfig>
+    | FrameProps<CanvasState, SketchConfig>
 ) {
   if (!config) throw new Error('???');
 
@@ -91,7 +93,6 @@ function generateLightning(
       for (const tip of lightningTips) {
         lightningTipYSum += Math.abs(tip.pos.y);
       }
-      // TODO: make this biasable
       let randomY = random.range(0, lightningTipYSum);
       randomY = easeFn(randomY / lightningTipYSum) * lightningTipYSum;
       let lightningTipYSumSoFar = 0;
@@ -146,8 +147,7 @@ function generateLightning(
 
     const branchFactor =
       config.branchFactor +
-      config.branchFactorWithDepth *
-        (1 - (lightningTip.pos.y / height));
+      config.branchFactorWithDepth * (1 - lightningTip.pos.y / height);
     if (random.chance(branchFactor)) {
       // TODO: should this bias downwards?
       const branchSide = random.chance(0.5);

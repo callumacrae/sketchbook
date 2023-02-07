@@ -52,7 +52,7 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height, renderer }: InitProps<SketchConfig>
+  { width, height, renderer }: InitProps<CanvasState, SketchConfig>
 ) {
   if (!renderer) throw new Error('???');
 
@@ -207,7 +207,10 @@ function generateShape() {
   return mergeBufferGeometries(shapeGeometries);
 }
 
-function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
+function initShapes(
+  scene: THREE.Scene,
+  { config }: InitProps<CanvasState, SketchConfig>
+) {
   if (!config) throw new Error('???');
 
   const shapeGeometries = [];
@@ -276,7 +279,10 @@ function initShapes(scene: THREE.Scene, { config }: InitProps<SketchConfig>) {
   return { frame };
 }
 
-function initHighlighter(scene: THREE.Scene, _props: InitProps<SketchConfig>) {
+function initHighlighter(
+  scene: THREE.Scene,
+  _props: InitProps<CanvasState, SketchConfig>
+) {
   const geometry = new THREE.PlaneGeometry(0.4, 1000);
   const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const highlighter = new THREE.Mesh(geometry, material);
