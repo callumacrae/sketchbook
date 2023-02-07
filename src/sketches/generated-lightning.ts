@@ -30,6 +30,7 @@ interface CanvasState {
 
 const sketchConfig = {
   branchFactor: 0.04,
+  branchAngle: { min: Math.PI / 8, max: (Math.PI / 8) * 3 },
   wobble: {
     segmentLength: 20,
     biasToPerfect: 0.5,
@@ -136,7 +137,10 @@ function generateLightning(
     if (random.chance(config.branchFactor)) {
       // TODO: should this bias downwards?
       const branchSide = random.chance(0.5);
-      const branchOffset = random.range(Math.PI / 8, (Math.PI / 8) * 3);
+      const branchOffset = random.range(
+        config.branchAngle.min,
+        config.branchAngle.max
+      );
       const branchDirection = lightningTip.branchDirection.rotate(
         branchSide ? branchOffset : -branchOffset
       );
@@ -193,6 +197,7 @@ function generateLightning(
 const init: InitFn<CanvasState, SketchConfig> = (props) => {
   props.initControls(({ pane, config }) => {
     pane.addInput(config, 'branchFactor', { min: 0, max: 0.1 });
+    pane.addInput(config, 'branchAngle', { min: 0, max: Math.PI / 2 });
     pane.addInput(config.wobble, 'segmentLength', { min: 0, max: 100 });
     pane.addInput(config.wobble, 'biasToPerfect', { min: 0, max: 1 });
     pane.addInput(config.wobble, 'biasToPerfectVariance', { min: 0, max: 0.5 });
