@@ -1,4 +1,5 @@
 import SimplexNoise from 'simplex-noise';
+import { easePolyIn } from 'd3-ease';
 
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import * as random from '@/utils/random';
@@ -24,17 +25,20 @@ interface LightningNode {
 }
 
 interface CanvasState {
-  simplex: SimplexNoise;
-  lightning: LightningNode;
+  seed: string;
+  seedAt: number;
+  lightning: LightningNode | null;
 }
 
 const sketchConfig = {
-  branchFactor: 0.04,
-  branchAngle: { min: Math.PI / 8, max: (Math.PI / 8) * 3 },
+  // TODO: reduce branch factor when getting closer to ground + increase at top?
+  branchFactor: 0.11,
+  branchAngle: { min: 0.2786896709, max: 1.2161003820 },
+  branchBiasExponent: 0.42,
   wobble: {
     segmentLength: 20,
-    biasToPerfect: 0.5,
-    biasToPerfectVariance: 0.5,
+    biasToPerfect: 0.66,
+    biasToPerfectVariance: 0.38,
     randomFactor: 5,
   },
 };
@@ -51,14 +55,19 @@ function doUpwards(node: LightningNode, cb: (node: LightningNode) => void) {
 }
 
 function generateLightning(
+  seed: string,
   {
     config,
     width,
     height,
-  }: InitProps<SketchConfig> | FrameProps<CanvasState, SketchConfig>,
-  simplex: SimplexNoise
+  }: InitProps<SketchConfig> | FrameProps<CanvasState, SketchConfig>
 ) {
   if (!config) throw new Error('???');
+
+  if (seed) {
+    random.setSeed(seed);
+  }
+  const simplex = new SimplexNoise(random.string());
 
   const lightningRoot: LightningNode = {
     pos: new Vector(width / 2, 0),
@@ -71,7 +80,9 @@ function generateLightning(
 
   const lightningTips = [lightningRoot];
 
-  let safety = 1000;
+  const easeFn = easePolyIn.exponent(config.branchBiasExponent);
+
+  let safety = 5000;
   while (safety--) {
     // pick a random branch end, biasing towards distance from ground
     let lightningTipIndex = 0;
@@ -81,7 +92,8 @@ function generateLightning(
         lightningTipYSum += Math.abs(tip.pos.y);
       }
       // TODO: make this biasable
-      const randomY = random.range(0, lightningTipYSum);
+      let randomY = random.range(0, lightningTipYSum);
+      randomY = easeFn(randomY / lightningTipYSum) * lightningTipYSum;
       let lightningTipYSumSoFar = 0;
       for (const tip of lightningTips) {
         lightningTipYSumSoFar += Math.abs(tip.pos.y);
@@ -100,7 +112,6 @@ function generateLightning(
       ? lightningTip.pos.sub(lightningTip.parent.pos)
       : undefined;
 
-    // TODO: needs to change with time i guess - or new simplex per lightning?
     const biasToPerfect = maths.saturate(
       config.wobble.biasToPerfect +
         simplex.noise2D(lightningTip.pos.x / 10, lightningTip.pos.y / 10) *
@@ -112,7 +123,7 @@ function generateLightning(
         biasToPerfect,
       });
 
-    const newLightning = {
+    const newLightning: LightningNode = {
       pos: getPoint(),
       depth: lightningTip.depth + 1,
       branchDirection: lightningTip.branchDirection,
@@ -145,7 +156,7 @@ function generateLightning(
         branchSide ? branchOffset : -branchOffset
       );
 
-      const newLightningFork = {
+      const newLightningFork: LightningNode = {
         pos: getPoint(),
         depth: lightningTip.depth + 1,
         branchDirection,
@@ -165,6 +176,7 @@ function generateLightning(
     }
   }
 
+  // TODO: make sure distance to ground isn't too far (e.g., shallow angle)
   const lightningTipsToClose = lightningTips.filter(
     (tip) => tip.pos.y >= height * 0.87 && tip.branchDirection.y > 0
   );
@@ -173,7 +185,7 @@ function generateLightning(
     tip.isReturn = true;
     doUpwards(tip, (l) => (l.isReturn = true));
     do {
-      const newLightning = {
+      const newLightning: LightningNode = {
         pos: getNextPoint(tip.branchDirection, tip.branchDirection, tip.pos, {
           ...config.wobble,
           biasToPerfect: 1,
@@ -196,23 +208,28 @@ function generateLightning(
 
 const init: InitFn<CanvasState, SketchConfig> = (props) => {
   props.initControls(({ pane, config }) => {
-    pane.addInput(config, 'branchFactor', { min: 0, max: 0.1 });
+    pane.addInput(config, 'branchFactor', { min: 0, max: 0.2 });
     pane.addInput(config, 'branchAngle', { min: 0, max: Math.PI / 2 });
+    pane.addInput(config, 'branchBiasExponent', { min: 0.1, max: 10 });
     pane.addInput(config.wobble, 'segmentLength', { min: 0, max: 100 });
     pane.addInput(config.wobble, 'biasToPerfect', { min: 0, max: 1 });
     pane.addInput(config.wobble, 'biasToPerfectVariance', { min: 0, max: 0.5 });
     pane.addInput(config.wobble, 'randomFactor', { min: 0, max: 15 });
   });
-  const simplex = new SimplexNoise();
-  return { simplex, lightning: generateLightning(props, simplex) };
+  return { seed: 'aaa', seedAt: Date.now(), lightning: null };
 };
 
 const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { ctx, state, width, height, hasChanged } = props;
   if (!ctx) throw new Error('???');
 
-  if (hasChanged) {
-    state.lightning = generateLightning(props, state.simplex);
+  let seedChange = state.seedAt < Date.now() - 500;
+  if (seedChange) {
+    state.seed = Math.floor(Math.random() * 1e6).toString();
+    state.seedAt = Date.now();
+  }
+  if (hasChanged || !state.lightning || seedChange) {
+    state.lightning = generateLightning(state.seed, props);
   }
 
   ctx.fillStyle = 'black';
@@ -221,6 +238,8 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   ctx.lineCap = 'round';
   ctx.strokeStyle = 'white';
   const drawLightning = (lightning: LightningNode) => {
+    if (!state.lightning) throw new Error('???');
+
     for (const next of lightning.next) {
       ctx.lineWidth = next.isReturn
         ? 10
