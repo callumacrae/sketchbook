@@ -27,7 +27,7 @@ export interface InitControlsProps<SketchConfig> {
   actualPane: Pane;
 }
 
-export interface InitProps<SketchConfig = undefined> {
+export interface InitProps<CanvasState, SketchConfig = undefined> {
   ctx: CanvasRenderingContext2D | null;
   renderer: THREE.WebGLRenderer | null;
   width: number;
@@ -35,9 +35,14 @@ export interface InitProps<SketchConfig = undefined> {
   dpr: number;
   timestamp: number;
   config?: SketchConfig;
-  initControls: (cb: (props: InitControlsProps<SketchConfig>) => void) => void;
+  initControls(cb?: (props: InitControlsProps<SketchConfig>) => void): void;
+  addEvent<K extends keyof HTMLElementEventMap>(
+    type: K,
+    cb: (props: EventProps<CanvasState, SketchConfig, HTMLElementEventMap[K]>) => boolean | void
+  ): void;
 }
 
+// addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLCanvasElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
 export interface FrameProps<CanvasState, SketchConfig = undefined> {
   ctx: CanvasRenderingContext2D | null;
   renderer: THREE.WebGLRenderer | null;
@@ -51,8 +56,22 @@ export interface FrameProps<CanvasState, SketchConfig = undefined> {
   hasChanged: boolean;
 }
 
+export interface EventProps<
+  CanvasState,
+  SketchConfig = undefined,
+  TEvent = Event
+> {
+  event: TEvent;
+  width: number;
+  height: number;
+  dpr: number;
+  state: CanvasState;
+  timestamp: number;
+  config?: SketchConfig;
+}
+
 export type InitFn<CanvasState, SketchConfig = undefined> = (
-  props: InitProps<SketchConfig>
+  props: InitProps<CanvasState, SketchConfig>
 ) => CanvasState | Promise<CanvasState>;
 export type FrameFn<CanvasState, SketchConfig = undefined> = (
   props: FrameProps<CanvasState, SketchConfig>
@@ -82,6 +101,7 @@ export async function toVanillaCanvas<
     width: 0,
     height: 0,
     dpr: 0,
+    lastTimestamp: 0,
     hasChanged: true,
     sketchbookConfig: sketchbookConfig,
     canvas: null as HTMLCanvasElement | null,
@@ -140,7 +160,7 @@ export async function toVanillaCanvas<
 
   setSize();
 
-  const initProps: InitProps<SketchConfig> = {
+  const initProps: InitProps<CanvasState, SketchConfig> = {
     ctx: data.ctx,
     renderer: data.renderer,
     width: data.width,
@@ -153,12 +173,14 @@ export async function toVanillaCanvas<
         return;
       }
 
+      const isWindowBig = Math.min(window.innerWidth, window.innerHeight) > 600;
+      const storedPref = localStorage.getItem(`closed-${location.pathname}`);
       const pane = new Pane({
         title: 'Controls',
         expanded:
           !window.frameElement &&
-          Math.min(window.innerWidth, window.innerHeight) > 600 &&
-          localStorage.getItem(`closed-${location.pathname}`) !== 'true',
+          (isWindowBig || storedPref !== null) &&
+          storedPref !== 'true',
       });
       pane.registerPlugin(EssentialsPlugin);
       data.pane = pane;
@@ -183,14 +205,17 @@ export async function toVanillaCanvas<
       }) as FpsGraphBladeApi;
 
       if (data.renderer) {
-        // data.renderer.info.autoReset = false;
         tab.pages[1].addMonitor(data.renderer.info.render, 'triangles');
         tab.pages[1].addMonitor(data.renderer.info.render, 'calls');
         tab.pages[1].addMonitor(data.renderer.info.memory, 'textures');
         tab.pages[1].addMonitor(data.renderer.info.memory, 'geometries');
       }
 
-      cb({ pane: tab.pages[0], config, actualPane: pane });
+      if (cb) {
+        cb({ pane: tab.pages[0], config, actualPane: pane });
+      } else {
+        tab.pages[1].selected = true;
+      }
 
       tab.pages[0].addButton({ title: 'Reset' }).on('click', () => {
         pane.importPreset(JSON.parse(initialConfig));
@@ -204,6 +229,30 @@ export async function toVanillaCanvas<
           console.error('Failed to set from preset', err);
         }
       }
+    },
+    addEvent: (type, cb) => {
+      const canvas = data.ctx?.canvas || data.renderer?.domElement;
+      if (!canvas) throw new Error('???');
+
+      canvas.addEventListener(type, (event) => {
+        event.preventDefault();
+
+        const hasChanged = cb({
+          event,
+          width: data.width,
+          height: data.height,
+          dpr: data.dpr,
+          state: data.canvasState as CanvasState,
+          timestamp: data.lastTimestamp,
+          config: data.sketchbookConfig.sketchConfig as
+            | SketchConfig
+            | undefined,
+        });
+
+        if (hasChanged) {
+          data.hasChanged = true;
+        }
+      });
     },
   };
 
@@ -276,6 +325,8 @@ export async function toVanillaCanvas<
     if (data.fpsGraph) {
       data.fpsGraph.begin();
     }
+
+    data.lastTimestamp = timestamp;
 
     if (!sketchbookConfig.capture?.enabled) {
       data.animationFrame = requestAnimationFrame(callFrame);

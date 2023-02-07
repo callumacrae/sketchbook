@@ -133,28 +133,28 @@ export function shaderToyComponent(glsl: string) {
     scene.add(new THREE.Mesh(plane, material));
 
     const mouse = new THREE.Vector4();
-    props.renderer.domElement.addEventListener('mousemove', (e) => {
-      if (e.buttons !== 1) return;
-      mouse.x = e.clientX;
-      mouse.y = window.innerHeight - e.clientY;
+    props.addEvent('mousemove', ({ event }) => {
+      if (event.buttons !== 1) return;
+      mouse.x = event.clientX;
+      mouse.y = window.innerHeight - event.clientY;
     });
-    props.renderer.domElement.addEventListener('mousedown', (e) => {
-      mouse.z = e.clientX;
-      mouse.w = window.innerHeight - e.clientY;
+    props.addEvent('mousedown', ({ event }) => {
+      mouse.z = event.clientX;
+      mouse.w = window.innerHeight - event.clientY;
     });
-    props.renderer.domElement.addEventListener('mouseup', () => {
+    props.addEvent('mouseup', () => {
       mouse.z = 0;
       mouse.w = 0;
     });
-    props.renderer.domElement.addEventListener('touchmove', (e) => {
-      mouse.x = e.touches[0].pageX;
-      mouse.y = window.innerHeight - e.touches[0].pageY;
+    props.addEvent('touchmove', ({ event }) => {
+      mouse.x = event.touches[0].pageX;
+      mouse.y = window.innerHeight - event.touches[0].pageY;
     });
-    props.renderer.domElement.addEventListener('touchstart', (e) => {
-      mouse.z = e.touches[0].pageX;
-      mouse.w = window.innerHeight - e.touches[0].pageY;
+    props.addEvent('touchstart', ({ event }) => {
+      mouse.z = event.touches[0].pageX;
+      mouse.w = window.innerHeight - event.touches[0].pageY;
     });
-    props.renderer.domElement.addEventListener('touchend', () => {
+    props.addEvent('touchend', () => {
       // Got these weird values from shadertoy :shrug:
       mouse.z = -321;
       mouse.w = -310;

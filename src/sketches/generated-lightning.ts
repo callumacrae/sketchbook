@@ -26,14 +26,14 @@ interface LightningNode {
 
 interface CanvasState {
   seed: string;
-  seedAt: number;
+  seedChange: boolean;
   lightning: LightningNode | null;
 }
 
 const sketchConfig = {
-  // TODO: reduce branch factor when getting closer to ground + increase at top?
-  branchFactor: 0.11,
-  branchAngle: { min: 0.2786896709, max: 1.2161003820 },
+  branchFactor: 0.04,
+  branchFactorWithDepth: 0.08,
+  branchAngle: { min: 0.2786896709, max: 1.216100382 },
   branchBiasExponent: 0.42,
   wobble: {
     segmentLength: 20,
@@ -144,8 +144,11 @@ function generateLightning(
       break;
     }
 
-    // TODO: DRY this up
-    if (random.chance(config.branchFactor)) {
+    const branchFactor =
+      config.branchFactor +
+      config.branchFactorWithDepth *
+        (1 - (lightningTip.pos.y / height));
+    if (random.chance(branchFactor)) {
       // TODO: should this bias downwards?
       const branchSide = random.chance(0.5);
       const branchOffset = random.range(
@@ -156,6 +159,7 @@ function generateLightning(
         branchSide ? branchOffset : -branchOffset
       );
 
+      // TODO: DRY this up
       const newLightningFork: LightningNode = {
         pos: getPoint(),
         depth: lightningTip.depth + 1,
@@ -209,6 +213,7 @@ function generateLightning(
 const init: InitFn<CanvasState, SketchConfig> = (props) => {
   props.initControls(({ pane, config }) => {
     pane.addInput(config, 'branchFactor', { min: 0, max: 0.2 });
+    pane.addInput(config, 'branchFactorWithDepth', { min: -0.2, max: 0.2 });
     pane.addInput(config, 'branchAngle', { min: 0, max: Math.PI / 2 });
     pane.addInput(config, 'branchBiasExponent', { min: 0.1, max: 10 });
     pane.addInput(config.wobble, 'segmentLength', { min: 0, max: 100 });
@@ -216,17 +221,23 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     pane.addInput(config.wobble, 'biasToPerfectVariance', { min: 0, max: 0.5 });
     pane.addInput(config.wobble, 'randomFactor', { min: 0, max: 15 });
   });
-  return { seed: 'aaa', seedAt: Date.now(), lightning: null };
+
+  props.addEvent('click', ({ state }) => {
+    state.seedChange = true;
+    return true;
+  });
+
+  return { seed: 'aaa', seedChange: true, lightning: null };
 };
 
 const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { ctx, state, width, height, hasChanged } = props;
   if (!ctx) throw new Error('???');
 
-  let seedChange = state.seedAt < Date.now() - 500;
+  const seedChange = state.seedChange;
   if (seedChange) {
     state.seed = Math.floor(Math.random() * 1e6).toString();
-    state.seedAt = Date.now();
+    state.seedChange = false;
   }
   if (hasChanged || !state.lightning || seedChange) {
     state.lightning = generateLightning(state.seed, props);
