@@ -1,6 +1,8 @@
 import SimplexNoise from 'simplex-noise';
 import { easePolyIn } from 'd3-ease';
 
+import shrinkCanvas from '@/utils/canvas/shrink';
+import blurCanvas from '@/utils/canvas/gaussian-blur';
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import * as random from '@/utils/random';
 import * as maths from '@/utils/maths';
@@ -241,28 +243,53 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   }
   if (hasChanged || !state.lightning || seedChange) {
     state.lightning = generateLightning(state.seed, props);
+
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'white';
+    const drawLightning = (lightning: LightningNode) => {
+      if (!state.lightning) throw new Error('???');
+
+      for (const next of lightning.next) {
+        ctx.lineWidth = next.isReturn
+          ? 10
+          : 1 + (next.charge / state.lightning.charge) * 15;
+        ctx.beginPath();
+        ctx.moveTo(lightning.pos.x, lightning.pos.y);
+        ctx.lineTo(next.pos.x, next.pos.y);
+        ctx.stroke();
+        drawLightning(next);
+      }
+    };
+    drawLightning(state.lightning);
+
+    const mipmap1 = shrinkCanvas(
+      ctx.canvas,
+      // Math.round(width / 2),
+      // Math.round(height / 2)
+      256, 256
+    );
+    const blur1 = blurCanvas(mipmap1, 3);
+    console.log(blur1);
+    ctx.drawImage(blur1, 0, 0);
+    // const mipmap2 = shrinkCanvas(ctx, 1 / 4, 1 / 4);
+    // const blur2 = blurCanvas(mipmap2, 5);
+    //
+    // const mipmap3 = shrinkCanvas(ctx, 1 / 8, 1 / 8);
+    // const blur3 = blurCanvas(mipmap2, 7);
+    //
+    // const mipmap4 = shrinkCanvas(ctx, 1 / 16, 1 / 16);
+    // const blur4 = blurCanvas(mipmap2, 9);
+    //
+    // const mipmap5 = shrinkCanvas(ctx, 1 / 32, 1 / 32);
+    // const blur5 = blurCanvas(mipmap2, 11);
+    //
+    // const combinedBlur = blendCanvas('average', blur1, blur2, blur3, blur4, blur5);
+
+    // skip high pass filter - for now?
   }
-
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, width, height);
-
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = 'white';
-  const drawLightning = (lightning: LightningNode) => {
-    if (!state.lightning) throw new Error('???');
-
-    for (const next of lightning.next) {
-      ctx.lineWidth = next.isReturn
-        ? 10
-        : 1 + (next.charge / state.lightning.charge) * 15;
-      ctx.beginPath();
-      ctx.moveTo(lightning.pos.x, lightning.pos.y);
-      ctx.lineTo(next.pos.x, next.pos.y);
-      ctx.stroke();
-      drawLightning(next);
-    }
-  };
-  drawLightning(state.lightning);
 
   return state;
 };

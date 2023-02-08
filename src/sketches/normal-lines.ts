@@ -1,7 +1,7 @@
 import Vector from '@/utils/vector';
 import generatePath from '@/utils/shapes/wobbly-path';
 import * as random from '@/utils/random';
-import { doWorkOffscreen } from '@/utils/canvas';
+import { doWorkOffscreen } from '@/utils/canvas/utils';
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 

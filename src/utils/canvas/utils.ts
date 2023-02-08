@@ -1,4 +1,4 @@
-type WorkFn = (
+export type WorkFn = (
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 ) => void;
 
@@ -29,7 +29,5 @@ export function doWorkOffscreen(width: number, height: number, workFn: WorkFn) {
 
   workFn(ctx);
 
-  return useOffscreenCanvas
-    ? (canvas as OffscreenCanvas).transferToImageBitmap()
-    : canvas;
+  return canvas;
 }
