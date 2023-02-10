@@ -64,6 +64,8 @@ export interface EventProps<
   TEvent = Event
 > {
   event: TEvent;
+  ctx: CanvasRenderingContext2D | null;
+  renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
   dpr: number;
@@ -241,6 +243,8 @@ export async function toVanillaCanvas<
 
         const hasChanged = cb({
           event,
+          ctx: data.ctx,
+          renderer: data.renderer,
           width: data.width,
           height: data.height,
           dpr: data.dpr,

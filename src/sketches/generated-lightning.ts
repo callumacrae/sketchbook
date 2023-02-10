@@ -26,14 +26,25 @@ interface LightningNode {
 }
 
 interface CanvasState {
+  lightningCharge: number;
+  origin: 'random' | Vector;
   seed: string;
   seedChange: boolean;
   lightning: LightningNode | null;
+  repeat?: {
+    after: number;
+    lightning: LightningNode;
+  } | null;
 }
 
 const sketchConfig = {
   maxWidth: 8,
-  fadeTime: 100,
+  animation: {
+    fadeTime: 100,
+    frequencyFactor: 0.4,
+    doubleFlashChance: 0.2,
+    doubleFlashTime: 150,
+  },
   branch: {
     factor: 0.03,
     factorWithDepth: 0.04,
@@ -47,7 +58,7 @@ const sketchConfig = {
     randomFactor: 2.5,
   },
   bloom: {
-    enabled: true,
+    enabled: false,
     passes: 5,
     strength: 5,
     radius: 1.2,
@@ -69,14 +80,11 @@ function doUpwards(node: LightningNode, cb: (node: LightningNode) => void) {
 
 function generateLightning(
   seed: string,
-  {
-    config,
-    width,
-    height,
-  }:
+  props:
     | InitProps<CanvasState, SketchConfig>
     | FrameProps<CanvasState, SketchConfig>
 ) {
+  const { config, width, height } = props;
   if (!config) throw new Error('???');
 
   if (seed) {
@@ -84,8 +92,13 @@ function generateLightning(
   }
   const simplex = new SimplexNoise(random.string());
 
+  const initialPosition =
+    !('state' in props) || props.state.origin === 'random'
+      ? new Vector(random.range(width / 4, (width / 4) * 3), 0)
+      : props.state.origin;
+
   const lightningRoot: LightningNode = {
-    pos: new Vector(width / 2, 0),
+    pos: initialPosition,
     depth: 0,
     branchDirection: new Vector(0, 1),
     charge: 1,
@@ -227,8 +240,26 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   if (!props.ctx) throw new Error('???');
 
   props.initControls(({ pane, config }) => {
-    pane.addInput(config, 'fadeTime', { min: 0, max: 1000 });
     pane.addInput(config, 'maxWidth', { min: 1, max: 20 });
+
+    const animationFolder = pane.addFolder({ title: 'Animation' });
+    animationFolder.addInput(config.animation, 'fadeTime', {
+      min: 0,
+      max: 1000,
+    });
+    animationFolder.addInput(config.animation, 'frequencyFactor', {
+      min: -1,
+      max: 2,
+    });
+    animationFolder.addInput(config.animation, 'doubleFlashChance', {
+      min: 0,
+      max: 1,
+    });
+    animationFolder.addInput(config.animation, 'doubleFlashTime', {
+      min: 0,
+      max: 1000,
+    });
+
     const lightningFolder = pane.addFolder({ title: 'Lightning branching' });
     lightningFolder.addInput(config.branch, 'factor', { min: 0, max: 0.2 });
     lightningFolder.addInput(config.branch, 'factorWithDepth', {
@@ -260,49 +291,117 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     bloomFolder.addInput(config.bloom, 'radius', { min: 0, max: 5 });
   });
 
-  props.addEvent('click', ({ state }) => {
+  props.addEvent('mousedown', ({ ctx, state, event, dpr }) => {
+    if (!ctx) throw new Error('???');
+    const bb = ctx.canvas.getBoundingClientRect();
+    state.origin = new Vector(
+      event.clientX - bb.left,
+      event.clientY - bb.top
+    ).scale(dpr);
     state.seedChange = true;
     return true;
+  });
+
+  props.addEvent('mousemove', ({ ctx, state, event, dpr }) => {
+    if (!ctx) throw new Error('???');
+    if (state.origin === 'random') return;
+    const bb = ctx.canvas.getBoundingClientRect();
+    state.origin = new Vector(
+      event.clientX - bb.left,
+      event.clientY - bb.top
+    ).scale(dpr);
+  });
+
+  props.addEvent('mouseup', ({ state }) => {
+    state.origin = 'random';
+  });
+
+  props.addEvent('mouseout', ({ state }) => {
+    state.origin = 'random';
   });
 
   props.ctx.fillStyle = 'black';
   props.ctx.fillRect(0, 0, props.width, props.height);
 
-  return { seed: 'aaa', seedChange: true, lightning: null };
+  return {
+    lightningCharge: 10000,
+    origin: 'random',
+    seed: 'aaa',
+    seedChange: true,
+    lightning: null,
+  };
 };
 
 const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { ctx, config, state, width, height, hasChanged } = props;
   if (!ctx || !config) throw new Error('???');
 
-  const framesToFade = config.fadeTime / props.delta;
+  const framesToFade = config.animation.fadeTime / props.delta;
   ctx.fillStyle = `rgba(0, 0, 0, ${1 / framesToFade})`;
   ctx.fillRect(0, 0, width, height);
+
+  if (!state.repeat) {
+    // Lightning charges up over time, so the longer since the last lightning,
+    // the greater the chance of another strike
+    state.lightningCharge += props.delta;
+    const chance =
+      (state.lightningCharge / 100000) *
+      Math.pow(10, config.animation.frequencyFactor) *
+      (state.origin === 'random' ? 1 : 2);
+    if (random.chance(chance)) {
+      state.seedChange = true;
+      state.lightningCharge = 0;
+    }
+  }
+
+  const drawLightning = (
+    lightning: LightningNode,
+    repeat = false,
+    maxCharge = lightning.charge
+  ) => {
+    for (const next of lightning.next) {
+      if (!next.isReturn && repeat) continue;
+
+      ctx.lineWidth = next.isReturn
+        ? config.maxWidth
+        : 1 + (next.charge / maxCharge) * config.maxWidth * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(lightning.pos.x, lightning.pos.y);
+      ctx.lineTo(next.pos.x, next.pos.y);
+      ctx.stroke();
+      drawLightning(next, repeat, maxCharge);
+    }
+  };
 
   const seedChange = state.seedChange;
   if (seedChange) {
     state.seed = Math.floor(Math.random() * 1e6).toString();
     state.seedChange = false;
   }
-  if (hasChanged || !state.lightning || seedChange) {
+
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = config.bloom.enabled ? '#555' : 'white';
+
+  if (state.repeat) {
+    if (Date.now() > state.repeat.after) {
+      drawLightning(state.repeat.lightning, true);
+
+      if (config.bloom.enabled) {
+        bloomCanvas(ctx.canvas, config.bloom);
+      }
+
+      state.repeat = null;
+    }
+  } else if (hasChanged || !state.lightning || seedChange) {
     state.lightning = generateLightning(state.seed, props);
 
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = config.bloom.enabled ? '#555' : 'white';
-    const drawLightning = (lightning: LightningNode) => {
-      if (!state.lightning) throw new Error('???');
+    if (random.chance(config.animation.doubleFlashChance)) {
+      state.repeat = {
+        lightning: state.lightning,
+        after: Date.now() + config.animation.doubleFlashTime,
+      };
+    }
 
-      for (const next of lightning.next) {
-        ctx.lineWidth = next.isReturn
-          ? config.maxWidth
-          : 1 + (next.charge / state.lightning.charge) * config.maxWidth * 1.5;
-        ctx.beginPath();
-        ctx.moveTo(lightning.pos.x, lightning.pos.y);
-        ctx.lineTo(next.pos.x, next.pos.y);
-        ctx.stroke();
-        drawLightning(next);
-      }
-    };
     drawLightning(state.lightning);
 
     if (config.bloom.enabled) {
