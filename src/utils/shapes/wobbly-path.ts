@@ -2,7 +2,7 @@ import Vector from '../vector';
 import * as random from '../random';
 import * as math from '../maths';
 
-interface Config {
+export interface Config {
   segmentLength: number;
   biasToPerfect: number;
   randomFactor: number;
