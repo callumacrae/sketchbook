@@ -6,6 +6,7 @@ export default function shrinkCanvas(
   height: number
 ) {
   return doWorkOffscreen(width, height, (ctx) => {
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(canvas, 0, 0, width, height);
   });
 }

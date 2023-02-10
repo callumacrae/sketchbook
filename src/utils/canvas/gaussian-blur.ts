@@ -27,25 +27,48 @@ export default function blurCanvas(
 
   const { width, height } = canvas;
   const imageData = ctx.getImageData(0, 0, width, height);
-  const newImageData = ctx.createImageData(width, height);
+  const blurredX = ctx.createImageData(width, height);
 
-  for (let x = 0; x < width * 4; x++) {
+  for (let x = 0; x < width; x++) {
     for (let y = 0; y < height; y++) {
-      let weightSum = 0;
-      let diffuseSum = 0;
-      for (let w = -kernelSize + 1; w < kernelSize; w++) {
-        if (x + w < 0 || x + w >= width * 4) continue;
-        const weight = weights[Math.abs(w)];
-        const diffuse = imageData.data[(x + w + y * width) * 4];
-        weightSum += weight;
-        diffuseSum += weight * diffuse;
-      }
+      for (let p = 0; p < 4; p++) {
+        let weightSum = 0;
+        let diffuseSum = 0;
+        for (let w = -kernelSize + 1; w < kernelSize; w++) {
+          const adjustedX = (x + w) * 4 + p;
+          const weight = weights[Math.abs(w)];
+          weightSum += weight;
+          if (adjustedX < 0 || adjustedX >= width * 4) continue;
+          const diffuse = imageData.data[adjustedX + y * width * 4];
+          diffuseSum += weight * diffuse;
+        }
 
-      newImageData.data[(x + y * width) * 4] = diffuseSum / weightSum;
+        blurredX.data[x * 4 + p + y * width * 4] = diffuseSum / weightSum;
+      }
+    }
+  }
+
+  const blurredY = ctx.createImageData(width, height);
+
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      for (let p = 0; p < 4; p++) {
+        let weightSum = 0;
+        let diffuseSum = 0;
+        for (let w = -kernelSize + 1; w < kernelSize; w++) {
+          if (y + w < 0 || y + w >= height) continue;
+          const weight = weights[Math.abs(w)];
+          const diffuse = blurredX.data[(y + w) * width * 4 + x * 4 + p];
+          weightSum += weight;
+          diffuseSum += weight * diffuse;
+        }
+
+        blurredY.data[x * 4 + p + y * width * 4] = diffuseSum / weightSum;
+      }
     }
   }
 
   return doWorkOffscreen(width, height, (ctx) => {
-    ctx.putImageData(newImageData, 0, 0);
+    ctx.putImageData(blurredY, 0, 0);
   });
 }
