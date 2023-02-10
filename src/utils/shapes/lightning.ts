@@ -49,7 +49,7 @@ export default function generateLightning(
   const simplex = new SimplexNoise(random.string());
 
   const initialPosition =
-    !('state' in props) || config.origin === 'random'
+    config.origin === 'random'
       ? new Vector(random.range(width / 4, (width / 4) * 3), 0)
       : config.origin;
 
