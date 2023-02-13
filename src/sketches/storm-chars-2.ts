@@ -1,17 +1,22 @@
 import SimplexNoise from 'simplex-noise';
+import * as twgl from 'twgl.js';
+
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
-import * as random from '@/utils/random';
 import { doWorkOffscreen } from '@/utils/canvas/utils';
 import generateLightning from '@/utils/shapes/lightning';
 import bloomCanvas from '@/utils/canvas/unreal-bloom';
 import type { LightningNode } from '@/utils/shapes/lightning';
 import shrinkCanvas from '@/utils/canvas/shrink';
 
+const glsl = String.raw;
+
 interface CanvasState {
   simplex: SimplexNoise;
   charsCanvas: HTMLCanvasElement | OffscreenCanvas;
   lightning: ImageData[];
+  programInfo: twgl.ProgramInfo;
+  bufferInfo: twgl.BufferInfo;
 }
 
 const sketchConfig = {
@@ -19,7 +24,7 @@ const sketchConfig = {
   visualisation: {
     chars: '.,;*^/\\oOxX',
     charSize: window.devicePixelRatio > 1 ? 15 : 8,
-    lighten: 0.75,
+    lighten: 0.35,
     randomness: 0.8,
   },
   branch: {
@@ -44,6 +49,7 @@ const sketchConfig = {
 type SketchConfig = typeof sketchConfig;
 
 export const sketchbookConfig: Partial<Config<SketchConfig>> = {
+  type: 'webgl',
   sketchConfig,
 };
 
@@ -140,13 +146,86 @@ function getImageDataForLightning(props: {
   return ctx.getImageData(0, 0, width / 4, height / 4);
 }
 
+const vertexShader = glsl`
+attribute vec4 position;
+
+void main() {
+  gl_Position = position;
+}
+`;
+
+const fragmentShader = glsl`
+#define PI 3.141592653589793
+
+precision mediump float;
+
+uniform float charSize;
+uniform float charsAvailable;
+uniform float lightenFactor;
+uniform float timestamp;
+uniform float randomness;
+uniform vec2 resolution;
+uniform sampler2D chars;
+uniform sampler2D lightning;
+
+/** VENDOR START **/
+// http://byteblacksmith.com/improvements-to-the-canonical-one-liner-glsl-rand-for-opengl-es-2-0/
+highp float rand( const in vec2 uv ) {
+	const highp float a = 12.9898, b = 78.233, c = 43758.5453;
+	highp float dt = dot( uv.xy, vec2( a,b ) ), sn = mod( dt, PI );
+	return fract( sin( sn ) * c );
+}
+/** VENDOR END **/
+
+float luminosityToChar(float l) {
+  float adjustedL = l < 0.5
+    ? l * 2.0 * lightenFactor
+    : 1.0 - (1.0 - l) * 2.0 * (1.0 - lightenFactor);
+
+  if (adjustedL < 0.1) return 0.0;
+  if (adjustedL < 0.18) return 1.0;
+  if (adjustedL < 0.24) return 2.0;
+  if (adjustedL < 0.3) return 3.0;
+  if (adjustedL < 0.5) return 4.0;
+  if (adjustedL < 0.55) return 5.0;
+  if (adjustedL < 0.6) return 6.0;
+  if (adjustedL < 0.87) return 7.0;
+  if (adjustedL < 0.9) return 8.0;
+  if (adjustedL < 0.98) return 9.0;
+  return 10.0;
+}
+
+void main() {
+  // uv coords are banded to the nearest character
+  vec2 uv = floor(gl_FragCoord.xy / charSize) / resolution * charSize;
+  uv.y = 1.0 - uv.y;
+  float luminosity = texture2D(lightning, uv).r;
+  float r = rand(fract(uv + timestamp)) * (1.0 - (1.0 - randomness) * 0.05);
+  if (r > 0.995) {
+    luminosity += 0.5;
+  } else if (r > 0.98) {
+    luminosity += 0.1;
+  }
+
+  float charIndex = luminosityToChar(luminosity);
+
+  vec2 uvInChar = fract(gl_FragCoord.xy / charSize);
+  uvInChar.y = 1.0 - uvInChar.y;
+  uvInChar.x = (uvInChar.x + charIndex) / charsAvailable;
+
+  vec4 charColor = texture2D(chars, uvInChar);
+  gl_FragColor = charColor;
+}
+`;
+
 const init: InitFn<CanvasState, SketchConfig> = async ({
   initControls,
+  gl,
   width,
   height,
   config,
 }) => {
-  if (!config) throw new Error('???');
+  if (!config || !gl) throw new Error('???');
 
   initControls(({ pane, config }) => {
     const visFolder = pane.addFolder({ title: 'Visualisation' });
@@ -179,22 +258,39 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
     bloomFolder.addInput(config.bloom, 'radius', { min: 0, max: 5 });
   });
 
+  const programInfo = twgl.createProgramInfo(gl, [
+    vertexShader,
+    fragmentShader,
+  ]);
+
+  const arrays = {
+    position: {
+      numComponents: 2,
+      data: [-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1],
+    },
+  };
+  const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
+
   return {
     simplex: new SimplexNoise('seed'),
     charsCanvas: await initCharsCanvas(config),
     lightning: [getImageDataForLightning({ width, height, config })],
+    programInfo,
+    bufferInfo,
   };
 };
 
 const frame: FrameFn<CanvasState, SketchConfig> = async ({
-  ctx,
+  gl,
   width,
   height,
+  timestamp,
   config,
   state,
   hasChanged,
 }) => {
-  if (!config || !ctx) throw new Error('???');
+  if (!gl) throw new Error('???');
+  const { programInfo, bufferInfo } = state;
 
   const { charSize } = config.visualisation;
   const cols = Math.floor(width / charSize);
@@ -203,72 +299,43 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
   if (hasChanged) {
     state.charsCanvas = await initCharsCanvas(config);
 
-    if (cols !== state.lightning[0].width || rows !== state.lightning[0].height) {
+    if (
+      cols !== state.lightning[0].width ||
+      rows !== state.lightning[0].height
+    ) {
       state.lightning = [getImageDataForLightning({ width, height, config })];
     }
   }
 
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, width, height);
+  // TODO: don't reupload on every frame
+  const textures = twgl.createTextures(gl, {
+    chars: {
+      src: state.charsCanvas,
+      mag: gl.NEAREST,
+    },
+    lightning: {
+      src: state.lightning[0], // TODO convert to 1d?
+      mag: gl.NEAREST,
+    },
+  });
 
-  ctx.font = `${charSize}px PublicPixel`;
-  ctx.textBaseline = 'middle';
+  const uniforms = {
+    charSize,
+    charsAvailable: config.visualisation.chars.length,
+    lightenFactor: config.visualisation.lighten,
+    randomness: config.visualisation.randomness,
+    timestamp,
+    resolution: [width, height],
+    chars: textures.chars,
+    lightning: textures.lightning,
+  };
 
-  const s = state.lightning[0].data;
-
-  for (let y = 0; y < Math.floor(rows); y++) {
-    for (let x = 0; x < Math.floor(cols); x++) {
-      const i = (y * cols + x) * 4;
-      let l = (0.2126 * s[i] + 0.7152 * s[i + 1] + 0.0722 * s[i + 2]) / 256;
-
-      const r =
-        random.value() * (1 - (1 - config.visualisation.randomness) * 0.05);
-      if (r > 0.995) {
-        l += 0.5;
-      } else if (r > 0.98) {
-        l += 0.1;
-      }
-
-      const char = luminosityToChar(l, config.visualisation.lighten);
-
-      const charIndex = config.visualisation.chars.indexOf(char);
-      ctx.drawImage(
-        state.charsCanvas,
-        charSize * charIndex,
-        0,
-        charSize,
-        charSize,
-        x * charSize,
-        y * charSize,
-        charSize,
-        charSize
-      );
-    }
-  }
-
+  gl.useProgram(programInfo.program);
+  twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
+  twgl.setUniforms(programInfo, uniforms);
+  twgl.drawBufferInfo(gl, bufferInfo);
   return state;
 };
-
-function luminosityToChar(l: number, lighten: number) {
-  // when lighten is 0.7:
-  // 0 => 0
-  // 0.25 => 0.35
-  // 0.5 => 0.7
-  // 0.75 => 0.85
-  // 1 => 1
-  const adjustedL = l < 0.5 ? l * 2 * lighten : 1 - (1 - l) * 2 * (1 - lighten);
-  if (adjustedL < 0.1) return '.';
-  if (adjustedL < 0.18) return ',';
-  if (adjustedL < 0.24) return ';';
-  if (adjustedL < 0.3) return '*';
-  if (adjustedL < 0.5) return '^';
-  if (adjustedL < 0.55) return '/';
-  if (adjustedL < 0.6) return '\\';
-  if (adjustedL < 0.87) return 'o';
-  if (adjustedL < 0.9) return 'O';
-  if (adjustedL < 0.98) return 'x';
-  return 'X';
-}
 
 export default toCanvasComponent<CanvasState, SketchConfig>(
   init,
