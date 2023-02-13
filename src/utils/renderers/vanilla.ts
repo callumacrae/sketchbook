@@ -3,8 +3,10 @@ import * as EssentialsPlugin from '@tweakpane/plugin-essentials';
 import * as THREE from 'three';
 import type { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/fps-graph/api/fps-graph';
 
+type Type = 'context2d' | 'webgl' | 'threejs';
+
 export interface Config<SketchConfig = undefined> {
-  type: 'context2d' | 'threejs';
+  type: Type;
   showLoading: boolean;
   animate: boolean;
   capture?: {
@@ -29,12 +31,13 @@ export interface InitControlsProps<SketchConfig> {
 
 export interface InitProps<CanvasState, SketchConfig = undefined> {
   ctx: CanvasRenderingContext2D | null;
+  gl: WebGLRenderingContext | null;
   renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
   dpr: number;
   timestamp: number;
-  config?: SketchConfig;
+  config: SketchConfig;
   initControls(cb?: (props: InitControlsProps<SketchConfig>) => void): void;
   addEvent<K extends keyof HTMLElementEventMap>(
     type: K,
@@ -43,10 +46,14 @@ export interface InitProps<CanvasState, SketchConfig = undefined> {
     ) => boolean | void
   ): void;
 }
+export interface InitPropsWebgl<CanvasState, SketchConfig = undefined>
+  extends InitProps<CanvasState, SketchConfig> {
+  gl: WebGLRenderingContext;
+}
 
-// addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLCanvasElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
 export interface FrameProps<CanvasState, SketchConfig = undefined> {
   ctx: CanvasRenderingContext2D | null;
+  gl: WebGLRenderingContext | null;
   renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
@@ -54,7 +61,7 @@ export interface FrameProps<CanvasState, SketchConfig = undefined> {
   state: CanvasState;
   timestamp: number;
   delta: number;
-  config?: SketchConfig;
+  config: SketchConfig;
   hasChanged: boolean;
 }
 
@@ -65,16 +72,17 @@ export interface EventProps<
 > {
   event: TEvent;
   ctx: CanvasRenderingContext2D | null;
+  gl: WebGLRenderingContext | null;
   renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
   dpr: number;
   state: CanvasState;
   timestamp: number;
-  config?: SketchConfig;
+  config: SketchConfig;
 }
 
-export type InitFn<CanvasState, SketchConfig = undefined> = (
+export type InitFn<CanvasState, SketchConfig> = (
   props: InitProps<CanvasState, SketchConfig>
 ) => CanvasState | Promise<CanvasState>;
 export type FrameFn<CanvasState, SketchConfig = undefined> = (
@@ -110,6 +118,7 @@ export async function toVanillaCanvas<
     sketchbookConfig: sketchbookConfig,
     canvas: null as HTMLCanvasElement | null,
     ctx: null as CanvasRenderingContext2D | null,
+    gl: null as WebGLRenderingContext | null,
     renderer: null as THREE.WebGLRenderer | null,
     resizeTimeout: undefined as ReturnType<typeof setTimeout> | undefined,
     previousFrameTime: 0,
@@ -125,7 +134,7 @@ export async function toVanillaCanvas<
     throw new Error('No canvas');
   }
 
-  const config = sketchbookConfig.sketchConfig as SketchConfig | undefined;
+  const config = sketchbookConfig.sketchConfig;
   // Store as a string as it has to be copied every time it's used anyway
   const flattenedConfig: Record<string, any> = {};
   const flattenConfig = (config: Record<string, any>) => {
@@ -152,6 +161,12 @@ export async function toVanillaCanvas<
     if (!data.ctx) {
       throw new Error('No canvas context');
     }
+  } else if (sketchbookConfig.type === 'webgl') {
+    data.gl = canvasEl.getContext('webgl');
+
+    if (!data.gl) {
+      throw new Error('No canvas context');
+    }
   } else {
     data.renderer = new THREE.WebGLRenderer({
       canvas: canvasEl,
@@ -166,6 +181,7 @@ export async function toVanillaCanvas<
 
   const initProps: InitProps<CanvasState, SketchConfig> = {
     ctx: data.ctx,
+    gl: data.gl,
     renderer: data.renderer,
     width: data.width,
     height: data.height,
@@ -235,24 +251,24 @@ export async function toVanillaCanvas<
       }
     },
     addEvent: (type, cb) => {
-      const canvas = data.ctx?.canvas || data.renderer?.domElement;
+      const canvas =
+        data.ctx?.canvas || data.gl?.canvas || data.renderer?.domElement;
       if (!canvas) throw new Error('???');
 
-      canvas.addEventListener(type, (event) => {
+      (canvas as HTMLCanvasElement).addEventListener(type, (event) => {
         event.preventDefault();
 
         const hasChanged = cb({
           event,
           ctx: data.ctx,
+          gl: data.gl,
           renderer: data.renderer,
           width: data.width,
           height: data.height,
           dpr: data.dpr,
           state: data.canvasState as CanvasState,
           timestamp: data.lastTimestamp,
-          config: data.sketchbookConfig.sketchConfig as
-            | SketchConfig
-            | undefined,
+          config: data.sketchbookConfig.sketchConfig
         });
 
         if (hasChanged) {
@@ -343,6 +359,7 @@ export async function toVanillaCanvas<
     if (hasChanged) {
       const frameProps: FrameProps<CanvasState, SketchConfig> = {
         ctx: data.ctx,
+        gl: data.gl,
         renderer: data.renderer,
         width: data.width,
         height: data.height,
@@ -350,7 +367,7 @@ export async function toVanillaCanvas<
         state: data.canvasState as CanvasState,
         timestamp,
         delta: timestamp - data.previousFrameTime,
-        config: data.sketchbookConfig.sketchConfig as SketchConfig | undefined,
+        config: data.sketchbookConfig.sketchConfig,
         // hasChanged can be used to see if the config has changed
         hasChanged: data.hasChanged,
       };
@@ -432,7 +449,9 @@ export async function toVanillaCanvas<
 
     data.hasChanged = true;
 
-    if (data.renderer) {
+    if (data.gl) {
+      data.gl.viewport(0, 0, data.width, data.height);
+    } else if (data.renderer) {
       data.renderer.setSize(data.width, data.height);
       data.renderer.setPixelRatio(threeDpr);
     }

@@ -24,7 +24,7 @@ function doUpwards(node: LightningNode, cb: (node: LightningNode) => void) {
 }
 
 export default function generateLightning(
-  seed: string,
+  seed: string | null,
   props: {
     config: {
       branch: {

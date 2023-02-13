@@ -59,38 +59,29 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   props.initControls(({ pane, config }) => {
     pane.addInput(config, 'maxWidth', { min: 1, max: 20 });
 
-    const animationFolder = pane.addFolder({ title: 'Animation' });
-    animationFolder.addInput(config.animation, 'fadeTime', {
-      min: 0,
-      max: 1000,
-    });
-    animationFolder.addInput(config.animation, 'frequencyFactor', {
+    const animFolder = pane.addFolder({ title: 'Animation' });
+    animFolder.addInput(config.animation, 'fadeTime', { min: 0, max: 1000 });
+    animFolder.addInput(config.animation, 'frequencyFactor', {
       min: -1,
       max: 2,
     });
-    animationFolder.addInput(config.animation, 'doubleFlashChance', {
+    animFolder.addInput(config.animation, 'doubleFlashChance', {
       min: 0,
       max: 1,
     });
-    animationFolder.addInput(config.animation, 'doubleFlashTime', {
+    animFolder.addInput(config.animation, 'doubleFlashTime', {
       min: 0,
       max: 1000,
     });
 
-    const lightningFolder = pane.addFolder({ title: 'Lightning branching' });
-    lightningFolder.addInput(config.branch, 'factor', { min: 0, max: 0.2 });
-    lightningFolder.addInput(config.branch, 'factorWithDepth', {
+    const branchFolder = pane.addFolder({ title: 'Lightning branching' });
+    branchFolder.addInput(config.branch, 'factor', { min: 0, max: 0.2 });
+    branchFolder.addInput(config.branch, 'factorWithDepth', {
       min: -0.2,
       max: 0.2,
     });
-    lightningFolder.addInput(config.branch, 'angle', {
-      min: 0,
-      max: Math.PI / 2,
-    });
-    lightningFolder.addInput(config.branch, 'biasExponent', {
-      min: 0.1,
-      max: 10,
-    });
+    branchFolder.addInput(config.branch, 'angle', { min: 0, max: Math.PI / 2 });
+    branchFolder.addInput(config.branch, 'biasExponent', { min: 0.1, max: 10 });
 
     const wobbleFolder = pane.addFolder({ title: 'Lightning wobble' });
     wobbleFolder.addInput(config.wobble, 'segmentLength', { min: 0, max: 100 });

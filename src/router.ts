@@ -156,6 +156,16 @@ const router = createRouter({
       name: 'Generated lightning',
       component: () => import('./sketches/generated-lightning'),
     },
+    {
+      path: '/storm-chars-2',
+      name: 'Storm chars 2',
+      component: () => import('./sketches/storm-chars-2'),
+    },
+    {
+      path: '/hello-world-webgl',
+      name: 'Hello world (webgl)',
+      component: () => import('./sketches/hello-world-webgl'),
+    },
   ],
 });
 
