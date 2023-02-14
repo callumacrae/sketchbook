@@ -57,6 +57,7 @@ type SketchConfig = typeof sketchConfig;
 
 export const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'webgl',
+  showLoading: true,
   sketchConfig,
 };
 
@@ -325,7 +326,10 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
 
   const lightning: CanvasState['lightning'] = [];
 
-  for (let i = 0; i < 5; i++) {
+  // Generate up to 5 lightning bolts for max of 1 second
+  const startTime = Date.now();
+  let max = 5;
+  while (max-- && Date.now() < startTime + 1000) {
     lightning.push(makeLightning({ gl, width, height, config }));
   }
   lightning[0].strikeAt.push(timestamp);
