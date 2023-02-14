@@ -5,12 +5,15 @@ import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import { doWorkOffscreen } from '@/utils/canvas/utils';
 import generateLightning from '@/utils/shapes/lightning';
 import bloomCanvas from '@/utils/canvas/unreal-bloom';
-import type { LightningNode } from '@/utils/shapes/lightning';
 import shrinkCanvas from '@/utils/canvas/shrink';
+import * as random from '@/utils/random';
+import type { LightningNode } from '@/utils/shapes/lightning';
 
 const glsl = String.raw;
 
 interface CanvasState {
+  lightningCharge: number;
+  lightningId: number;
   lightning: { data: ImageData; texture: WebGLTexture; strikeAt: number[] }[];
   programInfo: twgl.ProgramInfo;
   bufferInfo: twgl.BufferInfo;
@@ -26,7 +29,7 @@ const sketchConfig = {
     randomness: 0.8,
   },
   animation: {
-    fadeTime: 1000,
+    fadeTime: 150,
     frequencyFactor: 0.4,
     doubleFlashChance: 0.2,
     doubleFlashTime: 150,
@@ -224,15 +227,16 @@ void main() {
   vec2 uv = floor(gl_FragCoord.xy / charSize) / resolution * charSize;
   uv.y = 1.0 - uv.y;
   float luminosity = texture2D(lightning, uv).r;
-  float r = rand(fract(uv + timestamp)) * (1.0 - (1.0 - randomness) * 0.05);
-  if (r > 0.995) {
-    luminosity += 0.5;
-  } else if (r > 0.98) {
-    luminosity += 0.15;
-  }
 
   float lightningAge = timestamp - lightningAt;
-  // luminosity *= max(1.0 - lightningAge / fadeTime, 0.0);
+  luminosity *= max(1.0 - lightningAge / fadeTime, 0.0);
+
+  float r = rand(fract(uv + timestamp)) * (1.0 - (1.0 - randomness) * 0.05);
+  if (r > 0.99) {
+    luminosity += 0.5;
+  } else if (r > 0.96) {
+    luminosity += 0.15;
+  }
 
   float charIndex = luminosityToChar(luminosity);
 
@@ -319,11 +323,16 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
     mag: gl.NEAREST,
   });
 
-  const lightningData = makeLightning({ gl, width, height, config });
-  lightningData.strikeAt.push(timestamp);
-  const lightning = [lightningData];
+  const lightning: CanvasState['lightning'] = [];
+
+  for (let i = 0; i < 5; i++) {
+    lightning.push(makeLightning({ gl, width, height, config }));
+  }
+  lightning[0].strikeAt.push(timestamp);
 
   return {
+    lightningCharge: 10000,
+    lightningId: 0,
     lightning,
     programInfo,
     bufferInfo,
@@ -336,6 +345,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
   width,
   height,
   timestamp,
+  delta,
   config,
   state,
   hasChanged,
@@ -361,8 +371,24 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
       const lightning = makeLightning({ gl, width, height, config });
       lightning.strikeAt.push(timestamp);
       state.lightning = [lightning];
+      state.lightningId = 0;
+      state.lightningCharge = 0;
     }
   }
+
+  // Lightning charges up over time, so the longer since the last lightning,
+  // the greater the chance of another strike
+  state.lightningCharge += delta;
+  const chance =
+    (state.lightningCharge / 100000) *
+    Math.pow(10, config.animation.frequencyFactor);
+  if (random.chance(chance)) {
+    state.lightningId = random.floorRange(0, state.lightning.length);
+    state.lightning[state.lightningId].strikeAt.push(timestamp);
+    state.lightningCharge = 0;
+  }
+
+  const activeLightning = state.lightning[state.lightningId];
 
   const uniforms = {
     charSize,
@@ -372,8 +398,8 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
     timestamp,
     resolution: [width, height],
     chars: state.charsTexture,
-    lightning: state.lightning[0].texture,
-    lightningAt: state.lightning[0].strikeAt[0],
+    lightning: activeLightning.texture,
+    lightningAt: activeLightning.strikeAt[activeLightning.strikeAt.length - 1],
     fadeTime: config.animation.fadeTime,
   };
 
