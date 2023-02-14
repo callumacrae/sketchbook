@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 
 import shrinkCanvas from './shrink';
 import blurCanvas from './gaussian-blur';
+import { ensureCanvas2DContext } from './utils';
 
 export type BloomConfig = {
   passes: number;
@@ -14,12 +15,7 @@ export default function bloomCanvas(
   config: BloomConfig
 ) {
   const ctx = canvas.getContext('2d');
-  if (
-    !(ctx instanceof CanvasRenderingContext2D) &&
-    !(ctx instanceof OffscreenCanvasRenderingContext2D)
-  ) {
-    throw new Error('???');
-  }
+  ensureCanvas2DContext(ctx);
   const { width, height } = canvas;
 
   const bloomPasses = config.passes;
@@ -34,12 +30,7 @@ export default function bloomCanvas(
     const mipmap = shrinkCanvas(lastCanvas, resX, resY);
     const blur = blurCanvas(mipmap, 3 + i * 2);
     const blurCtx = blur.getContext('2d');
-    if (
-      !(blurCtx instanceof CanvasRenderingContext2D) &&
-      !(blurCtx instanceof OffscreenCanvasRenderingContext2D)
-    ) {
-      throw new Error('???');
-    }
+    ensureCanvas2DContext(blurCtx);
     const imageData = blurCtx.getImageData(0, 0, resX, resY);
     blurData.push(imageData);
     lastCanvas = blur;

@@ -1,4 +1,4 @@
-import { doWorkOffscreen } from './utils';
+import { doWorkOffscreen, ensureCanvas2DContext } from './utils';
 
 export default function blurCanvas(
   canvas: HTMLCanvasElement | OffscreenCanvas,
@@ -18,12 +18,7 @@ export default function blurCanvas(
   }
 
   const ctx = canvas.getContext('2d');
-  if (
-    !(ctx instanceof CanvasRenderingContext2D) &&
-    !(ctx instanceof OffscreenCanvasRenderingContext2D)
-  ) {
-    throw new Error('???');
-  }
+  ensureCanvas2DContext(ctx);
 
   const { width, height } = canvas;
   const imageData = ctx.getImageData(0, 0, width, height);

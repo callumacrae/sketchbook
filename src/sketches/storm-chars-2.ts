@@ -3,36 +3,42 @@ import * as twgl from 'twgl.js';
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import { doWorkOffscreen } from '@/utils/canvas/utils';
-import generateLightning from '@/utils/shapes/lightning';
-import bloomCanvas from '@/utils/canvas/unreal-bloom';
-import shrinkCanvas from '@/utils/canvas/shrink';
 import * as random from '@/utils/random';
-import type { LightningNode } from '@/utils/shapes/lightning';
+import type {
+  LightningWorkerMessageIn,
+  LightningWorkerMessageOut,
+} from '@/utils/workers/generate-lightning';
 
 const glsl = String.raw;
 
 interface CanvasState {
   lightningCharge: number;
   lightningId: number;
-  lightning: { data: ImageData; texture: WebGLTexture; strikeAt: number[] }[];
+  lightning: {
+    texture: WebGLTexture;
+    width: number;
+    height: number;
+    strikeAt: number[];
+  }[];
+  lightningRequested: boolean;
   programInfo: twgl.ProgramInfo;
   bufferInfo: twgl.BufferInfo;
   charsTexture: WebGLTexture;
+  lightningWorker: Worker;
 }
 
 const sketchConfig = {
   maxWidth: 5,
+  preload: 3,
   visualisation: {
     chars: '.,;*^/\\oOxX',
     charSize: window.devicePixelRatio > 1 ? 15 : 8,
-    lighten: 0.35,
+    lighten: 0.5,
     randomness: 0.8,
   },
   animation: {
     fadeTime: 150,
-    frequencyFactor: 0.4,
-    doubleFlashChance: 0.2,
-    doubleFlashTime: 150,
+    frequencyFactor: 0.7,
   },
   branch: {
     factor: 0.02,
@@ -49,8 +55,8 @@ const sketchConfig = {
   bloom: {
     enabled: true,
     passes: 3,
-    strength: 2,
-    radius: 0.5,
+    strength: 1.5,
+    radius: 0.75,
   },
 };
 type SketchConfig = typeof sketchConfig;
@@ -87,89 +93,31 @@ async function initCharsCanvas(config: SketchConfig) {
   });
 }
 
-function makeLightning(props: {
-  seed?: string | null;
-  gl: WebGLRenderingContext;
+function requestLightning(props: {
   width: number;
   height: number;
   config: SketchConfig;
+  state: CanvasState;
 }) {
-  const { config } = props;
+  props.state.lightningRequested = true;
 
-  const width = Math.floor(props.width / config.visualisation.charSize) * 4;
-  const height = Math.floor(props.height / config.visualisation.charSize) * 4;
-
-  const lightning = generateLightning(props.seed || null, {
-    config: {
-      branch: config.branch,
-      wobble: config.wobble,
-      origin: 'random',
+  const { width, height, config } = props;
+  const generateMessage: LightningWorkerMessageIn = {
+    type: 'generate',
+    props: {
+      width,
+      height,
+      config: {
+        maxWidth: config.maxWidth,
+        visualisation: config.visualisation,
+        branch: config.branch,
+        wobble: config.wobble,
+        bloom: config.bloom,
+        origin: 'random',
+      },
     },
-    width,
-    height,
-  });
-
-  const oversizedCanvas = doWorkOffscreen(width, height, (ctx) => {
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, width, height);
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = config.bloom.enabled ? '#777' : 'white';
-
-    const drawNode = (
-      lightning: LightningNode,
-      repeat = false,
-      maxCharge = lightning.charge
-    ) => {
-      for (const next of lightning.next) {
-        if (!next.isReturn && repeat) continue;
-
-        ctx.lineWidth = next.isReturn
-          ? config.maxWidth
-          : 1 + (next.charge / maxCharge) * config.maxWidth * 1.5;
-        ctx.beginPath();
-        ctx.moveTo(lightning.pos.x, lightning.pos.y);
-        ctx.lineTo(next.pos.x, next.pos.y);
-        ctx.stroke();
-        drawNode(next, repeat, maxCharge);
-      }
-    };
-
-    drawNode(lightning);
-
-    if (config.bloom.enabled) {
-      bloomCanvas(ctx.canvas, config.bloom);
-    }
-  });
-
-  const canvas = shrinkCanvas(oversizedCanvas, width / 4, height / 4);
-
-  const ctx = canvas.getContext('2d');
-  if (
-    !(
-      ctx instanceof CanvasRenderingContext2D ||
-      ctx instanceof OffscreenCanvasRenderingContext2D
-    )
-  ) {
-    throw new Error('???');
-  }
-
-  const data = ctx.getImageData(0, 0, width / 4, height / 4);
-  const src = new Uint8Array(data.data.length / 4);
-  for (let i = 0; i < src.length; i++) {
-    src[i] = data.data[i * 4];
-  }
-
-  return {
-    data,
-    texture: twgl.createTexture(props.gl, {
-      src,
-      format: props.gl.LUMINANCE,
-      width: width / 4,
-      height: height / 4,
-      mag: props.gl.NEAREST,
-    }),
-    strikeAt: [] as number[],
   };
+  props.state.lightningWorker.postMessage(generateMessage);
 }
 
 const vertexShader = glsl`
@@ -231,7 +179,7 @@ void main() {
   float lightningAge = timestamp - lightningAt;
   luminosity *= max(1.0 - lightningAge / fadeTime, 0.0);
 
-  float r = rand(fract(uv + timestamp)) * (1.0 - (1.0 - randomness) * 0.05);
+  float r = rand(fract(uv + timestamp / 123.45)) * (1.0 - (1.0 - randomness) * 0.05);
   if (r > 0.99) {
     luminosity += 0.5;
   } else if (r > 0.96) {
@@ -270,14 +218,6 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
     animFolder.addInput(config.animation, 'frequencyFactor', {
       min: -1,
       max: 2,
-    });
-    animFolder.addInput(config.animation, 'doubleFlashChance', {
-      min: 0,
-      max: 1,
-    });
-    animFolder.addInput(config.animation, 'doubleFlashTime', {
-      min: 0,
-      max: 1000,
     });
 
     const branchFolder = pane.addFolder({ title: 'Lightning branching' });
@@ -324,24 +264,90 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
     mag: gl.NEAREST,
   });
 
+  const lightningWorker = new Worker(
+    new URL('@/utils/workers/generate-lightning', import.meta.url),
+    {
+      type: 'module',
+    }
+  );
+
   const lightning: CanvasState['lightning'] = [];
 
-  // Generate up to 5 lightning bolts for max of 1 second
-  const startTime = Date.now();
-  let max = 5;
-  while (max-- && Date.now() < startTime + 1000) {
-    lightning.push(makeLightning({ gl, width, height, config }));
-  }
-  lightning[0].strikeAt.push(timestamp);
+  // Used to resolve the loading timer
+  let loadingStateResolver: null | (() => void) = null;
 
-  return {
+  lightningWorker.onmessage = (e: MessageEvent<LightningWorkerMessageOut>) => {
+    if (lightning.length > 10) {
+      let mostStrikesIndex = -1;
+      for (let i = 0; i < lightning.length; i++) {
+        if (
+          mostStrikesIndex === -1 ||
+          lightning[i].strikeAt.length >
+            lightning[mostStrikesIndex].strikeAt.length
+        ) {
+          mostStrikesIndex = i;
+        }
+      }
+
+      if (mostStrikesIndex !== -1) {
+        lightning.splice(mostStrikesIndex, 1);
+      }
+    }
+
+    lightning.push({
+      width: e.data.width,
+      height: e.data.height,
+      texture: twgl.createTexture(gl, {
+        src: e.data.data,
+        format: gl.LUMINANCE,
+        width: e.data.width,
+        height: e.data.height,
+        mag: gl.NEAREST,
+      }),
+      strikeAt: [],
+    });
+    state.lightningRequested = false;
+
+    if (loadingStateResolver && lightning.length >= config.preload) {
+      loadingStateResolver();
+    }
+  };
+
+  const state: CanvasState = {
     lightningCharge: 10000,
     lightningId: 0,
     lightning,
+    lightningRequested: true,
     programInfo,
     bufferInfo,
     charsTexture,
+    lightningWorker,
   };
+
+  for (let i = 0; i < config.preload; i++) {
+    requestLightning({ width, height, config, state });
+  }
+
+  // Pre-generate lightning for up to one second
+  await new Promise<void>((resolve, reject) => {
+    loadingStateResolver = () => {
+      resolve();
+      loadingStateResolver = null;
+    };
+    setTimeout(() => {
+      if (lightning.length) {
+        if (loadingStateResolver) {
+          loadingStateResolver();
+        }
+      } else {
+        reject(new Error('Failed to generate lightning'));
+      }
+    }, 1000);
+  });
+
+  lightning[0].strikeAt.push(timestamp);
+
+  return state;
 };
 
 const frame: FrameFn<CanvasState, SketchConfig> = async ({
@@ -369,14 +375,10 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
     });
 
     if (
-      cols !== state.lightning[0].data.width ||
-      rows !== state.lightning[0].data.height
+      cols !== state.lightning[0].width ||
+      rows !== state.lightning[0].height
     ) {
-      const lightning = makeLightning({ gl, width, height, config });
-      lightning.strikeAt.push(timestamp);
-      state.lightning = [lightning];
-      state.lightningId = 0;
-      state.lightningCharge = 0;
+      // TODO
     }
   }
 
@@ -387,9 +389,15 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
     (state.lightningCharge / 100000) *
     Math.pow(10, config.animation.frequencyFactor);
   if (random.chance(chance)) {
+    // TODO: pick lightning with least strikes?
     state.lightningId = random.floorRange(0, state.lightning.length);
     state.lightning[state.lightningId].strikeAt.push(timestamp);
     state.lightningCharge = 0;
+
+    // Conditional to ensure only one lightning is requested at a time
+    if (!state.lightningRequested) {
+      requestLightning({ width, height, config, state });
+    }
   }
 
   const activeLightning = state.lightning[state.lightningId];

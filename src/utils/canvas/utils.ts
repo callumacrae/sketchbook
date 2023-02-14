@@ -15,19 +15,23 @@ export function doWorkOffscreen(width: number, height: number, workFn: WorkFn) {
   }
 
   const ctx = canvas.getContext('2d');
-
-  // This is to keep typescript happy 🤷‍♂️
-  if (
-    !ctx ||
-    !(
-      ctx instanceof CanvasRenderingContext2D ||
-      ctx instanceof OffscreenCanvasRenderingContext2D
-    )
-  ) {
-    throw new Error('Something went wrong');
-  }
+  ensureCanvas2DContext(ctx);
 
   workFn(ctx);
 
   return canvas;
+}
+
+export function ensureCanvas2DContext(
+  ctx: any
+): asserts ctx is CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D {
+  if (
+    !(
+      typeof CanvasRenderingContext2D !== 'undefined' &&
+      ctx instanceof CanvasRenderingContext2D
+    ) &&
+    !(ctx instanceof OffscreenCanvasRenderingContext2D)
+  ) {
+    throw new Error('Canvas context is not 2D');
+  }
 }

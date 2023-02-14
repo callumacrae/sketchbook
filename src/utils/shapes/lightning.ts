@@ -23,19 +23,21 @@ function doUpwards(node: LightningNode, cb: (node: LightningNode) => void) {
   doUpwards(node.parent, cb);
 }
 
+export type GenerateLightningConfig = {
+  branch: {
+    factor: number;
+    factorWithDepth: number;
+    angle: { min: number; max: number };
+    biasExponent: number;
+  };
+  wobble: WobbleConfig & { biasToPerfectVariance: number };
+  origin: 'random' | Vector;
+};
+
 export default function generateLightning(
   seed: string | null,
   props: {
-    config: {
-      branch: {
-        factor: number;
-        factorWithDepth: number;
-        angle: { min: number; max: number };
-        biasExponent: number;
-      };
-      wobble: WobbleConfig & { biasToPerfectVariance: number };
-      origin: 'random' | Vector;
-    };
+    config: GenerateLightningConfig;
     width: number;
     height: number;
   }

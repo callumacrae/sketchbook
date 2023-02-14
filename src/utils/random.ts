@@ -1,19 +1,20 @@
-import seedRandom from 'seed-random';
+import seedRandom from 'seedrandom';
 
 let currentRandom: () => number;
 
-export function setSeed(seed: string) {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  window.randomSeed = seed;
+export function setSeed(seed?: string) {
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    window.randomSeed = seed;
+  }
 
   currentRandom = seedRandom(seed);
 }
 
-export function value() {
+export function value(): number {
   if (!currentRandom) {
-    const seed = Math.floor(Math.random() * 1e6).toString();
-    setSeed(seed);
+    setSeed();
   }
 
   return currentRandom();
