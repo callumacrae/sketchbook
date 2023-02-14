@@ -1,4 +1,3 @@
-import SimplexNoise from 'simplex-noise';
 import * as twgl from 'twgl.js';
 
 import { toCanvasComponent } from '@/utils/renderers/vue';
@@ -12,11 +11,10 @@ import shrinkCanvas from '@/utils/canvas/shrink';
 const glsl = String.raw;
 
 interface CanvasState {
-  simplex: SimplexNoise;
-  charsCanvas: HTMLCanvasElement | OffscreenCanvas;
-  lightning: ImageData[];
+  lightning: { data: ImageData; texture: WebGLTexture; strikeAt: number[] }[];
   programInfo: twgl.ProgramInfo;
   bufferInfo: twgl.BufferInfo;
+  charsTexture: WebGLTexture;
 }
 
 const sketchConfig = {
@@ -26,6 +24,12 @@ const sketchConfig = {
     charSize: window.devicePixelRatio > 1 ? 15 : 8,
     lighten: 0.35,
     randomness: 0.8,
+  },
+  animation: {
+    fadeTime: 1000,
+    frequencyFactor: 0.4,
+    doubleFlashChance: 0.2,
+    doubleFlashTime: 150,
   },
   branch: {
     factor: 0.02,
@@ -79,7 +83,9 @@ async function initCharsCanvas(config: SketchConfig) {
   });
 }
 
-function getImageDataForLightning(props: {
+function makeLightning(props: {
+  seed?: string | null;
+  gl: WebGLRenderingContext;
   width: number;
   height: number;
   config: SketchConfig;
@@ -89,7 +95,7 @@ function getImageDataForLightning(props: {
   const width = Math.floor(props.width / config.visualisation.charSize) * 4;
   const height = Math.floor(props.height / config.visualisation.charSize) * 4;
 
-  const lightning = generateLightning(null, {
+  const lightning = generateLightning(props.seed || null, {
     config: {
       branch: config.branch,
       wobble: config.wobble,
@@ -143,7 +149,23 @@ function getImageDataForLightning(props: {
     throw new Error('???');
   }
 
-  return ctx.getImageData(0, 0, width / 4, height / 4);
+  const data = ctx.getImageData(0, 0, width / 4, height / 4);
+  const src = new Uint8Array(data.data.length / 4);
+  for (let i = 0; i < src.length; i++) {
+    src[i] = data.data[i * 4];
+  }
+
+  return {
+    data,
+    texture: twgl.createTexture(props.gl, {
+      src,
+      format: props.gl.LUMINANCE,
+      width: width / 4,
+      height: height / 4,
+      mag: props.gl.NEAREST,
+    }),
+    strikeAt: [] as number[],
+  };
 }
 
 const vertexShader = glsl`
@@ -167,13 +189,15 @@ uniform float randomness;
 uniform vec2 resolution;
 uniform sampler2D chars;
 uniform sampler2D lightning;
+uniform float lightningAt;
+uniform float fadeTime;
 
 /** VENDOR START **/
 // http://byteblacksmith.com/improvements-to-the-canonical-one-liner-glsl-rand-for-opengl-es-2-0/
 highp float rand( const in vec2 uv ) {
-	const highp float a = 12.9898, b = 78.233, c = 43758.5453;
-	highp float dt = dot( uv.xy, vec2( a,b ) ), sn = mod( dt, PI );
-	return fract( sin( sn ) * c );
+  const highp float a = 12.9898, b = 78.233, c = 43758.5453;
+  highp float dt = dot( uv.xy, vec2( a,b ) ), sn = mod( dt, PI );
+  return fract( sin( sn ) * c );
 }
 /** VENDOR END **/
 
@@ -204,8 +228,11 @@ void main() {
   if (r > 0.995) {
     luminosity += 0.5;
   } else if (r > 0.98) {
-    luminosity += 0.1;
+    luminosity += 0.15;
   }
+
+  float lightningAge = timestamp - lightningAt;
+  // luminosity *= max(1.0 - lightningAge / fadeTime, 0.0);
 
   float charIndex = luminosityToChar(luminosity);
 
@@ -223,6 +250,7 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
   gl,
   width,
   height,
+  timestamp,
   config,
 }) => {
   if (!config || !gl) throw new Error('???');
@@ -232,6 +260,21 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
     visFolder.addInput(config.visualisation, 'charSize', { min: 1, max: 100 });
     visFolder.addInput(config.visualisation, 'lighten', { min: 0, max: 1 });
     visFolder.addInput(config.visualisation, 'randomness', { min: 0, max: 1 });
+
+    const animFolder = pane.addFolder({ title: 'Animation' });
+    animFolder.addInput(config.animation, 'fadeTime', { min: 0, max: 1000 });
+    animFolder.addInput(config.animation, 'frequencyFactor', {
+      min: -1,
+      max: 2,
+    });
+    animFolder.addInput(config.animation, 'doubleFlashChance', {
+      min: 0,
+      max: 1,
+    });
+    animFolder.addInput(config.animation, 'doubleFlashTime', {
+      min: 0,
+      max: 1000,
+    });
 
     const branchFolder = pane.addFolder({ title: 'Lightning branching' });
     branchFolder.addInput(config.branch, 'factor', { min: 0, max: 0.2 });
@@ -271,12 +314,20 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
   };
   const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
 
+  const charsTexture = twgl.createTexture(gl, {
+    src: await initCharsCanvas(config),
+    mag: gl.NEAREST,
+  });
+
+  const lightningData = makeLightning({ gl, width, height, config });
+  lightningData.strikeAt.push(timestamp);
+  const lightning = [lightningData];
+
   return {
-    simplex: new SimplexNoise('seed'),
-    charsCanvas: await initCharsCanvas(config),
-    lightning: [getImageDataForLightning({ width, height, config })],
+    lightning,
     programInfo,
     bufferInfo,
+    charsTexture,
   };
 };
 
@@ -297,27 +348,21 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
   const rows = Math.floor(height / charSize);
 
   if (hasChanged) {
-    state.charsCanvas = await initCharsCanvas(config);
+    const charsCanvas = await initCharsCanvas(config);
+    state.charsTexture = twgl.createTexture(gl, {
+      src: charsCanvas,
+      mag: gl.NEAREST,
+    });
 
     if (
-      cols !== state.lightning[0].width ||
-      rows !== state.lightning[0].height
+      cols !== state.lightning[0].data.width ||
+      rows !== state.lightning[0].data.height
     ) {
-      state.lightning = [getImageDataForLightning({ width, height, config })];
+      const lightning = makeLightning({ gl, width, height, config });
+      lightning.strikeAt.push(timestamp);
+      state.lightning = [lightning];
     }
   }
-
-  // TODO: don't reupload on every frame
-  const textures = twgl.createTextures(gl, {
-    chars: {
-      src: state.charsCanvas,
-      mag: gl.NEAREST,
-    },
-    lightning: {
-      src: state.lightning[0], // TODO convert to 1d?
-      mag: gl.NEAREST,
-    },
-  });
 
   const uniforms = {
     charSize,
@@ -326,8 +371,10 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
     randomness: config.visualisation.randomness,
     timestamp,
     resolution: [width, height],
-    chars: textures.chars,
-    lightning: textures.lightning,
+    chars: state.charsTexture,
+    lightning: state.lightning[0].texture,
+    lightningAt: state.lightning[0].strikeAt[0],
+    fadeTime: config.animation.fadeTime,
   };
 
   gl.useProgram(programInfo.program);
