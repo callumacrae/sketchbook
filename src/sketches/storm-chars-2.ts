@@ -226,7 +226,6 @@ float luminosityToChar(float l) {
 void main() {
   // uv coords are banded to the nearest character
   vec2 uv = floor(gl_FragCoord.xy / charSize) / resolution * charSize;
-  uv.y = 1.0 - uv.y;
   float luminosity = texture2D(lightning, uv).r;
 
   float lightningAge = timestamp - lightningAt;
@@ -306,6 +305,7 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
     bloomFolder.addInput(config.bloom, 'radius', { min: 0, max: 5 });
   });
 
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   const programInfo = twgl.createProgramInfo(gl, [
     vertexShader,
     fragmentShader,

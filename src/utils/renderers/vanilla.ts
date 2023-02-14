@@ -416,11 +416,12 @@ export async function toVanillaCanvas<
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
       // I think it's okay to delete straight away?
-        gl.deleteShader(fragmentShader);
-        gl.deleteShader(vertexShader);
-        gl.deleteBuffer(positionBuffer);
-        gl.deleteTexture(loadingTexture);
-        gl.deleteProgram(program);
+      gl.deleteShader(fragmentShader);
+      gl.deleteShader(vertexShader);
+      gl.deleteBuffer(positionBuffer);
+      gl.deleteTexture(loadingTexture);
+      gl.deleteProgram(program);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     } else {
       throw new Error('loading not supported for this type yet');
     }
