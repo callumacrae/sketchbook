@@ -2,8 +2,7 @@ import { Pane, TabPageApi } from 'tweakpane';
 import * as EssentialsPlugin from '@tweakpane/plugin-essentials';
 import * as THREE from 'three';
 import type { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/fps-graph/api/fps-graph';
-
-const glsl = String.raw;
+import writeScreen from '../canvas/written-screen';
 
 type Type = 'context2d' | 'webgl' | 'threejs';
 
@@ -47,6 +46,7 @@ export interface InitProps<CanvasState, SketchConfig = undefined> {
       props: EventProps<CanvasState, SketchConfig, HTMLElementEventMap[K]>
     ) => boolean | void
   ): void;
+  testSupport(cb: () => true | string): void;
 }
 export interface InitPropsWebgl<CanvasState, SketchConfig = undefined>
   extends InitProps<CanvasState, SketchConfig> {
@@ -278,6 +278,38 @@ export async function toVanillaCanvas<
         }
       });
     },
+    testSupport: (cb) => {
+      const supported = cb();
+
+      if (supported === true) {
+        return;
+      }
+
+      writeScreen(data, (ctx: CanvasRenderingContext2D) => {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        const mult = window.innerWidth < 550 ? 0.5 : 1;
+        ctx.font = `bold ${
+          70 * mult
+        }px Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
+        ctx.fillStyle = 'red';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(
+          'browser not supported :(',
+          data.width / 2,
+          data.height / 2 - 50 * mult
+        );
+
+        ctx.font =
+          `${40 * mult}px Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
+        ctx.fillStyle = 'white';
+        ctx.fillText(supported, data.width / 2, data.height / 2 + 50 * mult);
+      });
+
+      throw new Error('Sketch not supported in this browser');
+    },
   };
 
   if (sketchbookConfig.showLoading && !sketchbookConfig.capture?.enabled) {
@@ -291,140 +323,7 @@ export async function toVanillaCanvas<
       ctx.textBaseline = 'middle';
       ctx.fillText('loading!', data.width / 2, data.height / 2);
     };
-
-    if (data.renderer) {
-      const scene = new THREE.Scene();
-      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
-      scene.add(camera);
-
-      const ctx = document.createElement('canvas').getContext('2d');
-      if (!ctx) throw new Error('???');
-      ctx.canvas.width = data.width;
-      ctx.canvas.height = data.height;
-      drawLoadingToCanvas(ctx);
-
-      const plane = new THREE.PlaneGeometry(2, 2);
-      const texture = new THREE.CanvasTexture(ctx.canvas);
-      const material = new THREE.MeshBasicMaterial({ map: texture });
-      scene.add(new THREE.Mesh(plane, material));
-
-      data.renderer.render(scene, camera);
-    } else if (data.ctx) {
-      drawLoadingToCanvas(data.ctx);
-    } else if (data.gl) {
-      const gl = data.gl;
-
-      const vertexShaderSource = glsl`
-        attribute vec4 aLoadingPosition;
-        void main() {
-          gl_Position = aLoadingPosition;
-        }
-      `;
-      const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-      if (!vertexShader) throw new Error('???');
-      gl.shaderSource(vertexShader, vertexShaderSource);
-      gl.compileShader(vertexShader);
-      if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-        console.error(
-          `An error occurred compiling the vertex shader: ${gl.getShaderInfoLog(
-            vertexShader
-          )}`
-        );
-        gl.deleteShader(vertexShader);
-      }
-
-      const fragmentShaderSource = glsl`
-        precision mediump float;
-        uniform vec2 uLoadingResolution;
-        uniform sampler2D uLoadingTexture;
-
-        void main() {
-          vec2 uv = gl_FragCoord.xy / uLoadingResolution;
-          gl_FragColor = texture2D(uLoadingTexture, uv);
-        }
-      `;
-      const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-      if (!fragmentShader) throw new Error('???');
-      gl.shaderSource(fragmentShader, fragmentShaderSource);
-      gl.compileShader(fragmentShader);
-      if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-        console.error(
-          `An error occurred compiling the vertex shader: ${gl.getShaderInfoLog(
-            fragmentShader
-          )}`
-        );
-        gl.deleteShader(fragmentShader);
-      }
-
-      const program = gl.createProgram();
-      if (!program) throw new Error('???');
-      gl.attachShader(program, vertexShader);
-      gl.attachShader(program, fragmentShader);
-      gl.linkProgram(program);
-      gl.useProgram(program);
-
-      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error(
-          `Unable to initialize the shader program: ${gl.getProgramInfoLog(
-            program
-          )}`
-        );
-      }
-
-      const ctx = document.createElement('canvas').getContext('2d');
-      if (!ctx) throw new Error('???');
-      ctx.canvas.width = data.width;
-      ctx.canvas.height = data.height;
-      drawLoadingToCanvas(ctx);
-
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-      gl.activeTexture(gl.TEXTURE0);
-      const loadingTexture = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, loadingTexture);
-      gl.texImage2D(
-        gl.TEXTURE_2D,
-        0,
-        gl.RGBA,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
-        ctx.canvas
-      );
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      const textureLocation = gl.getUniformLocation(program, 'uLoadingTexture');
-      gl.uniform1i(textureLocation, 0);
-
-      const resolutionLocation = gl.getUniformLocation(
-        program,
-        'uLoadingResolution'
-      );
-      gl.uniform2f(resolutionLocation, data.width, data.height);
-
-      const positionLoc = gl.getAttribLocation(program, 'aLoadingPosition');
-      gl.enableVertexAttribArray(positionLoc);
-      const positions = [-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1];
-      const positionBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array(positions),
-        gl.STATIC_DRAW
-      );
-      gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
-
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-      // I think it's okay to delete straight away?
-      gl.deleteShader(fragmentShader);
-      gl.deleteShader(vertexShader);
-      gl.deleteBuffer(positionBuffer);
-      gl.deleteTexture(loadingTexture);
-      gl.deleteProgram(program);
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-    } else {
-      throw new Error('loading not supported for this type yet');
-    }
+    writeScreen(data, drawLoadingToCanvas);
 
     // TODO: Why is the setTimeout required?
     await new Promise<void>((resolve) => {

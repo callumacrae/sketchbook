@@ -198,6 +198,7 @@ void main() {
 `;
 
 const init: InitFn<CanvasState, SketchConfig> = async ({
+  testSupport,
   initControls,
   gl,
   width,
@@ -206,6 +207,13 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
   config,
 }) => {
   if (!config || !gl) throw new Error('???');
+
+  testSupport(() => {
+    if (!("OffscreenCanvas" in window)) {
+      return 'This sketch requires OffscreenCanvas ';
+    }
+    return true;
+  });
 
   initControls(({ pane, config }) => {
     const visFolder = pane.addFolder({ title: 'Visualisation' });
