@@ -6,6 +6,7 @@
     "lib": ["esnext", "DOM", "DOM.Iterable"],
     "baseUrl": ".",
     "esModuleInterop": true,
+    "allowJs": true,
     "paths": {
       "@/*": ["./src/*"]
     }

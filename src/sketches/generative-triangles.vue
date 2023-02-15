@@ -12,7 +12,7 @@ import { rand4 } from '../utils/colors.ts';
 import { randomEquilateral } from '../utils/shapes/triangles';
 
 export const meta = {
-  name: 'Triangles',
+  name: 'Generative triangles',
   date: '2020-05-10',
   favourite: true,
 };
