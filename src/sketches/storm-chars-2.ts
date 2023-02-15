@@ -11,20 +11,23 @@ import type {
 
 const glsl = String.raw;
 
+interface LightningState {
+  texture: WebGLTexture;
+  width: number;
+  height: number;
+  strikeAt: number[];
+}
+
 interface CanvasState {
   lightningCharge: number;
   lightningId: number;
-  lightning: {
-    texture: WebGLTexture;
-    width: number;
-    height: number;
-    strikeAt: number[];
-  }[];
+  lightning: LightningState[];
   lightningRequested: boolean;
   programInfo: twgl.ProgramInfo;
   bufferInfo: twgl.BufferInfo;
   charsTexture: WebGLTexture;
   lightningWorker: Worker;
+  resetAfter?: number;
 }
 
 const sketchConfig = {
@@ -189,7 +192,6 @@ void main() {
   float charIndex = luminosityToChar(luminosity);
 
   vec2 uvInChar = fract(gl_FragCoord.xy / charSize);
-  uvInChar.y = 1.0 - uvInChar.y;
   uvInChar.x = (uvInChar.x + charIndex) / charsAvailable;
 
   vec4 charColor = texture2D(chars, uvInChar);
@@ -209,7 +211,7 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
   if (!config || !gl) throw new Error('???');
 
   testSupport(() => {
-    if (!("OffscreenCanvas" in window)) {
+    if (!('OffscreenCanvas' in window)) {
       return 'This sketch requires OffscreenCanvas';
     }
     return true;
@@ -383,10 +385,20 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
     });
 
     if (
-      cols !== state.lightning[0].width ||
-      rows !== state.lightning[0].height
+      (state.lightning.length &&
+        (cols !== state.lightning[0].width ||
+          rows !== state.lightning[0].height)) ||
+      timestamp > 2000
     ) {
-      // TODO
+      state.resetAfter = Date.now() + 250;
+    }
+  }
+
+  if (state.resetAfter && state.resetAfter < Date.now()) {
+    state.resetAfter = undefined;
+    state.lightning.splice(0, state.lightning.length);
+    for (let i = 0; i < config.preload; i++) {
+      requestLightning({ width, height, config, state });
     }
   }
 
@@ -396,9 +408,18 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
   const chance =
     (state.lightningCharge / 100000) *
     Math.pow(10, config.animation.frequencyFactor);
-  if (random.chance(chance)) {
-    // TODO: pick lightning with least strikes?
-    state.lightningId = random.floorRange(0, state.lightning.length);
+  if (state.lightning.length && random.chance(chance)) {
+    let leastStrikesIndex = -1;
+    for (let i = 0; i < state.lightning.length; i++) {
+      if (
+        leastStrikesIndex === -1 ||
+        state.lightning[i].strikeAt.length <
+          state.lightning[leastStrikesIndex].strikeAt.length
+      ) {
+        leastStrikesIndex = i;
+      }
+    }
+    state.lightningId = leastStrikesIndex;
     state.lightning[state.lightningId].strikeAt.push(timestamp);
     state.lightningCharge = 0;
 
@@ -408,7 +429,9 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
     }
   }
 
-  const activeLightning = state.lightning[state.lightningId];
+  // Typescript infers this type correctly - it can be undefined
+  const activeLightning: LightningState | undefined =
+    state.lightning[state.lightningId];
 
   const uniforms = {
     charSize,
@@ -418,10 +441,16 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
     timestamp,
     resolution: [width, height],
     chars: state.charsTexture,
-    lightning: activeLightning.texture,
-    lightningAt: activeLightning.strikeAt[activeLightning.strikeAt.length - 1],
+    lightning: undefined as WebGLTexture | undefined,
+    lightningAt: 0,
     fadeTime: config.animation.fadeTime,
   };
+
+  if (activeLightning) {
+    uniforms.lightning = activeLightning.texture;
+    uniforms.lightningAt =
+      activeLightning.strikeAt[activeLightning.strikeAt.length - 1];
+  }
 
   gl.useProgram(programInfo.program);
   twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
