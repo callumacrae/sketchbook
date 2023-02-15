@@ -199,7 +199,7 @@ export default {
         move ? undefined : [data.data.buffer]
       );
     },
-    detectionFrame(timestamp) {
+    detectionFrame() {
       const { detectionConfig: config, lastRefresh } = this;
 
       if (

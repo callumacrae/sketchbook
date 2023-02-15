@@ -51,8 +51,8 @@ self.onmessage = (msg) => {
 
   const platforms = [];
 
-  for (let coords of contours.coordinates) {
-    for (let contour of coords) {
+  for (const coords of contours.coordinates) {
+    for (const contour of coords) {
       const vertices = contour.map((point) => {
         const transformedPoint = transformPoint(point);
 
