@@ -18,6 +18,7 @@
     "d3-ease": "^3.0.1",
     "matter-js": "^0.18.0",
     "meshline": "^3.1.6",
+    "sass": "^1.58.1",
     "seedrandom": "^3.0.5",
     "simplex-noise": "^3.0.1",
     "three": "^0.147.0",

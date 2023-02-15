@@ -14,7 +14,7 @@ onMounted(() => {
 const preview = ref<RouteObject | null>(null);
 const previewLink = ref('');
 
-const sketchModules = import.meta.glob('../sketches/*.{ts,glsl}', {
+const sketchModules = import.meta.glob('../sketches/*.{ts,glsl,vue}', {
   as: 'raw',
 });
 const sketchPromises = Object.entries(sketchModules).map(
@@ -66,7 +66,7 @@ Promise.all(sketchPromises).then((sketches) => {
     .sort((a, b) => {
       const aDate = new Date(a.meta.date);
       const bDate = new Date(b.meta.date);
-      return bDate.getTime() + aDate.getTime();
+      return aDate.getTime() - bDate.getTime();
     });
 });
 
