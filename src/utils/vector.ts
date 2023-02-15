@@ -15,6 +15,10 @@ export default class Vector {
     return [this.x, this.y];
   }
 
+  angle() {
+    return Math.atan2(-this.x, this.y) + Math.PI;
+  }
+
   add(other: Vector) {
     return new Vector(this.x + other.x, this.y + other.y);
   }

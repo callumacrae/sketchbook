@@ -166,6 +166,11 @@ const router = createRouter({
       name: 'Hello world (webgl)',
       component: () => import('./sketches/hello-world-webgl'),
     },
+    {
+      path: '/boids-2d',
+      name: 'Boids (2D)',
+      component: () => import('./sketches/boids-2d'),
+    },
   ],
 });
 
