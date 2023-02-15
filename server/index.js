@@ -1,5 +1,7 @@
 // WARNING ONLY RUN THIS LOCALLY
 
+/* eslint-disable */
+
 const fs = require('fs');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -14,21 +16,19 @@ app.get('/', (req, res) => {
 });
 
 app.post('/save-images', bodyParser.json({ limit: '500mb' }), (req, res) => {
-  const { options, framesData } = req.body;
-
-  const directory = `data/${options.directory}`;
+  const directory = `data/${req.body.directory}`;
   if (!fs.existsSync(directory)) {
     fs.mkdirSync(directory);
   }
 
-  for (const [frameName, frameData] of Object.entries(framesData)) {
+  for (const [frameName, frameData] of Object.entries(req.body.frames)) {
     const base64Data = frameData.replace(/^data:image\/png;base64,/, '');
     fs.writeFileSync(`${directory}/${frameName}.png`, base64Data, 'base64');
   }
 
   console.log(
-    `Saved ${Object.keys(framesData).length} files to ${
-      options.directory
+    `Saved ${Object.keys(req.body.frames).length} files to ${
+      req.body.directory
     } directory`
   );
 

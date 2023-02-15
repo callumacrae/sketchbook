@@ -1,17 +1,9 @@
-import Vue from 'vue';
+import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 
-// @ts-ignore
-import GlobalEvents from 'vue-global-events';
+const app = createApp(App);
 
-import 'normalize.css/normalize.css';
+app.use(router);
 
-Vue.config.productionTip = false;
-
-Vue.component('GlobalEvents', GlobalEvents);
-
-new Vue({
-  router,
-  render: h => h(App)
-}).$mount('#app');
+app.mount('#app');

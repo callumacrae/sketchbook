@@ -82,15 +82,15 @@ export default function cclFill(
 
   const groupSizesFlat = Object.entries(groupSizes)
     .filter(([label]) => label !== '-1')
-    .map(([key, value]) => value)
+    .map(([_key, value]) => value)
     .sort((a, b) => a - b);
 
   // const maxGroupSize = Math.max(...groupSizesFlat);
-  const maxGroupSize = groupSizesFlat[Math.ceil(groupSizesFlat.length * 0.9)]
+  const maxGroupSize = groupSizesFlat[Math.ceil(groupSizesFlat.length * 0.9)];
 
   // Calculate colours for each group
   const groupColors: { [label: string]: Color } = {
-    '-1': [0, 0, 0, 0]
+    '-1': [0, 0, 0, 0],
   };
   for (const [label, value] of Object.entries(groupSizes)) {
     if (label === '-1') {

@@ -1,10 +1,14 @@
 {
   "name": "@callumacrae/utils",
-  "version": "0.2.4",
+  "version": "0.7.0",
   "description": "Utils for creative dev",
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest"
+  },
+  "exports": {
+    "import": "./built/index.js",
+    "renderers": "./built/renderers.js"
   },
   "repository": {
     "type": "git",
@@ -13,12 +17,21 @@
   "author": "Callum Macrae <callum@macr.ae>",
   "license": "MIT",
   "dependencies": {
+    "@tweakpane/plugin-essentials": "^0.1.5",
     "@types/seed-random": "^2.2.0",
+    "@types/three": "^0.146.0",
     "seed-random": "^2.2.0",
     "simplex-noise": "^2.4.0",
-    "tslib": "^2.0.3"
+    "tslib": "^2.0.3",
+    "tweakpane": "^3.1.1",
+    "vue": "^3.2.45"
   },
   "devDependencies": {
-    "typescript": "^4.0.5"
+    "@tweakpane/core": "^1.1.1",
+    "typescript": "^4.9.4",
+    "vitest": "^0.27.2"
+  },
+  "peerDependencies": {
+    "three": "^0.147.0"
   }
 }

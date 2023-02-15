@@ -1,0 +1,11 @@
+Model Information:
+* title:	Freebie - Lowpoly Alphabet
+* source:	https://sketchfab.com/3d-models/freebie-lowpoly-alphabet-2be319c072834016b9c14713f8499dd3
+* author:	Studio Ochi (https://sketchfab.com/studioochi)
+
+Model License:
+* license type:	CC-BY-SA-4.0 (http://creativecommons.org/licenses/by-sa/4.0/)
+* requirements:	Author must be credited. Modified versions must have the same license. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Freebie - Lowpoly Alphabet" (https://sketchfab.com/3d-models/freebie-lowpoly-alphabet-2be319c072834016b9c14713f8499dd3) by Studio Ochi (https://sketchfab.com/studioochi) licensed under CC-BY-SA-4.0 (http://creativecommons.org/licenses/by-sa/4.0/)

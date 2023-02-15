@@ -13,7 +13,7 @@ export function start(key: string, force = false) {
     store[key] = {
       last: -1,
       total: 0,
-      count: 0
+      count: 0,
     };
   }
 

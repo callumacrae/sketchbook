@@ -1,5 +1,5 @@
-type Coord = [number, number]
-type Line = [Coord, Coord]
+type Coord = [number, number];
+type Line = [Coord, Coord];
 
 // Given points (x1, y1) and (x2, y2), returns a and b where y = ax + b
 export function solveLine([[x1, y1], [x2, y2]]: Line) {

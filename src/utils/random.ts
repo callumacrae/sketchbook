@@ -1,21 +1,27 @@
-import seedRandom from 'seed-random';
+import seedRandom from 'seedrandom';
 
 let currentRandom: () => number;
 
-export function setSeed(seed: string) {
-  // @ts-ignore
-  window.randomSeed = seed;
+export function setSeed(seed?: string) {
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    window.randomSeed = seed;
+  }
 
   currentRandom = seedRandom(seed);
 }
 
-export function value() {
+export function value(): number {
   if (!currentRandom) {
-    const seed = Math.floor(Math.random() * 1e6).toString();
-    setSeed(seed);
+    setSeed();
   }
 
   return currentRandom();
+}
+
+export function chance(chance = 0.5) {
+  return value() < chance;
 }
 
 export function range(min: number, max: number) {
@@ -59,4 +65,13 @@ export function irwinHall(n = 12) {
   }
 
   return total;
+}
+
+export function string(len = 8) {
+  let randString = '';
+  do {
+    randString += (value() * 1e16).toString(36);
+  } while (randString.length < len);
+
+  return randString.slice(len);
 }
