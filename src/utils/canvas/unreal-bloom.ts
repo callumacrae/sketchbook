@@ -1,4 +1,4 @@
-import { Vector3 } from 'three';
+import { Vector3 } from 'three/src/math/Vector3.js';
 
 import shrinkCanvas from './shrink';
 import blurCanvas from './gaussian-blur';
