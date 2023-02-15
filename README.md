@@ -27,3 +27,8 @@ npm run build
 ```sh
 npm run lint
 ```
+
+### Old version
+
+Some sketches haven't been moved over to the vite+vue 3 setup - they're in the
+`views` directory and can be previewed here: <https://sketchbook-git-master-callumacrae.vercel.app/>
