@@ -9,6 +9,11 @@ import type {
   LightningWorkerMessageOut,
 } from '@/utils/workers/generate-lightning';
 
+export const meta = {
+  name: 'Storm chars 2',
+  date: '2023-02-13',
+};
+
 const glsl = String.raw;
 
 interface LightningState {

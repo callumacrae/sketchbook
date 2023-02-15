@@ -2,6 +2,10 @@
 #define RADIUS 25.0
 #define RADIUS_VAR 3.0
 
+// name: Anti-aliased circle (glsl)
+// date: 2022-12-27
+// link: https://www.shadertoy.com/view/Dts3zX
+
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   vec3 origin = iResolution / 2.0 / PIXELS_PER_PIXEL;
   float radius = RADIUS + cos(iTime) * RADIUS_VAR;

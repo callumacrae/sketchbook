@@ -3,6 +3,11 @@ import * as random from '@/utils/random';
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: 'Boids (2D)',
+  date: '2023-02-15',
+};
+
 interface BoidState {
   position: Vector;
   direction: Vector;
@@ -39,7 +44,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
   state,
   width,
   height,
-  delta
+  delta,
 }) => {
   if (!ctx) throw new Error('???');
 

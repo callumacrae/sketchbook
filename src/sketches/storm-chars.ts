@@ -4,6 +4,11 @@ import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import { pixelateImage } from '@/utils/textures/sampler';
 import * as random from '@/utils/random';
 
+export const meta = {
+  name: 'Storm chars',
+  date: '2022-02-15',
+};
+
 interface CanvasState {
   simplex: SimplexNoise;
   sampled?: { path: string; data: number[]; cols: number; rows: number };

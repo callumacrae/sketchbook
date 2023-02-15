@@ -1,6 +1,11 @@
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: 'Hello World',
+  date: '2022-01-18',
+};
+
 interface CanvasState {
   num: number;
 }

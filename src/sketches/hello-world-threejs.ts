@@ -8,6 +8,11 @@ import type {
   FrameFn,
 } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: 'Hello world (threejs)',
+  date: '2022-12-13',
+};
+
 interface CanvasState {
   scene: THREE.Scene;
   camera: ReturnType<typeof initCamera>;

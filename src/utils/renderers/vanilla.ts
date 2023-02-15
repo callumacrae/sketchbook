@@ -302,8 +302,9 @@ export async function toVanillaCanvas<
           data.height / 2 - 50 * mult
         );
 
-        ctx.font =
-          `${40 * mult}px Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
+        ctx.font = `${
+          40 * mult
+        }px Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
         ctx.fillStyle = 'white';
         ctx.fillText(supported, data.width / 2, data.height / 2 + 50 * mult);
       });

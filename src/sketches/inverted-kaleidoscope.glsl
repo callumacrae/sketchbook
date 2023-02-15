@@ -16,6 +16,11 @@
 
 #define PI 3.1415926535897932384626433832795 // no-config
 
+// name: Inverted kaleidoscope (glsl)
+// date: 2023-01-20
+// favourite: true
+// link: https://www.shadertoy.com/view/dtXSWr 
+
 /** VENDOR START **/
 
 // https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83

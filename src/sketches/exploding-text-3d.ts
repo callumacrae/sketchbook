@@ -12,6 +12,13 @@ import type {
   FrameFn,
 } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: '3D exploding text',
+  date: '2022-12-20',
+  favourite: true,
+  link: 'https://codepen.io/callumacrae/full/VwBLvWN',
+};
+
 const glsl = String.raw;
 
 interface CanvasState {

@@ -9,6 +9,11 @@ import type {
   FrameFn,
 } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: 'three-extend-material',
+  date: '2022-12-21',
+};
+
 const glsl = String.raw;
 
 interface CanvasState {

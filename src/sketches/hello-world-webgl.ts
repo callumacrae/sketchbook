@@ -3,6 +3,11 @@ import * as twgl from 'twgl.js';
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: 'Hello world (webgl)',
+  date: '2023-02-13',
+};
+
 const glsl = String.raw;
 
 interface CanvasState {

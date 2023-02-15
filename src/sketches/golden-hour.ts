@@ -1,6 +1,11 @@
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: 'Golden hour',
+  date: '2022-12-13',
+};
+
 interface CanvasState {
   bg: HTMLImageElement;
 }

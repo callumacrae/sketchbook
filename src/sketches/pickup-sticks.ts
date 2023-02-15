@@ -10,6 +10,12 @@ import Vector from '@/utils/vector';
 import Line from '@/utils/line';
 import * as random from '@/utils/random';
 
+export const meta = {
+  name: 'Pick-up sticks',
+  date: '2023-01-18',
+  link: 'https://codepen.io/callumacrae/details/poZpbPY',
+};
+
 interface Circle {
   center: Vector;
   radius: number;

@@ -14,6 +14,13 @@ import type {
   FrameProps,
 } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: 'Illuminating shapes',
+  date: '2023-01-05',
+  favourite: true,
+  link: 'https://codepen.io/callumacrae/full/MWBbeJz',
+};
+
 const glsl = String.raw;
 
 interface CanvasState {

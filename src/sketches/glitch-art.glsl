@@ -14,6 +14,11 @@
 #define GLITCH_OTHER_BLANK_ENABLED true
 #define GLITCH_OTHER_LINE_WIDTH_CHANGES_ENABLED true
 
+// name: Glitch art (#genuary3) (glsl)
+// date: 2023-01-03
+// favourite: true
+// link: https://www.shadertoy.com/view/ct2Gzz
+
 /** VENDOR START **/
 
 // https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83

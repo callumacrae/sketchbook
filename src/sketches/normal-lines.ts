@@ -5,6 +5,11 @@ import { doWorkOffscreen } from '@/utils/canvas/utils';
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: 'Normal lines',
+  date: '2020-06-10',
+};
+
 interface CanvasState {
   lines: any[];
   bitmaps: any[];

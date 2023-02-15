@@ -16,6 +16,13 @@ import type {
   InitProps,
 } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: 'Brain storm',
+  date: '2022-12-13',
+  favourite: true,
+  link: 'https://codepen.io/callumacrae/full/zYLOrWZ',
+};
+
 interface CanvasState {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;

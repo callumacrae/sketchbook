@@ -1,14 +1,73 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import type { RouteRecordRaw } from 'vue-router';
+import { onMounted, computed, ref } from 'vue';
 
-const preview = ref<RouteRecordRaw | null>(null);
+interface RouteObject {
+  path: string;
+  name: string;
+  meta: Record<string, any>;
+}
+
+onMounted(() => {
+  document.body.style.background = 'white';
+});
+
+const preview = ref<RouteObject | null>(null);
 const previewLink = ref('');
 
-const router = useRouter();
-const routes = computed(() => {
-  return router.options.routes.filter((route) => route.name !== 'home');
+const sketchModules = import.meta.glob('../sketches/*.{ts,glsl}', {
+  as: 'raw',
+});
+const sketchPromises = Object.entries(sketchModules).map(
+  async ([filePath, module]) => {
+    const path = '/' + filePath.split('/').pop()?.split('.').shift();
+
+    const moduleText = await module();
+
+    const jsMeta = moduleText.indexOf('export const meta =');
+    if (jsMeta !== -1) {
+      const metaStart = jsMeta + 7;
+      const metaEnd = moduleText.indexOf(';', metaStart) + 1;
+
+      const meta: Record<string, any> = eval(
+        moduleText.slice(metaStart, metaEnd) + 'meta'
+      );
+
+      return { path, meta };
+    }
+
+    const glslMeta = moduleText.indexOf('// name:');
+    if (glslMeta !== -1) {
+      const metaEnd = moduleText.indexOf('\n\n', glslMeta);
+      const metaText = moduleText.slice(glslMeta, metaEnd).split('\n');
+
+      const meta: Record<string, any> = {};
+
+      for (const line of metaText) {
+        const colonIndex = line.indexOf(':');
+        const key = line.slice(3, colonIndex);
+        const value = line.slice(colonIndex + 1).trim();
+        meta[key] = value;
+      }
+
+      return { path, meta };
+    }
+  }
+);
+
+const routes = ref<RouteObject[]>([]);
+Promise.all(sketchPromises).then((sketches) => {
+  routes.value = sketches
+    .filter((sketch): sketch is RouteObject => !!sketch)
+    .map((sketch) => ({
+      path: sketch.path,
+      name: sketch.meta.name,
+      meta: sketch.meta,
+    }))
+    .sort((a, b) => {
+      const aDate = new Date(a.meta.date);
+      const bDate = new Date(b.meta.date);
+      return bDate.getTime() + aDate.getTime();
+    });
 });
 
 const shouldFilter = ref(true);
@@ -18,7 +77,7 @@ const filteredRoutes = computed(() => {
     : routes.value;
 });
 
-function previewRoute(route: RouteRecordRaw) {
+function previewRoute(route: RouteObject) {
   preview.value = route;
 
   if (route.meta && typeof route.meta.link === 'string') {

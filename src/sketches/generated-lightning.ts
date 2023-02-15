@@ -6,6 +6,11 @@ import generateLightning from '@/utils/shapes/lightning';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import type { LightningNode } from '@/utils/shapes/lightning';
 
+export const meta = {
+  name: 'Generated lightning',
+  date: '2023-02-02',
+};
+
 interface CanvasState {
   lightningCharge: number;
   origin: 'random' | Vector;

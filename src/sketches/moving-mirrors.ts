@@ -12,6 +12,13 @@ import type {
   FrameFn,
 } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: 'Moving mirrors',
+  date: '2023-01-09',
+  favourite: true,
+  link: 'https://codepen.io/callumacrae/full/qByPVNr',
+};
+
 const glsl = String.raw;
 
 interface CanvasState {

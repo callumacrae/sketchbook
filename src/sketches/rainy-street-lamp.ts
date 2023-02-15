@@ -16,6 +16,13 @@ import type {
   FrameFn,
 } from '@/utils/renderers/vanilla';
 
+export const meta = {
+  name: 'Rainy street lamp',
+  date: '2023-01-24',
+  favourite: true,
+  link: 'https://codepen.io/callumacrae/full/LYBrjEP',
+};
+
 const glsl = String.raw;
 
 interface CanvasState {

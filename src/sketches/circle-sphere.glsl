@@ -2,6 +2,11 @@
 #define ELLIPSE_SQUASH_FACTOR 3.85
 #define TIME_FACTOR 1.0
 
+// name: Circle sphere (glsl)
+// date: 2022-12-28
+// favourite: true
+// link: https://www.shadertoy.com/view/dtX3Dj
+
 // https://web.archive.org/web/20200207113336/http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
 vec3 hsv2rgb(vec3 c) {
   vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);

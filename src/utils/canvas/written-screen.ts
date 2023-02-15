@@ -2,14 +2,16 @@ import * as THREE from 'three';
 
 const glsl = String.raw;
 
-export default function writeScreen(data: {
-  ctx: CanvasRenderingContext2D | null;
-  gl: WebGLRenderingContext | null;
-  renderer: THREE.WebGLRenderer | null;
-  width: number;
-  height: number;
-}, cb: (ctx: CanvasRenderingContext2D) => void) {
-
+export default function writeScreen(
+  data: {
+    ctx: CanvasRenderingContext2D | null;
+    gl: WebGLRenderingContext | null;
+    renderer: THREE.WebGLRenderer | null;
+    width: number;
+    height: number;
+  },
+  cb: (ctx: CanvasRenderingContext2D) => void
+) {
   if (data.renderer) {
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);

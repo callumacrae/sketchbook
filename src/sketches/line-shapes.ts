@@ -3,6 +3,11 @@ import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import Vector from '@/utils/vector';
 
+export const meta = {
+  name: 'Line shapes',
+  date: '2022-02-07',
+};
+
 interface CanvasState {
   simplex: SimplexNoise;
 }
