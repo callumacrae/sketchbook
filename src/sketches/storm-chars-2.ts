@@ -210,7 +210,7 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
 
   testSupport(() => {
     if (!("OffscreenCanvas" in window)) {
-      return 'This sketch requires OffscreenCanvas ';
+      return 'This sketch requires OffscreenCanvas';
     }
     return true;
   });
