@@ -12,7 +12,6 @@ onMounted(() => {
 });
 
 const preview = ref<RouteObject | null>(null);
-const previewLink = ref('');
 
 const sketchModules = import.meta.glob('../sketches/*.{ts,glsl,vue}', {
   as: 'raw',
@@ -76,20 +75,6 @@ const filteredRoutes = computed(() => {
     ? routes.value.filter((route) => route.meta?.favourite)
     : routes.value;
 });
-
-function previewRoute(route: RouteObject) {
-  preview.value = route;
-
-  if (route.meta && typeof route.meta.link === 'string') {
-    previewLink.value = route.meta.link;
-  }
-}
-
-function handleTransitionEnd() {
-  if (previewLink.value && !preview.value?.meta?.link) {
-    previewLink.value = '';
-  }
-}
 </script>
 
 <template>
@@ -111,7 +96,7 @@ function handleTransitionEnd() {
       <ul>
         <li v-for="route in filteredRoutes" :key="route.path">
           <i v-if="route.meta && route.meta.favourite" class="fav-icon">⭐️</i>
-          <router-link :to="route.path" @mouseover="previewRoute(route)">
+          <router-link :to="route.path" @mouseover="preview = route">
             {{ route.name || route.path }}
           </router-link>
         </li>
@@ -120,20 +105,23 @@ function handleTransitionEnd() {
 
     <div
       class="preview"
-      :class="{ 'preview--has-link': preview?.meta?.link }"
-      @transitionend="handleTransitionEnd"
     >
-      <h1>Callum's sketchbook</h1>
+      <h1>callum's sketchbook</h1>
       <p>
-        Disclaimer: some of this is real shitty, this is called "sketchbook" not
+        disclaimer: some of this is real shitty, this is called "sketchbook" not
         "gallery"!
       </p>
 
       <iframe :src="preview?.path"></iframe>
 
       <!-- Added to the DOM even when empty for the transition -->
-      <a :href="previewLink" class="preview__link" target="_blank">
-        {{ previewLink }}
+      <a
+        v-if="preview?.meta?.link"
+        :href="preview?.meta?.link"
+        class="preview__link"
+        target="_blank"
+      >
+        {{ preview?.meta?.link }}
       </a>
     </div>
   </div>
@@ -151,7 +139,7 @@ export default {
   display: flex;
   justify-content: center;
 
-  font-family: sans-serif;
+  font-family: 'The Happy Giraffe', sans-serif;
 }
 
 .index {
@@ -164,6 +152,7 @@ h1 {
 }
 
 .toggle-favourites {
+  color: #666;
   font-size: 0.8em;
 }
 .toggle-favourites input {
@@ -173,7 +162,7 @@ h1 {
   cursor: pointer;
 }
 .toggle-favourites input:checked + span {
-  font-weight: bold;
+  color: black;
 }
 
 ul {
@@ -183,6 +172,10 @@ ul {
 
 li {
   margin: 1em 0;
+}
+
+a {
+  color: inherit;
 }
 
 li:last-child {
@@ -195,16 +188,27 @@ li:last-child {
 }
 
 .preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+
   margin-left: 100px;
   position: relative;
 
   width: 50vw;
 }
 
+.preview h1 {
+  margin: 0;
+}
+
+.preview p {
+  margin: 0;
+}
+
 .preview iframe {
   width: 50vw;
   height: calc(50vw / 16 * 9);
-  margin-top: 2em;
 
   background-color: white;
   border: 1px hsl(0, 0%, 80%) solid;
@@ -212,21 +216,7 @@ li:last-child {
 }
 
 .preview__link {
-  position: relative;
-  z-index: -1;
-
-  transform: translateY(-2em);
-  transition: transform 400ms;
-
-  display: block;
-  width: 100%;
-  margin-top: 0.5em;
-
   text-align: center;
-}
-
-.preview--has-link .preview__link {
-  transform: translateY(0);
 }
 
 @media only screen and (max-width: 768px) {

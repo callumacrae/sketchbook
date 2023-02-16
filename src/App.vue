@@ -3,6 +3,15 @@
 </template>
 
 <style>
+@font-face {
+  font-family: 'The Happy Giraffe';
+  src: url('/the-happy-giraffe/the_happy_giraffe_demo-webfont.woff2') format('woff2'),
+    url('/the-happy-giraffe/the_happy_giraffe_demo-webfont.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 body {
   margin: 0;
   overflow: hidden;
