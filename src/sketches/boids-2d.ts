@@ -15,7 +15,14 @@ interface CanvasState {
 }
 
 const sketchConfig = {
-  boidCount: 50,
+  boidCount: 250,
+  behaviourWeights: {
+    seek: 0.1,
+    flee: 0.1,
+    separation: 0.1,
+    cohesion: 0.1,
+    alignment: 0.1,
+  },
 };
 type SketchConfig = typeof sketchConfig;
 
@@ -24,7 +31,16 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
 };
 
 const init: InitFn<CanvasState, SketchConfig> = (props) => {
-  const { addEvent, width, height } = props;
+  const { addEvent, initControls, width, height } = props;
+
+  initControls(({ pane, config }) => {
+    // pane.addInput(config, 'boidCount', { min: 1, max: 1000, step: 1 });
+    // pane.addInput(config.behaviourWeights, 'seek', { min: 0, max: 1 });
+    // pane.addInput(config.behaviourWeights, 'flee', { min: 0, max: 1 });
+    pane.addInput(config.behaviourWeights, 'separation', { min: 0, max: 1 });
+    pane.addInput(config.behaviourWeights, 'cohesion', { min: 0, max: 1 });
+    pane.addInput(config.behaviourWeights, 'alignment', { min: 0, max: 1 });
+  });
 
   const boids = new VehicleGroup();
 
@@ -53,17 +69,17 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     ).scale(dpr);
 
     if (event.shiftKey) {
-      state.boids.flee(mousePos);
-      state.boids.seek(null);
+      state.boids.setFlee(mousePos);
+      state.boids.setSeek(null);
     } else {
-      state.boids.seek(mousePos);
-      state.boids.flee(null);
+      state.boids.setSeek(mousePos);
+      state.boids.setFlee(null);
     }
   });
 
   addEvent('mouseup', ({ state }) => {
-    state.boids.flee(null);
-    state.boids.seek(null);
+    state.boids.setFlee(null);
+    state.boids.setSeek(null);
   });
 
   return { boids };
@@ -75,8 +91,16 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
   width,
   height,
   delta,
+  hasChanged,
+  config,
 }) => {
   if (!ctx) throw new Error('???');
+
+  if (hasChanged) {
+    state.boids.setSeparation(config.behaviourWeights.separation);
+    state.boids.setCohesion(config.behaviourWeights.cohesion);
+    state.boids.setAlignment(config.behaviourWeights.alignment);
+  }
 
   ctx.clearRect(0, 0, width, height);
 
@@ -84,19 +108,19 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
     boid.step(1 / 60, delta / 1000, 3);
 
     if (boid.position.x < 0) {
-      boid.velocity.x = Math.abs(boid.velocity.x);
+      boid.position.x += width;
     } else if (boid.position.x > width) {
-      boid.velocity.x = -Math.abs(boid.velocity.x);
+      boid.position.x -= width;
     }
 
     if (boid.position.y < 0) {
-      boid.velocity.y = Math.abs(boid.velocity.x);
+      boid.position.y += height;
     } else if (boid.position.y > height) {
-      boid.velocity.y = -Math.abs(boid.velocity.x);
+      boid.position.y -= height;
     }
 
     ctx.beginPath();
-    const boidSize = 50;
+    const boidSize = 30;
     ctx.translate(boid.position.x, boid.position.y);
     ctx.rotate(boid.velocity.angle());
     ctx.moveTo(0, 0);

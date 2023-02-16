@@ -3,6 +3,9 @@ import Vector from '../../vector';
 export interface BoidBehaviours {
   seek?: { target: Vector; weight?: number };
   flee?: { target: Vector; weight?: number };
+  separation?: { weight?: number };
+  cohesion?: { weight?: number };
+  alignment?: { weight?: number };
 }
 
 export default class HasBehaviours {
@@ -26,7 +29,7 @@ export default class HasBehaviours {
     delete this.behaviours[name];
   }
 
-  seek(target: Vector | null, weight?: number) {
+  setSeek(target: Vector | null, weight?: number) {
     if (target === null) {
       this.clearBehaviour('seek');
     } else {
@@ -34,11 +37,35 @@ export default class HasBehaviours {
     }
   }
 
-  flee(target: Vector | null, weight?: number) {
+  setFlee(target: Vector | null, weight?: number) {
     if (target === null) {
       this.clearBehaviour('flee');
     } else {
       this.setBehaviour('flee', { target, weight });
+    }
+  }
+
+  setSeparation(weight: number | null) {
+    if (weight === null) {
+      this.clearBehaviour('separation');
+    } else {
+      this.setBehaviour('separation', { weight });
+    }
+  }
+
+  setCohesion(weight: number | null) {
+    if (weight === null) {
+      this.clearBehaviour('cohesion');
+    } else {
+      this.setBehaviour('cohesion', { weight });
+    }
+  }
+
+  setAlignment(weight: number | null) {
+    if (weight === null) {
+      this.clearBehaviour('alignment');
+    } else {
+      this.setBehaviour('alignment', { weight });
     }
   }
 }

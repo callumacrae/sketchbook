@@ -2,7 +2,7 @@ import Vehicle from './vehicle';
 import HasBehaviours from './mixins/has-behaviours';
 
 export default class VehicleGroup extends HasBehaviours {
-  private vehicles: Vehicle[] = [];
+  vehicles: Vehicle[] = [];
 
   constructor(vehicles?: Vehicle[]) {
     super();
