@@ -1,6 +1,6 @@
 import Vector from '@/utils/vector';
-import Boid from '@/utils/boids/boid';
-import BoidGroup from '@/utils/boids/boid-group';
+import Vehicle from '@/utils/vehicle/vehicle';
+import VehicleGroup from '@/utils/vehicle/vehicle-group';
 import * as random from '@/utils/random';
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
@@ -11,7 +11,7 @@ export const meta = {
 };
 
 interface CanvasState {
-  boids: BoidGroup;
+  boids: VehicleGroup;
 }
 
 const sketchConfig = {
@@ -26,12 +26,15 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
 const init: InitFn<CanvasState, SketchConfig> = (props) => {
   const { addEvent, width, height } = props;
 
-  const boids = new BoidGroup();
+  const boids = new VehicleGroup();
 
   for (let i = 0; i < sketchConfig.boidCount; i++) {
-    boids.addBoid(
-      new Boid({
-        position: new Vector(random.range(50, width - 50), random.range(50, height - 50)),
+    boids.addVehicle(
+      new Vehicle({
+        position: new Vector(
+          random.range(50, width - 50),
+          random.range(50, height - 50)
+        ),
         velocity: Vector.fromAngle(
           random.range(0, Math.PI * 2),
           random.range(40, 200)
@@ -44,19 +47,26 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     if (!ctx) throw new Error('???');
     if (!event.buttons) return;
     const bb = ctx.canvas.getBoundingClientRect();
-    const seekPoint = new Vector(
+    const mousePos = new Vector(
       event.clientX - bb.left,
       event.clientY - bb.top
     ).scale(dpr);
 
-    state.boids.seek(seekPoint);
+    if (event.shiftKey) {
+      state.boids.flee(mousePos);
+      state.boids.seek(null);
+    } else {
+      state.boids.seek(mousePos);
+      state.boids.flee(null);
+    }
   });
 
   addEvent('mouseup', ({ state }) => {
+    state.boids.flee(null);
     state.boids.seek(null);
   });
 
-  return { boids, };
+  return { boids };
 };
 
 const frame: FrameFn<CanvasState, SketchConfig> = ({
@@ -70,7 +80,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
 
   ctx.clearRect(0, 0, width, height);
 
-  for (const boid of state.boids.getBoids()) {
+  for (const boid of state.boids.getVehicles()) {
     boid.step(1 / 60, delta / 1000, 3);
 
     if (boid.position.x < 0) {

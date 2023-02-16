@@ -1,8 +1,8 @@
 import Vector from '../vector';
 import HasBehaviours from './mixins/has-behaviours';
-import type BoidGroup from './boid-group';
+import type VehicleGroup from './vehicle-group';
 
-export interface BoidOptions {
+export interface VehicleOptions {
   position?: Vector;
   velocity?: Vector;
 
@@ -12,7 +12,7 @@ export interface BoidOptions {
   linearDamping?: number;
 }
 
-export default class Boid extends HasBehaviours {
+export default class Vehicle extends HasBehaviours {
   position: Vector = new Vector(0, 0);
   velocity: Vector = new Vector(0, 0);
 
@@ -21,9 +21,9 @@ export default class Boid extends HasBehaviours {
 
   linearDamping: number = 0.1;
 
-  group?: BoidGroup;
+  group?: VehicleGroup;
 
-  constructor(options: BoidOptions) {
+  constructor(options: VehicleOptions) {
     super();
 
     if (options.position) this.position = options.position;
@@ -49,7 +49,15 @@ export default class Boid extends HasBehaviours {
       const { target, weight } = seekBehaviour;
       const desired = target.sub(this.position).setMagnitude(this.maxVelocity);
       const seekForce = desired.sub(this.velocity);
-      force = force.add(seekForce.scale(weight));
+      force = force.add(seekForce.scale(weight ?? 1));
+    }
+
+    const fleeBehaviour = this.behaviours.flee || this.group?.behaviours.flee;
+    if (fleeBehaviour) {
+      const { target, weight } = fleeBehaviour;
+      const desired = this.position.sub(target).setMagnitude(this.maxVelocity);
+      const seekForce = desired.sub(this.velocity);
+      force = force.add(seekForce.scale(weight ?? 1));
     }
 
     force = force.limit(this.maxForce);

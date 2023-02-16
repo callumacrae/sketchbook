@@ -1,7 +1,8 @@
 import Vector from '../../vector';
 
 export interface BoidBehaviours {
-  seek?: { target: Vector; weight: number };
+  seek?: { target: Vector; weight?: number };
+  flee?: { target: Vector; weight?: number };
 }
 
 export default class HasBehaviours {
@@ -13,9 +14,12 @@ export default class HasBehaviours {
 
   setBehaviour<T extends keyof BoidBehaviours>(
     name: T,
-    behaviour: BoidBehaviours[T]
+    behaviour: NonNullable<BoidBehaviours[T]>
   ) {
-    this.behaviours[name] = behaviour;
+    this.behaviours[name] = {
+      weight: this.behaviours[name]?.weight,
+      ...behaviour,
+    };
   }
 
   clearBehaviour(name: keyof BoidBehaviours) {
@@ -25,12 +29,16 @@ export default class HasBehaviours {
   seek(target: Vector | null, weight?: number) {
     if (target === null) {
       this.clearBehaviour('seek');
-      return;
+    } else {
+      this.setBehaviour('seek', { target, weight });
     }
+  }
 
-    this.setBehaviour('seek', {
-      target,
-      weight: weight ?? this.behaviours.seek?.weight ?? 1,
-    });
+  flee(target: Vector | null, weight?: number) {
+    if (target === null) {
+      this.clearBehaviour('flee');
+    } else {
+      this.setBehaviour('flee', { target, weight });
+    }
   }
 }
