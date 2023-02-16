@@ -17,51 +17,26 @@
         :key="`highlight-${i}`"
       />
 
-      <path
-        v-for="(shape, i) in shapes"
-        v-bind="shape"
-        :key="`shape-${i}`"
-      />
+      <path v-for="(shape, i) in shapes" v-bind="shape" :key="`shape-${i}`" />
     </svg>
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
 import SimplexNoise from 'simplex-noise';
 
-const colors = ['#ea9085', '#ffa372', '#512b58'];
-
-/**
- *      /\
- *     A   B=A
- *    /__C__\
- */
-const randomTriangle = () => {
-  const A = 50 + Math.random() * 20;
-  const C = 40 + Math.random() * 40;
-
-  const centroid = {
-    x: 100 + Math.random() * 400,
-    y: 100 + Math.random() * 400
-  };
-
-  const height = Math.sqrt(A ** 2 - (C / 2) ** 2);
-
-  const a = [centroid.x + C / 2, centroid.y + height / 2];
-  const b = [centroid.x - C / 2, centroid.y + height / 2];
-  const c = [centroid.x, centroid.y - height / 2];
-
-  return `M ${a.join(' ')} L ${b.join(' ')} L ${c.join(' ')}`;
+export const meta = {
+  name: 'Contour texture v1',
+  date: '2020-05-12',
 };
 
 const simplex = new SimplexNoise();
 
-export default Vue.extend({
+export default {
   data: () => ({
     shapes: [],
     highlightPixels: [],
-    z: 0
+    z: 0,
   }),
   mounted() {
     this.paint();
@@ -83,7 +58,7 @@ export default Vue.extend({
       this.highlightPixels = [];
 
       let maxLoops = 1e6;
-      const abortLoop = msg => {
+      const abortLoop = (msg) => {
         if (maxLoops-- < 1) {
           console.error('ABORTING PROBABLE INFINITE LOOP', msg);
           return true;
@@ -115,7 +90,7 @@ export default Vue.extend({
       //   }
       // }
 
-      let hotspots = [];
+      const hotspots = [];
 
       const isHotspot = (x, y) =>
         simplex.noise3D(x * xScaleFactor, y * yScaleFactor, this.z) > 0.4;
@@ -127,9 +102,9 @@ export default Vue.extend({
           if (isHotspot(x, y)) {
             // Check if already in another hotspot - if so, abort
             // @todo room for optimisation again - can skip to end of hotspot
-            const alreadyGrouped = hotspots.some(hotspot =>
+            const alreadyGrouped = hotspots.some((hotspot) =>
               hotspot.find(
-                toSearchItem => toSearchItem[0] === x && toSearchItem[1] === y
+                (toSearchItem) => toSearchItem[0] === x && toSearchItem[1] === y
               )
             );
 
@@ -140,7 +115,7 @@ export default Vue.extend({
             const hotspot = [[x, y]];
             const toSearch = [
               [x + width, y],
-              [x, y + height]
+              [x, y + height],
             ];
 
             // Heads up, toSearch.length changes mid-loop
@@ -152,12 +127,12 @@ export default Vue.extend({
               if (isHotspot(search[0], search[1])) {
                 hotspot.push(search);
 
-                const maybeAdd = searchNext => {
+                const maybeAdd = (searchNext) => {
                   // @todo room for optimisation here - use a data structure that
                   // we can do .includes() on or something
                   if (
                     !toSearch.find(
-                      toSearchItem =>
+                      (toSearchItem) =>
                         toSearchItem[0] === searchNext[0] &&
                         toSearchItem[1] === searchNext[1]
                     )
@@ -181,11 +156,11 @@ export default Vue.extend({
       // hotspots = [hotspots[10]]
 
       // Find outline of hotspots
-      hotspots.forEach(hotspot => {
+      hotspots.forEach((hotspot) => {
         const xValues = new Set(hotspot.map(([x]) => x).sort((a, b) => a - b));
         const borders = [];
 
-        xValues.forEach(x => {
+        xValues.forEach((x) => {
           const yValuesForX = hotspot
             .filter(([maybeX]) => x === maybeX)
             .map(([_, y]) => y);
@@ -195,7 +170,7 @@ export default Vue.extend({
 
         Array.from(xValues)
           .reverse()
-          .forEach(x => {
+          .forEach((x) => {
             const yValuesForX = hotspot
               .filter(([maybeX]) => x === maybeX)
               .map(([_, y]) => y);
@@ -214,18 +189,19 @@ export default Vue.extend({
           d,
           stroke: 'orange',
           'stroke-width': 2,
-          fill: 'none'
+          fill: 'none',
         });
       });
 
       // this.highlightPixels = hotspots.reduce((a, b) => a.concat(b));
-    }
-  }
-});
+    },
+  },
+};
 </script>
 
 <style lang="scss">
 .triangles {
+  width: 100vw;
   height: 100vh;
   background-color: #2c003e;
 }

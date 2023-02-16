@@ -9,13 +9,19 @@ import * as THREE from 'three';
 import SimplexNoise from 'simplex-noise';
 import BlobCanvas from '../utils/textures/blobs';
 
+export const meta = {
+  name: 'Contour texture on cube',
+  date: '2020-06-15',
+  favourite: true,
+};
+
 const simplex = new SimplexNoise();
 
 export default {
   data: () => ({
     status: 'playing',
     timestamp: 0,
-    frameId: undefined
+    frameId: undefined,
   }),
   mounted() {
     const rect = this.$refs.canvas.getBoundingClientRect();
@@ -63,7 +69,7 @@ export default {
 
     this.frameId = requestAnimationFrame(this.frame);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     cancelAnimationFrame(this.frameId);
   },
   methods: {
@@ -106,7 +112,7 @@ export default {
         this.generateCanvasTexture(0, size, size, 0, 0, 0, Math.PI / -2),
         this.generateCanvasTexture(size, 0, size, size, size, 0, Math.PI / -2),
         this.generateCanvasTexture(0, 0, size, size, 0, 0, Math.PI / -2),
-        this.generateCanvasTexture(0, size, 0, size, size, size, Math.PI / -2)
+        this.generateCanvasTexture(0, size, 0, size, size, size, Math.PI / -2),
       ];
 
       const materials = [
@@ -115,7 +121,7 @@ export default {
         new THREE.MeshPhongMaterial({ map: canvasTextures[2].texture }),
         new THREE.MeshPhongMaterial({ map: canvasTextures[3].texture }),
         new THREE.MeshPhongMaterial({ map: canvasTextures[4].texture }),
-        new THREE.MeshPhongMaterial({ map: canvasTextures[5].texture })
+        new THREE.MeshPhongMaterial({ map: canvasTextures[5].texture }),
       ];
 
       return { canvasTextures, materials };
@@ -145,7 +151,7 @@ export default {
       const textureHeight = 256;
 
       const blobCanvas = new BlobCanvas({
-        customNoiseAt: (x, y, t) => {
+        customNoiseAt: (x, y) => {
           const time = this.timestamp / 10e3;
           return simplex.noise4D(
             ...map(x / textureWidth, y / textureHeight),
@@ -154,7 +160,7 @@ export default {
         },
         width: textureWidth,
         height: textureHeight,
-        dpr: 1
+        dpr: 1,
       });
       blobCanvas.frame();
 
@@ -168,8 +174,8 @@ export default {
       }
 
       return { blobCanvas, texture };
-    }
-  }
+    },
+  },
 };
 </script>
 

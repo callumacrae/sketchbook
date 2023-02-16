@@ -67,7 +67,7 @@ export default {
     gui.add(this.options, 'noiseXOutFactor', 0, 200);
     gui.add(this.options, 'noiseYOutFactor', 0, 200);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     cancelAnimationFrame(this.frameId);
 
     if (this.gui) {

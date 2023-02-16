@@ -29,7 +29,7 @@ export default {
     this.init();
     this.frame();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     cancelAnimationFrame(this.frameId);
   },
   methods: {

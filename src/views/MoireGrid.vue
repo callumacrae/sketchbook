@@ -222,7 +222,7 @@ export default {
       });
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     cancelAnimationFrame(this.frameId);
   },
   methods: {

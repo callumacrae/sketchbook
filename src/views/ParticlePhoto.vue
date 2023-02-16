@@ -35,7 +35,7 @@ export default {
     this.setSize();
     this.init().then(() => this.frame());
   },
-  beforeDestroy() {
+  beforeUnmount() {
     cancelAnimationFrame(this.frameId);
   },
   methods: {

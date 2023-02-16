@@ -59,21 +59,27 @@
 </template>
 
 <script>
+export const meta = {
+  name: 'Light tracing',
+  date: '2020-06-30',
+  link: 'https://twitter.com/callumacrae/status/1272626085365264387',
+};
+
 export default {
   data: () => ({
-    i: 0
+    i: 0,
   }),
   mounted() {
     this.frameId = requestAnimationFrame(this.frame);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     cancelAnimationFrame(this.frameId);
   },
   methods: {
     frame() {
       this.i++;
       this.frameId = requestAnimationFrame(this.frame);
-    }
+    },
   },
   computed: {
     leftAnimationProgress() {
@@ -83,19 +89,18 @@ export default {
       return ((this.i + 126) / 650) % 1;
     },
     rightAnimationProgress() {
-      return ((this.i) / 800) % 1;
+      return (this.i / 800) % 1;
     },
     leftColor() {
-      return `hsl(${this.i / 5}, 100%, 50%)`
+      return `hsl(${this.i / 5}, 100%, 50%)`;
     },
     middleColor() {
-      return `hsl(${this.i / 4 + 120}, 100%, 50%)`
+      return `hsl(${this.i / 4 + 120}, 100%, 50%)`;
     },
     rightColor() {
-      return `hsl(${this.i / 6 + 240}, 100%, 50%)`
+      return `hsl(${this.i / 6 + 240}, 100%, 50%)`;
     },
     leftDashOffset() {
-      const from = 0;
       const to = 0.7;
       const progress = this.leftAnimationProgress;
       if (progress > to) {
@@ -126,7 +131,6 @@ export default {
       return a;
     },
     middleDashOffset() {
-      const from = 0;
       const to = 0.7;
       const progress = this.middleAnimationProgress;
       if (progress > to) {
@@ -157,7 +161,6 @@ export default {
       return a;
     },
     rightDashOffset() {
-      const from = 0;
       const to = 0.7;
       const progress = this.rightAnimationProgress;
       if (progress > to) {
@@ -186,8 +189,8 @@ export default {
       }
 
       return a;
-    }
-  }
+    },
+  },
 };
 </script>
 

@@ -8,6 +8,8 @@ import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 export const meta = {
   name: 'Normal lines',
   date: '2020-06-10',
+  favourite: true,
+  link: 'https://codepen.io/callumacrae/full/RwRmgog',
 };
 
 interface CanvasState {

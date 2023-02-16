@@ -4,24 +4,22 @@
 
 <script>
 import * as THREE from 'three';
-import { OBJLoader2 } from 'three/examples/jsm/loaders/OBJLoader2';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-
-import cowUrl from '!file-loader!../assets/cow.obj';
 
 import SimplexNoise from 'simplex-noise';
 
-import chroma from 'chroma-js';
-import { schemePRGn } from 'd3-scale-chromatic';
-
-const colorScale = chroma.scale(schemePRGn[11]).domain([-1, 1]);
+export const meta = {
+  name: 'Shitty animated cow',
+  date: '2020-06-04',
+};
 
 const simplex = new SimplexNoise();
 
 export default {
   data: () => ({
     frameId: undefined,
-    z: 0
+    z: 0,
   }),
   mounted() {
     const rect = this.$refs.canvas.getBoundingClientRect();
@@ -39,9 +37,9 @@ export default {
     this.scene.add(ambientLight);
 
     this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    this.directionalLight.position.set(400, 400, 400)
-    this.directionalLight.lookAt(0, 0, 0)
-    this.scene.add(this.directionalLight)
+    this.directionalLight.position.set(400, 400, 400);
+    this.directionalLight.lookAt(0, 0, 0);
+    this.scene.add(this.directionalLight);
 
     this.camera = new THREE.PerspectiveCamera(100, width / height, 500, 5000);
     this.camera.position.x = 257 * 2;
@@ -52,12 +50,12 @@ export default {
 
     const texture = this.generateTexture();
     this.material = new THREE.MeshPhongMaterial({
-      map: texture
+      map: texture,
     });
 
-    const objLoader = new OBJLoader2();
-    objLoader.load(cowUrl, root => {
-      root.traverse(child => {
+    const objLoader = new OBJLoader();
+    objLoader.load('/animated-cow/cow.obj', (root) => {
+      root.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.material = this.material;
         }
@@ -65,14 +63,12 @@ export default {
       this.scene.add(root);
 
       const box = new THREE.Box3().setFromObject(root);
-      const boxSize = box.getSize(new THREE.Vector3()).length();
       const boxCenter = box.getCenter(new THREE.Vector3());
       this.camera.lookAt(boxCenter.x, boxCenter.y, boxCenter.z);
-      console.log(boxSize, boxCenter);
       this.frame();
     });
   },
-  beforeDestroy() {
+  beforeUnmount() {
     cancelAnimationFrame(this.frameId);
   },
   methods: {
@@ -91,11 +87,11 @@ export default {
       const textureWidth = 100;
       const textureHeight = 100;
       const size = textureWidth * textureHeight;
-      const data = new Uint8Array(3 * size);
+      const data = new Uint8Array(4 * size);
       const z = this.z;
 
       for (let i = 0; i < size; i++) {
-        const stride = i * 3;
+        const stride = i * 4;
 
         const x = i % textureWidth;
         const y = Math.floor(i / textureHeight);
@@ -105,16 +101,14 @@ export default {
         data[stride] = color;
         data[stride + 1] = color;
         data[stride + 2] = color;
+        data[stride + 3] = 255;
       }
 
-      return new THREE.DataTexture(
-        data,
-        textureWidth,
-        textureHeight,
-        THREE.RGBFormat
-      );
-    }
-  }
+      const texture = new THREE.DataTexture(data, textureWidth, textureHeight);
+      texture.needsUpdate = true;
+      return texture;
+    },
+  },
 };
 </script>
 

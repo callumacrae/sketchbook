@@ -183,15 +183,21 @@
 <script>
 import SimplexNoise from 'simplex-noise';
 
+export const meta = {
+  name: 'Plant projection mapping',
+  date: '2020-07-06',
+  link: 'https://twitter.com/callumacrae/status/1279855080523563009',
+};
+
 const simplexNoise = new SimplexNoise();
 
 export default {
   data: () => ({
     frameId: undefined,
-    algorithm: 'simplex'
+    algorithm: 'simplex',
   }),
   mounted() {
-    this.children = Array.from(this.$el.children).map(element => {
+    this.children = Array.from(this.$el.children).map((element) => {
       if (element.tagName === 'path') {
         const match = /M\s*([-\d.]+)[\s,]+([-\d.]+)/.exec(
           element.getAttribute('d')
@@ -204,7 +210,7 @@ export default {
         return {
           x: Number(match[1]),
           y: Number(match[2]),
-          element
+          element,
         };
       }
 
@@ -212,7 +218,7 @@ export default {
         return {
           x: Number(element.getAttribute('x')),
           y: Number(element.getAttribute('y')),
-          element
+          element,
         };
       }
 
@@ -221,7 +227,7 @@ export default {
 
     this.frame();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     cancelAnimationFrame(this.frameId);
   },
   methods: {
@@ -244,8 +250,8 @@ export default {
       const noise = simplexNoise.noise3D(x * xScale, y * yScale, z * zScale);
 
       return noise < 0 ? 0 : noise;
-    }
-  }
+    },
+  },
 };
 </script>
 

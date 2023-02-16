@@ -277,7 +277,7 @@ export default {
       gui.close();
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     cancelAnimationFrame(this.frameId);
 
     if (this.gui) {

@@ -16,6 +16,13 @@ import * as random from '../utils/random';
 import eases from 'eases';
 import BezierEasing from 'bezier-easing';
 
+export const meta = {
+  name: 'Exploding text',
+  date: '2022-07-08',
+  favourite: true,
+  link: 'https://codepen.io/callumacrae/full/GRodzvO',
+};
+
 const rotationEasing = BezierEasing(0.9, 0.25, 0.1, 0.75);
 
 export default {
@@ -23,7 +30,7 @@ export default {
     status: typeof OffscreenCanvas === 'undefined' ? 'unsupported' : 'playing',
     frameId: undefined,
     width: undefined,
-    height: undefined
+    height: undefined,
   }),
   mounted() {
     const canvas = this.$el;
@@ -35,13 +42,13 @@ export default {
     canvas.height = this.height;
 
     this.helloTiles = this.generateTiles('hello');
-    this.worldTiles = this.generateTiles('world', textCtx => {
+    this.worldTiles = this.generateTiles('world', (textCtx) => {
       textCtx.fillStyle = 'white';
     });
 
     this.frame();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     cancelAnimationFrame(this.frameId);
   },
   methods: {
@@ -191,7 +198,7 @@ export default {
             coords: [topLeft, topRight, bottomLeft, bottomRight],
             delay,
             translate: [random.range(-40, 40), random.range(140, 160) + j * 10],
-            rotate: random.range(-Math.PI / 2, Math.PI / 2)
+            rotate: random.range(-Math.PI / 2, Math.PI / 2),
           });
         });
       });
@@ -230,7 +237,7 @@ export default {
         tileWidth,
         tileHeight,
         textWidth,
-        textHeight
+        textHeight,
       };
     },
     drawTiles(tilesObj, t) {
@@ -268,7 +275,7 @@ export default {
 
         const origin = [
           topLeft[0] + tileWidth / 2,
-          topLeft[1] + tileHeight / 2
+          topLeft[1] + tileHeight / 2,
         ];
         // ctx.translate(origin[0], origin[1]);
         ctx.translate(
@@ -282,8 +289,8 @@ export default {
       });
 
       ctx.restore();
-    }
-  }
+    },
+  },
 };
 </script>
 
