@@ -35,6 +35,13 @@ export default class Vector {
     return new Vector(this.x * factor, this.y * factor);
   }
 
+  limit(max: number) {
+    if (this.length() > max) {
+      return this.setMagnitude(max);
+    }
+    return this;
+  }
+
   rotate(angle: number) {
     const c = Math.cos(angle);
     const s = Math.sin(angle);
