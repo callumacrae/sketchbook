@@ -1,11 +1,19 @@
 import Vector from '../../vector';
 
+type HasWallFn = (current: Vector, ahead: Vector) => number | false;
+
 export interface BoidBehaviours {
   seek?: { target: Vector; weight?: number };
   flee?: { target: Vector; weight?: number };
   separation?: { weight?: number };
   cohesion?: { weight?: number };
   alignment?: { weight?: number };
+  avoidWalls?: {
+    hitsWall: HasWallFn;
+    lookAhead?: number;
+    emergency?: Vector;
+    weight?: number;
+  };
 }
 
 export default class HasBehaviours {
@@ -74,6 +82,14 @@ export default class HasBehaviours {
       this.clearBehaviour('alignment');
     } else {
       this.setBehaviour('alignment', { weight });
+    }
+  }
+
+  setAvoidWalls(behaviour: BoidBehaviours['avoidWalls'] | null) {
+    if (behaviour === null) {
+      this.clearBehaviour('avoidWalls');
+    } else {
+      this.setBehaviour('avoidWalls', behaviour);
     }
   }
 }

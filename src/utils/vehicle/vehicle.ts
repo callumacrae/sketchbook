@@ -130,6 +130,78 @@ export default class Vehicle extends HasBehaviours {
       }
     }
 
+    const avoidWallsBehaviour =
+      this.behaviours.avoidWalls || this.group?.behaviours.avoidWalls;
+    if (avoidWallsBehaviour) {
+      let { hitsWall, lookAhead = 0.1, weight } = avoidWallsBehaviour;
+
+      lookAhead = 1;
+      weight = 5;
+      const lookAheadVector = this.velocity.scale(lookAhead);
+
+      const rotateVal = 0.1;
+
+      const collides = hitsWall(this.position, lookAheadVector);
+      if (collides !== false) {
+        let foundPerfect = false;
+
+        let bestCollisionValue = Infinity;
+        let bestCollisionRotation: number | null = null;
+
+        for (let i = 0; i < Math.PI / 1.2 / rotateVal; i++) {
+          const posCollides = hitsWall(
+            this.position,
+            lookAheadVector.rotate(rotateVal * i)
+          );
+          if (posCollides === false) {
+            force = force.add(
+              lookAheadVector
+                .rotate(Math.min(Math.PI / 2, rotateVal * i * 4))
+                .scale(1 / Math.pow(collides, 2))
+                .scale(weight ?? 1)
+            );
+            foundPerfect = true;
+            break;
+          } else if (posCollides !== 0 && posCollides < bestCollisionValue) {
+            bestCollisionValue = posCollides;
+            bestCollisionRotation = rotateVal * i;
+          }
+
+          const negCollides = hitsWall(
+            this.position,
+            lookAheadVector.rotate(-rotateVal * i)
+          );
+          if (negCollides === false) {
+            force = force.add(
+              lookAheadVector
+                .rotate(-Math.min(Math.PI / 2, rotateVal * i * 4))
+                .scale(1 / Math.pow(collides, 2))
+                .scale(weight ?? 1)
+            );
+            foundPerfect = true;
+            break;
+          } else if (negCollides !== 0 && negCollides < bestCollisionValue) {
+            bestCollisionValue = negCollides;
+            bestCollisionRotation = -rotateVal * i;
+          }
+        }
+
+        if (!foundPerfect) {
+          if (bestCollisionRotation !== null) {
+            force = force.add(
+              lookAheadVector.rotate(bestCollisionRotation).scale(weight ?? 1)
+            );
+          } else {
+            // If it's totally lost, head to emergency point
+            const centerOffset = (
+              avoidWallsBehaviour.emergency ?? new Vector(0, 0)
+            ).sub(this.position);
+            force = force.add(centerOffset.scale(weight ?? 1));
+          }
+        }
+      }
+    }
+
     force = force.limit(maxForce);
 
     this.velocity = this.velocity

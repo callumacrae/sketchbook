@@ -18,18 +18,20 @@ const sketchConfig = {
   boids: {
     count: 300,
     minVelocity: 200,
-    maxVelocity: 400,
-    maxForce: 500,
+    maxVelocity: 300,
+    maxForce: 1000,
   },
   neighbours: {
-    distance: 200,
+    distance: 100,
   },
-  behaviourWeights: {
-    seek: 0.1,
-    flee: 0.1,
-    separation: 0.7,
-    cohesion: 0.6,
-    alignment: 0.15,
+  behaviours: {
+    seekWeight: 5,
+    fleeWeight: 5,
+    separationWeight: 0.5,
+    cohesionWeight: 0.4,
+    alignmentWeight: 0.6,
+    avoidWallsLookAhead: 1,
+    avoidWallsWeight: 5,
   },
 };
 type SketchConfig = typeof sketchConfig;
@@ -65,7 +67,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
       min: 0,
       max: 1000,
     });
-    boidsFolder.addInput(config.boids, 'maxForce', { min: 0, max: 1000 });
+    boidsFolder.addInput(config.boids, 'maxForce', { min: 0, max: 4000 });
 
     const neighboursFolder = pane.addFolder({ title: 'Neighbours' });
     neighboursFolder.addInput(config.neighbours, 'distance', {
@@ -73,20 +75,28 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
       max: 500,
     });
 
-    const behavioursFolder = pane.addFolder({ title: 'Behaviour Weights' });
-    // behavioursFolder.addInput(config.behaviourWeights, 'seek', { min: 0, max: 1 });
-    // behavioursFolder.addInput(config.behaviourWeights, 'flee', { min: 0, max: 1 });
-    behavioursFolder.addInput(config.behaviourWeights, 'separation', {
+    const behavioursFolder = pane.addFolder({ title: 'Behaviours' });
+    behavioursFolder.addInput(config.behaviours, 'seekWeight', { min: 0, max: 20 });
+    behavioursFolder.addInput(config.behaviours, 'fleeWeight', { min: 0, max: 20 });
+    behavioursFolder.addInput(config.behaviours, 'separationWeight', {
       min: 0,
       max: 2,
     });
-    behavioursFolder.addInput(config.behaviourWeights, 'cohesion', {
+    behavioursFolder.addInput(config.behaviours, 'cohesionWeight', {
       min: 0,
       max: 2,
     });
-    behavioursFolder.addInput(config.behaviourWeights, 'alignment', {
+    behavioursFolder.addInput(config.behaviours, 'alignmentWeight', {
       min: 0,
       max: 2,
+    });
+    behavioursFolder.addInput(config.behaviours, 'avoidWallsLookAhead', {
+      min: 0,
+      max: 4,
+    });
+    behavioursFolder.addInput(config.behaviours, 'avoidWallsWeight', {
+      min: 0,
+      max: 10,
     });
   });
 
@@ -96,7 +106,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     boids.addVehicle(newBoid(width, height));
   }
 
-  addEvent('mousemove', ({ ctx, event, dpr, state }) => {
+  addEvent('mousemove', ({ config, ctx, event, dpr, state }) => {
     if (!ctx) throw new Error('???');
     if (!event.buttons) return;
     const bb = ctx.canvas.getBoundingClientRect();
@@ -106,10 +116,10 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     ).scale(dpr);
 
     if (event.shiftKey) {
-      state.boids.setFlee(mousePos);
+      state.boids.setFlee(mousePos, config.behaviours.fleeWeight);
       state.boids.setSeek(null);
     } else {
-      state.boids.setSeek(mousePos);
+      state.boids.setSeek(mousePos, config.behaviours.seekWeight);
       state.boids.setFlee(null);
     }
   });
@@ -134,9 +144,46 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
   if (!ctx) throw new Error('???');
 
   if (hasChanged) {
-    state.boids.setSeparation(config.behaviourWeights.separation);
-    state.boids.setCohesion(config.behaviourWeights.cohesion);
-    state.boids.setAlignment(config.behaviourWeights.alignment);
+    state.boids.setSeparation(config.behaviours.separationWeight);
+    state.boids.setCohesion(config.behaviours.cohesionWeight);
+    state.boids.setAlignment(config.behaviours.alignmentWeight);
+
+    const hitsWall = (current: Vector, ahead: Vector) => {
+      const buffer = 50;
+      const rLeft = (buffer - current.x) / ahead.x;
+      const rRight = (width - buffer - current.x) / ahead.x;
+
+      const rTop = (buffer - current.y) / ahead.y;
+      const rBottom = (height - buffer - current.y) / ahead.y;
+
+      const candidates = [];
+      if (rLeft > 0 && rLeft < 1) candidates.push(rLeft);
+      if (rRight > 0 && rRight < 1) candidates.push(rRight);
+      if (rTop > 0 && rTop < 1) candidates.push(rTop);
+      if (rBottom > 0 && rBottom < 1) candidates.push(rBottom);
+
+      if (candidates.length) {
+        return Math.min(...candidates);
+      }
+
+      // Already behind wall
+      if (
+        current.x < buffer ||
+        current.x > width - buffer ||
+        current.y < buffer ||
+        current.y > height - buffer
+      ) {
+        return 0;
+      }
+
+      return false;
+    };
+    state.boids.setAvoidWalls({
+      hitsWall,
+      lookAhead: config.behaviours.avoidWallsLookAhead,
+      emergency: new Vector(width / 2, height / 2),
+      weight: config.behaviours.avoidWallsWeight
+    });
 
     state.boids.minVelocity = config.boids.minVelocity;
     state.boids.maxVelocity = config.boids.maxVelocity;
@@ -160,18 +207,6 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
 
   for (const boid of state.boids.getVehicles()) {
     boid.step(1 / 60, delta / 1000, 3);
-
-    if (boid.position.x < 0) {
-      boid.position.x += width;
-    } else if (boid.position.x > width) {
-      boid.position.x -= width;
-    }
-
-    if (boid.position.y < 0) {
-      boid.position.y += height;
-    } else if (boid.position.y > height) {
-      boid.position.y -= height;
-    }
 
     ctx.beginPath();
     const boidSize = 15;
