@@ -27,3 +27,6 @@ export function randomEquilateral(
 
   return `M ${a.join(' ')} L ${b.join(' ')} L ${c.join(' ')} Z`;
 }
+
+// Skypack doesn't like it when there isn't a default export
+export default {};

@@ -85,7 +85,7 @@ export default class HasBehaviours {
     }
   }
 
-  setAvoidWalls(behaviour: BoidBehaviours['avoidWalls'] | null) {
+  setAvoidWalls(behaviour: NonNullable<BoidBehaviours['avoidWalls']> | null) {
     if (behaviour === null) {
       this.clearBehaviour('avoidWalls');
     } else {

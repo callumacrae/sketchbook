@@ -35,3 +35,6 @@ export function clamp(range: [number, number], value: number) {
 export function saturate(value: number) {
   return clamp([0, 1], value);
 }
+
+// Skypack doesn't like it when there isn't a default export
+export default {};

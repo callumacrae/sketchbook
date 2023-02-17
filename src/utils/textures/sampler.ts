@@ -69,3 +69,6 @@ function averageOfData(d: ImageData) {
   const pixels = d.data.length / 4;
   return [r / pixels, g / pixels, b / pixels, 1];
 }
+
+// Skypack doesn't like it when there isn't a default export
+export default {};

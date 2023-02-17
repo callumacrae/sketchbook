@@ -1164,3 +1164,6 @@ export {
   cloneUniform,
   mapShader,
 };
+
+// Skypack doesn't like it when there isn't a default export
+export default {};

@@ -105,3 +105,6 @@ self.onmessage = (event: MessageEvent<LightningWorkerMessageIn>) => {
     throw new Error('unknown type', event.data.type);
   }
 };
+
+// Skypack doesn't like it when there isn't a default export
+export default {};

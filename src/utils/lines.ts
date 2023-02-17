@@ -28,3 +28,6 @@ export function findIntersection(verticalLine: Line, horizontalLine: Line) {
   const y = a * x + b;
   return [x, y];
 }
+
+// Skypack doesn't like it when there isn't a default export
+export default {};

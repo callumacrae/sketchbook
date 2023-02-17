@@ -7,3 +7,6 @@ const colorsArray: [string, string, string, string][] = JSON.parse(
 export function rand4(): [string, string, string, string] {
   return colorsArray[Math.floor(Math.random() * colorsArray.length)];
 }
+
+// Skypack doesn't like it when there isn't a default export
+export default {};

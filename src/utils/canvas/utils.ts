@@ -35,3 +35,6 @@ export function ensureCanvas2DContext(
     throw new Error('Canvas context is not 2D');
   }
 }
+
+// Skypack doesn't like it when there isn't a default export
+export default {};
