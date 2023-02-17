@@ -11,6 +11,14 @@ export interface BoidBehaviours {
 export default class HasBehaviours {
   behaviours: BoidBehaviours = {};
 
+  minVelocity: number | undefined;
+  maxVelocity: number | undefined;
+  maxForce: number | undefined;
+
+  linearDamping: number | undefined;
+
+  neighbourDistance: number | undefined;
+
   setBehaviours(behaviours: BoidBehaviours) {
     this.behaviours = behaviours;
   }

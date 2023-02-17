@@ -15,13 +15,21 @@ interface CanvasState {
 }
 
 const sketchConfig = {
-  boidCount: 250,
+  boids: {
+    count: 300,
+    minVelocity: 200,
+    maxVelocity: 400,
+    maxForce: 500,
+  },
+  neighbours: {
+    distance: 200,
+  },
   behaviourWeights: {
     seek: 0.1,
     flee: 0.1,
-    separation: 0.1,
-    cohesion: 0.1,
-    alignment: 0.1,
+    separation: 0.7,
+    cohesion: 0.6,
+    alignment: 0.15,
   },
 };
 type SketchConfig = typeof sketchConfig;
@@ -30,33 +38,62 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
   sketchConfig,
 };
 
+function newBoid(width: number, height: number) {
+  return new Vehicle({
+    position: new Vector(
+      random.range(50, width - 50),
+      random.range(50, height - 50)
+    ),
+    velocity: Vector.fromAngle(
+      random.range(0, Math.PI * 2),
+      random.range(200, 400)
+    ),
+  });
+}
+
 const init: InitFn<CanvasState, SketchConfig> = (props) => {
   const { addEvent, initControls, width, height } = props;
 
   initControls(({ pane, config }) => {
-    // pane.addInput(config, 'boidCount', { min: 1, max: 1000, step: 1 });
-    // pane.addInput(config.behaviourWeights, 'seek', { min: 0, max: 1 });
-    // pane.addInput(config.behaviourWeights, 'flee', { min: 0, max: 1 });
-    pane.addInput(config.behaviourWeights, 'separation', { min: 0, max: 1 });
-    pane.addInput(config.behaviourWeights, 'cohesion', { min: 0, max: 1 });
-    pane.addInput(config.behaviourWeights, 'alignment', { min: 0, max: 1 });
+    const boidsFolder = pane.addFolder({ title: 'Boids' });
+    boidsFolder.addInput(config.boids, 'count', { min: 1, max: 1000, step: 1 });
+    boidsFolder.addInput(config.boids, 'minVelocity', {
+      min: 0,
+      max: 1000,
+    });
+    boidsFolder.addInput(config.boids, 'maxVelocity', {
+      min: 0,
+      max: 1000,
+    });
+    boidsFolder.addInput(config.boids, 'maxForce', { min: 0, max: 1000 });
+
+    const neighboursFolder = pane.addFolder({ title: 'Neighbours' });
+    neighboursFolder.addInput(config.neighbours, 'distance', {
+      min: 0,
+      max: 500,
+    });
+
+    const behavioursFolder = pane.addFolder({ title: 'Behaviour Weights' });
+    // behavioursFolder.addInput(config.behaviourWeights, 'seek', { min: 0, max: 1 });
+    // behavioursFolder.addInput(config.behaviourWeights, 'flee', { min: 0, max: 1 });
+    behavioursFolder.addInput(config.behaviourWeights, 'separation', {
+      min: 0,
+      max: 2,
+    });
+    behavioursFolder.addInput(config.behaviourWeights, 'cohesion', {
+      min: 0,
+      max: 2,
+    });
+    behavioursFolder.addInput(config.behaviourWeights, 'alignment', {
+      min: 0,
+      max: 2,
+    });
   });
 
   const boids = new VehicleGroup();
 
-  for (let i = 0; i < sketchConfig.boidCount; i++) {
-    boids.addVehicle(
-      new Vehicle({
-        position: new Vector(
-          random.range(50, width - 50),
-          random.range(50, height - 50)
-        ),
-        velocity: Vector.fromAngle(
-          random.range(0, Math.PI * 2),
-          random.range(40, 200)
-        ),
-      })
-    );
+  for (let i = 0; i < sketchConfig.boids.count; i++) {
+    boids.addVehicle(newBoid(width, height));
   }
 
   addEvent('mousemove', ({ ctx, event, dpr, state }) => {
@@ -100,6 +137,23 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
     state.boids.setSeparation(config.behaviourWeights.separation);
     state.boids.setCohesion(config.behaviourWeights.cohesion);
     state.boids.setAlignment(config.behaviourWeights.alignment);
+
+    state.boids.minVelocity = config.boids.minVelocity;
+    state.boids.maxVelocity = config.boids.maxVelocity;
+    state.boids.maxForce = config.boids.maxForce;
+
+    state.boids.neighbourDistance = config.neighbours.distance;
+
+    const boidCountOffset = config.boids.count - state.boids.vehicles.length;
+    if (boidCountOffset > 0) {
+      for (let i = 0; i < boidCountOffset; i++) {
+        state.boids.addVehicle(newBoid(width, height));
+      }
+    } else if (boidCountOffset < 0) {
+      for (let i = 0; i > boidCountOffset; i--) {
+        state.boids.popVehicle();
+      }
+    }
   }
 
   ctx.clearRect(0, 0, width, height);
@@ -120,7 +174,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
     }
 
     ctx.beginPath();
-    const boidSize = 30;
+    const boidSize = 15;
     ctx.translate(boid.position.x, boid.position.y);
     ctx.rotate(boid.velocity.angle());
     ctx.moveTo(0, 0);

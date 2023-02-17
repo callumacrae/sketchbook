@@ -16,11 +16,6 @@ export default class Vehicle extends HasBehaviours {
   position: Vector = new Vector(0, 0);
   velocity: Vector = new Vector(0, 0);
 
-  maxVelocity: number = 800;
-  maxForce: number = 1600;
-
-  linearDamping: number = 0;
-
   group?: VehicleGroup;
 
   constructor(options: VehicleOptions) {
@@ -35,11 +30,12 @@ export default class Vehicle extends HasBehaviours {
     if (options.linearDamping) this.linearDamping = options.linearDamping;
   }
 
-  // TODO: specify field of view, customise distance
+  // TODO: specify field of view
   getNeighbours() {
     if (!this.group) return [];
 
-    const distance = 200;
+    const distance =
+      this.neighbourDistance ?? this.group?.neighbourDistance ?? 200;
 
     return this.group.vehicles.filter((vehicle) => {
       return (
@@ -55,12 +51,17 @@ export default class Vehicle extends HasBehaviours {
       return;
     }
 
+    const minVelocity = this.minVelocity ?? this.group?.minVelocity ?? 200;
+    const maxVelocity = this.maxVelocity ?? this.group?.maxVelocity ?? 400;
+    const maxForce = this.maxForce ?? this.group?.maxForce ?? 500;
+    const linearDamping = this.linearDamping ?? this.group?.linearDamping ?? 0;
+
     let force = new Vector(0, 0);
 
     const seekBehaviour = this.behaviours.seek || this.group?.behaviours.seek;
     if (seekBehaviour) {
       const { target, weight } = seekBehaviour;
-      const desired = target.sub(this.position).setMagnitude(this.maxVelocity);
+      const desired = target.sub(this.position).setMagnitude(maxVelocity);
       const seekForce = desired.sub(this.velocity);
       force = force.add(seekForce.scale(weight ?? 1));
     }
@@ -68,7 +69,7 @@ export default class Vehicle extends HasBehaviours {
     const fleeBehaviour = this.behaviours.flee || this.group?.behaviours.flee;
     if (fleeBehaviour) {
       const { target, weight } = fleeBehaviour;
-      const desired = this.position.sub(target).setMagnitude(this.maxVelocity);
+      const desired = this.position.sub(target).setMagnitude(maxVelocity);
       const seekForce = desired.sub(this.velocity);
       force = force.add(seekForce.scale(weight ?? 1));
     }
@@ -83,27 +84,27 @@ export default class Vehicle extends HasBehaviours {
     if (separationBehaviour || cohesionBehaviour || alignmentBehaviour) {
       const neighbours = this.getNeighbours();
 
-      if (separationBehaviour) {
+      if (separationBehaviour && neighbours.length) {
         const separationForce = neighbours.reduce((acc, neighbour) => {
           const diff = this.position.sub(neighbour.position);
-          const desired = diff.setMagnitude(this.maxVelocity);
+          const desired = diff.setMagnitude(maxVelocity);
           const steer = desired.sub(this.velocity);
           return acc.add(steer.scale(1 / diff.length()));
         }, new Vector(0, 0));
 
         force = force.add(
-          separationForce.scale(separationBehaviour.weight ?? 1).scale(10)
+          separationForce.scale(separationBehaviour.weight ?? 1).scale(75)
         );
       }
 
-      if (cohesionBehaviour) {
+      if (cohesionBehaviour && neighbours.length) {
         const cohesionForce = neighbours
           .reduce((acc, neighbour) => {
             return acc.add(neighbour.position);
           }, new Vector(0, 0))
           .scale(1 / neighbours.length)
           .sub(this.position)
-          .setMagnitude(this.maxVelocity);
+          .setMagnitude(maxVelocity);
 
         const steer = cohesionForce
           .sub(this.velocity)
@@ -112,30 +113,34 @@ export default class Vehicle extends HasBehaviours {
         force = force.add(steer);
       }
 
-      if (alignmentBehaviour) {
+      if (alignmentBehaviour && neighbours.length) {
         const alignmentForce = neighbours
           .reduce((acc, neighbour) => {
             return acc.add(neighbour.velocity);
           }, new Vector(0, 0))
           .scale(0.1 / neighbours.length)
           .normalize()
-          .scale(this.maxVelocity);
+          .scale(maxVelocity);
 
         const steer = alignmentForce
           .sub(this.velocity)
-          .scale(alignmentBehaviour.weight ?? 1).scale(0.1);
+          .scale(alignmentBehaviour.weight ?? 1);
 
         force = force.add(steer);
       }
     }
 
-    force = force.limit(this.maxForce);
+    force = force.limit(maxForce);
 
-    const linearDamping = Math.pow(1 - this.linearDamping, dt);
     this.velocity = this.velocity
       .add(force.scale(dt))
-      .scale(linearDamping)
-      .limit(this.maxVelocity);
+      .scale(Math.pow(1 - linearDamping, dt))
+      .limit(maxVelocity);
+
+    if (this.velocity.length() < minVelocity) {
+      this.velocity = this.velocity.setMagnitude(minVelocity);
+    }
+
     this.position = this.position.add(this.velocity.scale(dt));
   }
 }

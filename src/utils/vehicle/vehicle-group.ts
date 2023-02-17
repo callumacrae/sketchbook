@@ -24,6 +24,12 @@ export default class VehicleGroup extends HasBehaviours {
     }
   }
 
+  popVehicle() {
+    const vehicle = this.vehicles.pop();
+    if (vehicle) vehicle.group = undefined;
+    return vehicle;
+  }
+
   getVehicles() {
     return this.vehicles;
   }
