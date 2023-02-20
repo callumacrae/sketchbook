@@ -17,7 +17,8 @@ export const meta = {
 interface CanvasState {
   scene: THREE.Scene;
   camera: ReturnType<typeof initCamera>;
-  debugSphere: THREE.Mesh;
+  reticle: THREE.Object3D;
+  hitTestSource?: XRHitTestSource;
 }
 
 const sketchConfig = {};
@@ -29,7 +30,7 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
     enabled: true,
     permissionsButton(renderer: THREE.WebGLRenderer) {
       return ARButton.createButton(renderer, {
-        requiredFeatures: ['depth-sensing'],
+        requiredFeatures: ['hit-test', 'depth-sensing'],
         depthSensing: {
           usagePreference: ['cpu-optimized'],
           dataFormatPreference: ['luminance-alpha'],
@@ -69,46 +70,103 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   const camera = initCamera(scene, props);
   initLighting(scene);
 
-  const debugSphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.1, 32, 32),
-    new THREE.MeshBasicMaterial({ color: 0xff0000 })
+  const reticleGroup = new THREE.Group();
+  reticleGroup.matrixAutoUpdate = false;
+  reticleGroup.visible = false;
+  scene.add(reticleGroup);
+
+  const reticle = new THREE.Mesh(
+    new THREE.RingGeometry(0.01, 0.02, 32).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial()
   );
-  debugSphere.visible = false;
-  scene.add(debugSphere);
+  reticleGroup.add(reticle);
 
-  return { scene, camera, debugSphere };
+  const sateliteGeometry = new THREE.RingGeometry(0.005, 0.01, 32).rotateX(
+    -Math.PI / 2
+  );
+  const sateliteCount = 6;
+  const radius = 0.08;
+  for (let i = 0; i < sateliteCount; i++) {
+    const sateliteMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const satelite = new THREE.Mesh(sateliteGeometry, sateliteMaterial);
+    satelite.name = `satelite-${i}`;
+    const angle = ((Math.PI * 2) / sateliteCount) * i;
+    satelite.position.set(
+      Math.cos(angle) * radius,
+      0,
+      Math.sin(angle) * radius
+    );
+    reticleGroup.add(satelite);
+  }
+
+  return { scene, camera, reticle: reticleGroup };
 };
-
-// perform three hit tests in a triangle around the center of the screen
-// get the depth at each point
 
 const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
   const { renderer, config, state, xrFrame } = props;
   if (!renderer || !config || !xrFrame) throw new Error('???');
 
   const referenceSpace = renderer.xr.getReferenceSpace();
+  const session = renderer.xr.getSession();
   if (!referenceSpace) throw new Error('???');
 
+  if (!state.hitTestSource && session?.requestHitTestSource) {
+    const viewerReferenceSpace = await session.requestReferenceSpace('viewer');
+    state.hitTestSource = await session.requestHitTestSource({
+      space: viewerReferenceSpace,
+    });
+  }
+
+  let reticleVisible = false;
+  if (state.hitTestSource && referenceSpace) {
+    const hitTestResults = xrFrame.getHitTestResults(state.hitTestSource);
+    if (hitTestResults.length) {
+      const hit = hitTestResults[0];
+
+      const hitPose = hit.getPose(referenceSpace);
+      if (hitPose) {
+        reticleVisible = true;
+        state.reticle.matrix.fromArray(hitPose.transform.matrix);
+      }
+    }
+  }
+  state.reticle.visible = reticleVisible;
+
   const viewerPose = xrFrame.getViewerPose(referenceSpace);
-  if (viewerPose) {
+  if (viewerPose && reticleVisible) {
     const view = viewerPose.views[0];
     const depthInfo = xrFrame.getDepthInformation(view);
     if (depthInfo) {
-      const depth = depthInfo.getDepthInMeters(0.5, 0.5);
+      const depthAtCenter = depthInfo.getDepthInMeters(0.5, 0.5);
 
-      const position = new THREE.Vector3(0, 0, -depth);
-      const viewMatrix = new THREE.Matrix4().fromArray(viewerPose.transform.matrix);
+      const satelites = state.reticle.children.filter((child) =>
+        child.name.startsWith('satelite-')
+      );
+      for (const satelite of satelites) {
+        if (!(satelite instanceof THREE.Mesh)) continue;
 
-      position.applyMatrix4(viewMatrix);
+        const position = new THREE.Vector3();
+        position.setFromMatrixPosition(satelite.matrixWorld);
+        position.project(state.camera.camera);
 
-      // console.log(position.x, position.y, position.z);
-      state.debugSphere.visible = true;
-      state.debugSphere.position.copy(position);
+        const x = (position.x + 1) / 2;
+        const y = (position.y + 1) / 2;
+        if (x < 0 || x > 1 || y < 0 || y > 1) {
+          satelite.material.color = new THREE.Color(0x666666);
+          continue;
+        }
+        const depthAtSatelite = depthInfo.getDepthInMeters(x, y);
+        // TODO: Don't compare depth to center, compare depth to where satelite
+        // is supposed to be
+        satelite.material.color = new THREE.Color(
+          Math.abs(depthAtSatelite - depthAtCenter) > 0.2 ? 0xff0000 : 0x00ff00
+        );
+      }
     } else {
       console.log('no depth info');
     }
   } else {
-    console.log('no pose');
+    console.log('no pose or reticle not visible');
   }
 
   renderer.render(state.scene, state.camera.camera);
