@@ -1,4 +1,4 @@
-import Vector from '../../vector';
+import type Vector from '../../vector';
 
 type HasWallFn = (current: Vector, ahead: Vector) => number | false;
 

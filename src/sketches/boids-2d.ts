@@ -76,8 +76,14 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     });
 
     const behavioursFolder = pane.addFolder({ title: 'Behaviours' });
-    behavioursFolder.addInput(config.behaviours, 'seekWeight', { min: 0, max: 20 });
-    behavioursFolder.addInput(config.behaviours, 'fleeWeight', { min: 0, max: 20 });
+    behavioursFolder.addInput(config.behaviours, 'seekWeight', {
+      min: 0,
+      max: 20,
+    });
+    behavioursFolder.addInput(config.behaviours, 'fleeWeight', {
+      min: 0,
+      max: 20,
+    });
     behavioursFolder.addInput(config.behaviours, 'separationWeight', {
       min: 0,
       max: 2,
@@ -182,7 +188,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
       hitsWall,
       lookAhead: config.behaviours.avoidWallsLookAhead,
       emergency: new Vector(width / 2, height / 2),
-      weight: config.behaviours.avoidWallsWeight
+      weight: config.behaviours.avoidWallsWeight,
     });
 
     state.boids.minVelocity = config.boids.minVelocity;

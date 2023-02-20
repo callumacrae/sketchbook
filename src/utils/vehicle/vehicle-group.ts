@@ -1,5 +1,5 @@
-import Vehicle from './vehicle';
 import HasBehaviours from './mixins/has-behaviours';
+import type Vehicle from './vehicle';
 
 export default class VehicleGroup extends HasBehaviours {
   vehicles: Vehicle[] = [];

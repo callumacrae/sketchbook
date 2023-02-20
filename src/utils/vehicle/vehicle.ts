@@ -133,10 +133,8 @@ export default class Vehicle extends HasBehaviours {
     const avoidWallsBehaviour =
       this.behaviours.avoidWalls || this.group?.behaviours.avoidWalls;
     if (avoidWallsBehaviour) {
-      let { hitsWall, lookAhead = 0.1, weight } = avoidWallsBehaviour;
+      const { hitsWall, lookAhead = 0.1, weight } = avoidWallsBehaviour;
 
-      lookAhead = 1;
-      weight = 5;
       const lookAheadVector = this.velocity.scale(lookAhead);
 
       const rotateVal = 0.1;
