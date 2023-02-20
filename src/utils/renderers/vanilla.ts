@@ -8,13 +8,19 @@ type Type = 'context2d' | 'webgl' | 'threejs';
 
 export interface Config<SketchConfig = undefined> {
   type: Type;
+  xr?:
+    | { enabled: false; [key: string]: any }
+    | {
+        enabled: true;
+        permissionsButton: (renderer: THREE.WebGLRenderer) => HTMLElement;
+      };
   showLoading: boolean;
   animate: boolean;
   capture?: {
     enabled: boolean;
     duration: number;
     fps?: number;
-    directory: string;
+    directory?: string;
   };
   width?: number;
   height?: number;
@@ -65,6 +71,7 @@ export interface FrameProps<CanvasState, SketchConfig = undefined> {
   delta: number;
   config: SketchConfig;
   hasChanged: boolean;
+  xrFrame?: XRFrame;
 }
 
 export interface EventProps<
@@ -175,8 +182,16 @@ export async function toVanillaCanvas<
       antialias: !sketchbookConfig.postprocessing,
       stencil: !sketchbookConfig.postprocessing,
       depth: !sketchbookConfig.postprocessing,
+      alpha: !!sketchbookConfig.xr?.enabled,
     });
     data.renderer.info.autoReset = false;
+
+    if (sketchbookConfig.xr?.enabled) {
+      data.renderer.xr.enabled = true;
+
+      const xrButton = sketchbookConfig.xr.permissionsButton(data.renderer);
+      document.body.appendChild(xrButton);
+    }
   }
 
   setSize();
@@ -244,7 +259,7 @@ export async function toVanillaCanvas<
       });
 
       const preset = localStorage.getItem(presetName);
-      if (preset) {
+      if (preset && !sketchbookConfig.capture?.enabled) {
         try {
           pane.importPreset(JSON.parse(preset));
         } catch (err) {
@@ -346,7 +361,8 @@ export async function toVanillaCanvas<
     frameCount: 0,
     framesNameLength: 0,
     frameNumber: 0,
-    directory: sketchbookConfig.capture?.directory,
+    directory:
+      sketchbookConfig.capture?.directory || location.pathname.slice(1),
   };
   if (sketchbookConfig.capture) {
     captureData.frameDuration = 1e3 / (sketchbookConfig.capture.fps || 24);
@@ -358,18 +374,26 @@ export async function toVanillaCanvas<
     );
   }
 
-  callFrame(0);
+  if (sketchbookConfig.xr?.enabled && data.renderer) {
+    data.renderer.setAnimationLoop((timestamp, xrFrame) => {
+      if (data.renderer?.xr.isPresenting) {
+        callFrame(timestamp, xrFrame);
+      }
+    });
+  } else {
+    callFrame(0);
+  }
 
   window.addEventListener('resize', handleResize);
 
-  async function callFrame(timestamp: number) {
+  async function callFrame(timestamp: number, xrFrame?: XRFrame) {
     if (data.fpsGraph) {
       data.fpsGraph.begin();
     }
 
     data.lastTimestamp = timestamp;
 
-    if (!sketchbookConfig.capture?.enabled) {
+    if (!sketchbookConfig.capture?.enabled && !sketchbookConfig.xr?.enabled) {
       data.animationFrame = requestAnimationFrame(callFrame);
     }
 
@@ -389,6 +413,7 @@ export async function toVanillaCanvas<
         config: data.sketchbookConfig.sketchConfig,
         // hasChanged can be used to see if the config has changed
         hasChanged: data.hasChanged,
+        xrFrame,
       };
 
       if (data.renderer) {
