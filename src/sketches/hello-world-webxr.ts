@@ -30,11 +30,12 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
     enabled: true,
     permissionsButton(renderer: THREE.WebGLRenderer) {
       return ARButton.createButton(renderer, {
-        requiredFeatures: ['depth-sensing', 'hit-test'],
-        depthSensing: {
-          usagePreference: ['cpu-optimized'],
-          dataFormatPreference: ['luminance-alpha'],
-        },
+        requiredFeatures: ['hit-test'],
+        // requiredFeatures: ['depth-sensing', 'hit-test'],
+        // depthSensing: {
+        //   usagePreference: ['cpu-optimized'],
+        //   dataFormatPreference: ['luminance-alpha'],
+        // },
       });
     },
   },
@@ -62,6 +63,8 @@ function initLighting(scene: THREE.Scene) {
 }
 
 const init: InitFn<CanvasState, SketchConfig> = (props) => {
+  if (!props.renderer) throw new Error('???');
+
   // props.initControls(({ pane, config }) => {
   // });
 
@@ -78,6 +81,27 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   reticle.visible = false;
   scene.add(reticle);
 
+  const geometry = new THREE.CylinderGeometry(0.1, 0.1, 0.2, 32).translate(
+    0,
+    0.1,
+    0
+  );
+
+  function onSelect() {
+    if (!reticle.visible) return;
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xffffff * Math.random(),
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    reticle.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
+    mesh.scale.y = Math.random() * 2 + 1;
+    scene.add(mesh);
+  }
+
+  const controller = props.renderer.xr.getController(0);
+  controller.addEventListener('select', onSelect);
+  scene.add(controller);
+
   return { scene, camera, reticle };
 };
 
@@ -93,7 +117,6 @@ const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
     state.hitTestSource = await session.requestHitTestSource({
       space: viewerReferenceSpace,
     });
-    console.log('hit test source created');
   }
 
   let reticleVisible = false;
@@ -107,29 +130,15 @@ const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
         reticleVisible = true;
         state.reticle.visible = true;
         state.reticle.matrix.fromArray(hitPose.transform.matrix);
-      } else {
-        console.log('no hit pose');
       }
-    } else {
-      console.log('no hit test results');
     }
   }
   if (!reticleVisible) {
     state.reticle.visible = false;
   }
 
-  // const viewerPose = xrFrame.getViewerPose(referenceSpace);
-  // if (viewerPose) {
-  //   const view = viewerPose.views[0];
-  //   const depthInfo = xrFrame.getDepthInformation(view);
-  //   if (depthInfo) {
-  //     // console.log(depthInfo);
-  //   }
-  // }
-
   renderer.render(state.scene, state.camera.camera);
 
-  window.sketchState = state;
   return state;
 };
 
