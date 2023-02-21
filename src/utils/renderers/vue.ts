@@ -9,7 +9,7 @@ export function toCanvasComponent<
 >(
   init: InitFn<CanvasState, SketchConfig>,
   frame: FrameFn<CanvasState, SketchConfig>,
-  sketchbookConfig: Partial<Config<SketchConfig>> = {}
+  sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {}
 ) {
   return defineComponent({
     render: () => h('canvas', { ref: 'canvas', id: 'sketch' }),

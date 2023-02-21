@@ -28,7 +28,7 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<SketchConfig>> = {
+const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   sketchConfig,
 };

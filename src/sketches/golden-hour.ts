@@ -14,7 +14,7 @@ const sketchConfig = {};
 
 type SketchConfig = typeof sketchConfig;
 
-export const sketchbookConfig: Partial<Config<SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   width: 1080,
   height: 1080,
   sketchConfig,

@@ -44,7 +44,7 @@ type SketchConfig = typeof sketchConfig;
 const mirrorsX = 5;
 const mirrorsY = 5;
 
-const sketchbookConfig: Partial<Config<SketchConfig>> = {
+const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   // capture: {
   //   enabled: false,

@@ -96,7 +96,7 @@ const presets = {
   },
 };
 
-const sketchbookConfig: Partial<Config<SketchConfig>> = {
+const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   postprocessing: true,
   sketchConfig,

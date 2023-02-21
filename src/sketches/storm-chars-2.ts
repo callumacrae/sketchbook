@@ -69,7 +69,7 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
-export const sketchbookConfig: Partial<Config<SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'webgl',
   showLoading: true,
   sketchConfig,

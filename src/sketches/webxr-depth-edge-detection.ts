@@ -3,6 +3,7 @@ import { ARButton } from 'three/examples/jsm/webxr/ARButton';
 import { HTMLMesh } from 'three/examples/jsm/interactive/HTMLMesh';
 import { interpolatePRGn } from 'd3-scale-chromatic';
 
+import OverlayPlugin from '@/utils/plugins/webxr-overlay';
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
@@ -26,26 +27,9 @@ interface CanvasState {
 const sketchConfig = {};
 type SketchConfig = typeof sketchConfig;
 
-const overlay = document.createElement('div');
-document.body.append(overlay);
+const overlayPlugin = new OverlayPlugin();
 
-const overlayContent = document.createElement('div');
-overlayContent.style.width = '100%';
-overlayContent.style.height = '100%';
-overlayContent.style.display = 'flex';
-overlayContent.style.justifyContent = 'center';
-overlayContent.style.alignItems = 'center';
-overlay.appendChild(overlayContent);
-
-const overlayWarning = document.createElement('p');
-overlayWarning.style.color = 'red';
-overlayWarning.style.background = 'black';
-overlayWarning.style.padding = '7px 14px';
-overlayWarning.style.borderRadius = '4px';
-overlayWarning.style.display = 'none';
-overlayContent.appendChild(overlayWarning);
-
-const sketchbookConfig: Partial<Config<SketchConfig>> = {
+const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   xr: {
     enabled: true,
@@ -53,15 +37,18 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
       return ARButton.createButton(renderer, {
         requiredFeatures: ['hit-test', 'depth-sensing'],
         optionalFeatures: ['dom-overlay'],
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         depthSensing: {
           usagePreference: ['cpu-optimized'],
           dataFormatPreference: ['luminance-alpha'],
         },
-        domOverlay: { root: overlay },
+        domOverlay: { root: overlayPlugin.getRoot() },
       });
     },
   },
   sketchConfig,
+  plugins: [overlayPlugin],
 };
 
 function initCamera(
@@ -87,6 +74,7 @@ function initLighting(scene: THREE.Scene) {
 const labelElements: HTMLDivElement[] = [];
 
 const init: InitFn<CanvasState, SketchConfig> = (props) => {
+  props.initControls();
   // props.initControls(({ pane, config }) => {
   // });
 
@@ -172,6 +160,8 @@ const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
   const viewerPose = xrFrame.getViewerPose(referenceSpace);
   if (viewerPose && reticleVisible) {
     const view = viewerPose.views[0];
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     const depthInfo = xrFrame.getDepthInformation(view);
     if (depthInfo) {
       const satelites = state.reticle.children.filter(
@@ -204,15 +194,11 @@ const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
           2
         )}`;
       }
-      overlayWarning.textContent = '';
-      overlayWarning.style.display = 'none';
     } else {
-      overlayWarning.textContent = 'no depth info';
-      overlayWarning.style.display = 'block';
+      overlayPlugin.showWarning('no depth info');
     }
   } else {
-    overlayWarning.textContent = 'no pose or reticle not visible';
-    overlayWarning.style.display = 'block';
+    overlayPlugin.showWarning('no pose or reticle not visible');
   }
 
   renderer.render(state.scene, state.camera.camera);

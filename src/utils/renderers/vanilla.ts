@@ -1,12 +1,20 @@
 import { Pane, TabPageApi } from 'tweakpane';
 import * as EssentialsPlugin from '@tweakpane/plugin-essentials';
 import * as THREE from 'three';
-import type { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/fps-graph/api/fps-graph';
 import writeScreen from '../canvas/written-screen';
+import type { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/fps-graph/api/fps-graph';
+import type { SketchPlugin } from '../plugins/interface';
+import type OverlayPlugin from '../plugins/webxr-overlay';
 
 type Type = 'context2d' | 'webgl' | 'threejs';
 
-export interface Config<SketchConfig = undefined> {
+function isOverlayPlugin<T, S>(
+  plugin: SketchPlugin<T, S>
+): plugin is OverlayPlugin<T, S> {
+  return plugin.type === 'overlay';
+}
+
+export interface Config<CanvasState = undefined, SketchConfig = undefined> {
   type: Type;
   xr?:
     | { enabled: false; [key: string]: any }
@@ -28,6 +36,7 @@ export interface Config<SketchConfig = undefined> {
   pageBg?: string;
   resizeDelay: number;
   sketchConfig: SketchConfig;
+  plugins: SketchPlugin<CanvasState, SketchConfig>[];
 }
 
 export interface InitControlsProps<SketchConfig> {
@@ -105,15 +114,16 @@ export async function toVanillaCanvas<
   canvasEl: HTMLCanvasElement | null,
   init: InitFn<CanvasState, SketchConfig>,
   frame: FrameFn<CanvasState, SketchConfig>,
-  sketchbookConfigIn: Partial<Config<SketchConfig>> = {}
+  sketchbookConfigIn: Partial<Config<CanvasState, SketchConfig>> = {}
 ) {
-  const sketchbookConfig: Config<SketchConfig> = Object.assign(
+  const sketchbookConfig: Config<CanvasState, SketchConfig> = Object.assign(
     {
       type: 'context2d',
       showLoading: false,
       animate: true,
       resizeDelay: 50,
       sketchConfig: {} as SketchConfig,
+      plugins: [],
     },
     sketchbookConfigIn
   );
@@ -210,10 +220,21 @@ export async function toVanillaCanvas<
         return;
       }
 
+      let container: HTMLElement | undefined = undefined;
+      for (const plugin of sketchbookConfig.plugins) {
+        if (isOverlayPlugin(plugin)) {
+          const overlayRoot = plugin.getRoot();
+          container = document.createElement('div');
+          container.className = 'tp-dfwv';
+          overlayRoot.appendChild(container);
+        }
+      }
+
       const isWindowBig = Math.min(window.innerWidth, window.innerHeight) > 600;
       const storedPref = localStorage.getItem(`closed-${location.pathname}`);
       const pane = new Pane({
         title: 'Controls',
+        container,
         expanded:
           !window.frameElement &&
           (isWindowBig || storedPref !== null) &&
@@ -421,9 +442,21 @@ export async function toVanillaCanvas<
         data.renderer.info.reset();
       }
 
+      for (const plugin of sketchbookConfig.plugins) {
+        if (plugin.onBeforeFrame) {
+          plugin.onBeforeFrame(frameProps);
+        }
+      }
+
       const newState = await frame(frameProps);
       if (newState) {
         data.canvasState = newState;
+      }
+
+      for (const plugin of sketchbookConfig.plugins) {
+        if (plugin.onFrame) {
+          plugin.onFrame(frameProps, newState);
+        }
       }
 
       data.hasChanged = false;
@@ -527,6 +560,12 @@ export async function toVanillaCanvas<
 
       if (data.pane) {
         data.pane.dispose();
+      }
+
+      for (const plugin of sketchbookConfig.plugins) {
+        if (plugin.onDispose) {
+          plugin.onDispose();
+        }
       }
     },
   };

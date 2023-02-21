@@ -27,7 +27,7 @@ export function shaderToyComponent(glsl: string) {
   const sketchConfig: Record<string, any> = {};
   type SketchConfig = typeof sketchConfig;
 
-  const sketchbookConfig: Partial<Config<SketchConfig>> = {
+  const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
     type: 'threejs',
     capture: {
       enabled: false,
