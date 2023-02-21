@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton';
+import { HTMLMesh } from 'three/examples/jsm/interactive/HTMLMesh';
+import { interpolatePRGn } from 'd3-scale-chromatic';
 
 import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
@@ -10,8 +12,8 @@ import type {
 } from '@/utils/renderers/vanilla';
 
 export const meta = {
-  name: 'Hello world (WebXR)',
-  date: '2023-02-17',
+  name: 'WebXR surface edge detection',
+  date: '2023-02-20',
 };
 
 interface CanvasState {
@@ -61,6 +63,8 @@ function initLighting(scene: THREE.Scene) {
   scene.add(ambientLight);
 }
 
+const labelElements: HTMLDivElement[] = [];
+
 const init: InitFn<CanvasState, SketchConfig> = (props) => {
   // props.initControls(({ pane, config }) => {
   // });
@@ -85,7 +89,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
     -Math.PI / 2
   );
   const sateliteCount = 6;
-  const radius = 0.08;
+  const radius = 0.15;
   for (let i = 0; i < sateliteCount; i++) {
     const sateliteMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const satelite = new THREE.Mesh(sateliteGeometry, sateliteMaterial);
@@ -97,6 +101,18 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
       Math.sin(angle) * radius
     );
     reticleGroup.add(satelite);
+
+    const sateliteLabelElement = document.createElement('div');
+    sateliteLabelElement.textContent = '0.99/0.99';
+    sateliteLabelElement.style.color = '#fff';
+    sateliteLabelElement.style.background = '#000';
+    sateliteLabelElement.style.visibility = 'hidden';
+    document.body.appendChild(sateliteLabelElement);
+    labelElements.push(sateliteLabelElement);
+
+    const sateliteLabel = new HTMLMesh(sateliteLabelElement);
+    sateliteLabel.position.set(satelite.position.x, 0.02, satelite.position.z);
+    reticleGroup.add(sateliteLabel);
   }
 
   return { scene, camera, reticle: reticleGroup };
@@ -137,30 +153,35 @@ const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
     const view = viewerPose.views[0];
     const depthInfo = xrFrame.getDepthInformation(view);
     if (depthInfo) {
-      const depthAtCenter = depthInfo.getDepthInMeters(0.5, 0.5);
+      // const depthAtCenter = depthInfo.getDepthInMeters(0.5, 0.5);
 
-      const satelites = state.reticle.children.filter((child) =>
-        child.name.startsWith('satelite-')
+      const satelites = state.reticle.children.filter(
+        (child) =>
+          child.name.startsWith('satelite-') && !('isHTMLMesh' in child)
       );
       for (const satelite of satelites) {
         if (!(satelite instanceof THREE.Mesh)) continue;
 
         const position = new THREE.Vector3();
         position.setFromMatrixPosition(satelite.matrixWorld);
-        position.project(state.camera.camera);
+        const idealDepth = position.distanceTo(state.camera.camera.position);
 
+        // Convert to screen coords
+        position.project(state.camera.camera);
         const x = (position.x + 1) / 2;
-        const y = (position.y + 1) / 2;
+        const y = 1 - (position.y + 1) / 2;
         if (x < 0 || x > 1 || y < 0 || y > 1) {
           satelite.material.color = new THREE.Color(0x666666);
           continue;
         }
-        const depthAtSatelite = depthInfo.getDepthInMeters(x, y);
-        // TODO: Don't compare depth to center, compare depth to where satelite
-        // is supposed to be
-        satelite.material.color = new THREE.Color(
-          Math.abs(depthAtSatelite - depthAtCenter) > 0.2 ? 0xff0000 : 0x00ff00
-        );
+        const actualDepth = depthInfo.getDepthInMeters(x, y);
+
+        const depthOffset = Math.abs(actualDepth - idealDepth);
+
+        satelite.material.color = new THREE.Color(interpolatePRGn(depthOffset));
+
+        const labelEl = labelElements[Number(satelite.name.split('-')[1])];
+        labelEl.textContent = `${actualDepth.toFixed(2)}/${idealDepth.toFixed(2)}`;
       }
     } else {
       console.log('no depth info');
