@@ -26,6 +26,25 @@ interface CanvasState {
 const sketchConfig = {};
 type SketchConfig = typeof sketchConfig;
 
+const overlay = document.createElement('div');
+document.body.append(overlay);
+
+const overlayContent = document.createElement('div');
+overlayContent.style.width = '100%';
+overlayContent.style.height = '100%';
+overlayContent.style.display = 'flex';
+overlayContent.style.justifyContent = 'center';
+overlayContent.style.alignItems = 'center';
+overlay.appendChild(overlayContent);
+
+const overlayWarning = document.createElement('p');
+overlayWarning.style.color = 'red';
+overlayWarning.style.background = 'black';
+overlayWarning.style.padding = '7px 14px';
+overlayWarning.style.borderRadius = '4px';
+overlayWarning.style.display = 'none';
+overlayContent.appendChild(overlayWarning);
+
 const sketchbookConfig: Partial<Config<SketchConfig>> = {
   type: 'threejs',
   xr: {
@@ -33,10 +52,12 @@ const sketchbookConfig: Partial<Config<SketchConfig>> = {
     permissionsButton(renderer: THREE.WebGLRenderer) {
       return ARButton.createButton(renderer, {
         requiredFeatures: ['hit-test', 'depth-sensing'],
+        optionalFeatures: ['dom-overlay'],
         depthSensing: {
           usagePreference: ['cpu-optimized'],
           dataFormatPreference: ['luminance-alpha'],
         },
+        domOverlay: { root: overlay },
       });
     },
   },
@@ -153,8 +174,6 @@ const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
     const view = viewerPose.views[0];
     const depthInfo = xrFrame.getDepthInformation(view);
     if (depthInfo) {
-      // const depthAtCenter = depthInfo.getDepthInMeters(0.5, 0.5);
-
       const satelites = state.reticle.children.filter(
         (child) =>
           child.name.startsWith('satelite-') && !('isHTMLMesh' in child)
@@ -181,13 +200,19 @@ const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
         satelite.material.color = new THREE.Color(interpolatePRGn(depthOffset));
 
         const labelEl = labelElements[Number(satelite.name.split('-')[1])];
-        labelEl.textContent = `${actualDepth.toFixed(2)}/${idealDepth.toFixed(2)}`;
+        labelEl.textContent = `${actualDepth.toFixed(2)}/${idealDepth.toFixed(
+          2
+        )}`;
       }
+      overlayWarning.textContent = '';
+      overlayWarning.style.display = 'none';
     } else {
-      console.log('no depth info');
+      overlayWarning.textContent = 'no depth info';
+      overlayWarning.style.display = 'block';
     }
   } else {
-    console.log('no pose or reticle not visible');
+    overlayWarning.textContent = 'no pose or reticle not visible';
+    overlayWarning.style.display = 'block';
   }
 
   renderer.render(state.scene, state.camera.camera);

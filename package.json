@@ -11,6 +11,7 @@
   "dependencies": {
     "@tweakpane/plugin-essentials": "^0.1.5",
     "@types/d3-ease": "^3.0.0",
+    "@types/d3-scale-chromatic": "^3.0.0",
     "@types/matter-js": "^0.18.2",
     "@types/offscreencanvas": "^2019.6.4",
     "@types/seedrandom": "^3.0.4",
