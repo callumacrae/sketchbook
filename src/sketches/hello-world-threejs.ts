@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
   InitFn,
@@ -13,7 +12,7 @@ export const meta = {
   date: '2022-12-13',
 };
 
-interface CanvasState {
+export interface CanvasState {
   scene: THREE.Scene;
   camera: ReturnType<typeof initCamera>;
 }
@@ -21,7 +20,7 @@ interface CanvasState {
 const sketchConfig = {};
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   sketchConfig,
 };
@@ -46,7 +45,7 @@ function initLighting(scene: THREE.Scene) {
   scene.add(ambientLight);
 }
 
-const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   // props.initControls(({ pane, config }) => {
   // });
 
@@ -58,15 +57,9 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { scene, camera };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { renderer, config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
   renderer.render(state.scene, state.camera.camera);
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

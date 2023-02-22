@@ -129,6 +129,7 @@ export async function toVanillaCanvas<
   );
 
   const data = {
+    frameFn: frame,
     width: 0,
     height: 0,
     dpr: 0,
@@ -448,7 +449,7 @@ export async function toVanillaCanvas<
         }
       }
 
-      const newState = await frame(frameProps);
+      const newState = await data.frameFn(frameProps);
       if (newState) {
         data.canvasState = newState;
       }
@@ -551,6 +552,7 @@ export async function toVanillaCanvas<
 
   return {
     callFrame,
+    data,
     teardown() {
       window.removeEventListener('resize', handleResize);
 

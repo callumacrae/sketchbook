@@ -1,23 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { shaderToyComponent } from '@/utils/renderers/shader-toy';
 
-const pathToPath = (path: string) => {
+const sketchModules = import.meta.glob('./sketches/*.{ts,vue,glsl}');
+const sketchRoutes = Object.entries(sketchModules).map(([path, component]) => {
   const name = path.split('/').pop()?.split('.').shift();
   if (!name) throw new Error('???');
-  return `/${name}`;
-};
-
-const tsModules = import.meta.glob('./sketches/*.{ts,vue}');
-const tsRoutes = Object.entries(tsModules).map(([path, component]) => {
-  return { path: pathToPath(path), component };
-});
-
-const glslModules = import.meta.glob('./sketches/*.glsl', { as: 'raw' });
-const glslRoutes = Object.entries(glslModules).map(([path, glsl]) => {
-  return {
-    path: pathToPath(path),
-    component: async () => shaderToyComponent(await glsl()),
-  };
+  return { path: `/${name}`, component };
 });
 
 const router = createRouter({
@@ -28,8 +15,7 @@ const router = createRouter({
       name: 'home',
       component: () => import('./views/Index.vue'),
     },
-    ...tsRoutes,
-    ...glslRoutes,
+    ...sketchRoutes,
   ],
 });
 

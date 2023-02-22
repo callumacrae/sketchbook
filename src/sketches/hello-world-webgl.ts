@@ -1,6 +1,5 @@
 import * as twgl from 'twgl.js';
 
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
@@ -10,7 +9,7 @@ export const meta = {
 
 const glsl = String.raw;
 
-interface CanvasState {
+export interface CanvasState {
   programInfo: twgl.ProgramInfo;
   bufferInfo: twgl.BufferInfo;
 }
@@ -20,7 +19,7 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'webgl',
   sketchConfig,
 };
@@ -53,7 +52,7 @@ void main() {
 }
 `;
 
-const init: InitFn<CanvasState, SketchConfig> = ({ gl }) => {
+export const init: InitFn<CanvasState, SketchConfig> = ({ gl }) => {
   if (!gl) throw new Error('???');
 
   const programInfo = twgl.createProgramInfo(gl, [
@@ -69,7 +68,7 @@ const init: InitFn<CanvasState, SketchConfig> = ({ gl }) => {
   return { programInfo, bufferInfo };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = ({
+export const frame: FrameFn<CanvasState, SketchConfig> = ({
   gl,
   state,
   width,
@@ -89,9 +88,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
   twgl.setUniforms(programInfo, uniforms);
   twgl.drawBufferInfo(gl, bufferInfo);
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

@@ -74,6 +74,18 @@ export function shaderToyComponent(glsl: string) {
     }
   }
 
+  const wrapShaderText = (glsl: string) => `
+    uniform vec3 iResolution;
+    uniform float iTime;
+    uniform vec4 iMouse;
+
+    ${glsl}
+
+    void main() {
+      mainImage(gl_FragColor, gl_FragCoord.xy);
+    }
+  `;
+
   const init: InitFn<CanvasState, SketchConfig> = (props) => {
     if (!props.renderer) throw new Error('???');
 
@@ -116,18 +128,7 @@ export function shaderToyComponent(glsl: string) {
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
     scene.add(camera);
 
-    const fragmentShader = `
-      uniform vec3 iResolution;
-      uniform float iTime;
-      uniform vec4 iMouse;
-
-      ${glsl}
-
-      void main() {
-        mainImage(gl_FragColor, gl_FragCoord.xy);
-      }
-    `;
-
+    const fragmentShader = wrapShaderText(glsl);
     const plane = new THREE.PlaneGeometry(2, 2);
     const material = new THREE.ShaderMaterial({ fragmentShader, uniforms });
     scene.add(new THREE.Mesh(plane, material));
@@ -168,8 +169,11 @@ export function shaderToyComponent(glsl: string) {
     const { renderer, config, state, timestamp, hasChanged } = props;
     if (!renderer || !config) throw new Error('???');
 
-    if (hasChanged) {
-      const fragmentShader = state.material.fragmentShader.replace(
+    const newGlsl: string = (window as any).__sketch_glsl;
+    if (hasChanged || newGlsl) {
+      const fragmentShader = (
+        newGlsl ? wrapShaderText(newGlsl) : state.material.fragmentShader
+      ).replace(
         /#define\s+(\w+)\s+(.*?)(?:\s+\/\/\s+(.+))?$/gm,
         (match, key) => {
           if (!(key in config)) return match;
@@ -184,6 +188,7 @@ export function shaderToyComponent(glsl: string) {
           return `#define ${key} ${config[key]}`;
         }
       );
+      (window as any).__sketch_glsl = '';
 
       state.material.fragmentShader = fragmentShader;
       state.material.needsUpdate = true;

@@ -15,14 +15,17 @@ export function toCanvasComponent<
     render: () => h('canvas', { ref: 'canvas', id: 'sketch' }),
     async mounted() {
       const canvas = this.$refs.canvas as HTMLCanvasElement | null;
-      const { teardown } = await toVanillaCanvas<CanvasState, SketchConfig>(
-        canvas,
-        init,
-        frame,
-        sketchbookConfig
-      );
+      const { teardown, data } = await toVanillaCanvas<
+        CanvasState,
+        SketchConfig
+      >(canvas, init, frame, sketchbookConfig);
 
       this.$options.teardown = teardown;
+
+      // TODO: Find a less hacky way to pass this to HMR handling
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      window.__sketch_canvasData = data;
     },
     unmounted() {
       if (this.$options.teardown) {

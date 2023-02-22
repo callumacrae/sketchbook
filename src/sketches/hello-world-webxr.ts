@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton';
 
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
   InitFn,
@@ -14,7 +13,7 @@ export const meta = {
   date: '2023-02-17',
 };
 
-interface CanvasState {
+export interface CanvasState {
   scene: THREE.Scene;
   camera: ReturnType<typeof initCamera>;
   reticle: THREE.Mesh;
@@ -24,7 +23,7 @@ interface CanvasState {
 const sketchConfig = {};
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   xr: {
     enabled: true,
@@ -62,7 +61,7 @@ function initLighting(scene: THREE.Scene) {
   scene.add(ambientLight);
 }
 
-const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   if (!props.renderer) throw new Error('???');
 
   // props.initControls(({ pane, config }) => {
@@ -105,7 +104,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { scene, camera, reticle };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
   const { renderer, config, state, xrFrame } = props;
   if (!renderer || !config || !xrFrame) throw new Error('???');
 
@@ -141,9 +140,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
 
   return state;
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);
