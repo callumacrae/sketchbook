@@ -21,6 +21,7 @@
     "d3-ease": "^3.0.1",
     "d3-scale-chromatic": "^3.0.0",
     "eases": "^1.0.8",
+    "jstat": "^1.9.6",
     "matter-js": "^0.18.0",
     "meshline": "^3.1.6",
     "sass": "^1.58.1",

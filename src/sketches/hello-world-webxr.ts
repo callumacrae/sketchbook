@@ -21,7 +21,7 @@ export interface CanvasState {
 }
 
 const sketchConfig = {};
-type SketchConfig = typeof sketchConfig;
+export type SketchConfig = typeof sketchConfig;
 
 export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',

@@ -1,35 +1,50 @@
 import * as THREE from 'three';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton';
-import { HTMLMesh } from 'three/examples/jsm/interactive/HTMLMesh';
 import { interpolatePRGn } from 'd3-scale-chromatic';
+import { jStat } from 'jstat';
 
 import OverlayPlugin from '@/utils/plugins/webxr-overlay';
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
   InitFn,
   InitProps,
   FrameFn,
 } from '@/utils/renderers/vanilla';
+import * as random from '@/utils/random';
 
 export const meta = {
   name: 'WebXR surface edge detection',
   date: '2023-02-20',
 };
 
-interface CanvasState {
+interface SurfacePoint {
+  x: number;
+  z: number;
+  samples: number[];
+  pValue: number;
+  mesh?: THREE.Mesh;
+}
+
+interface Surface {
+  transform: XRRigidTransform;
+  // TODO use a different data structure that makes lookup easier
+  points: SurfacePoint[];
+}
+
+export interface CanvasState {
   scene: THREE.Scene;
   camera: ReturnType<typeof initCamera>;
   reticle: THREE.Object3D;
   hitTestSource?: XRHitTestSource;
+  surfaces: Surface[];
 }
 
 const sketchConfig = {};
-type SketchConfig = typeof sketchConfig;
+export type SketchConfig = typeof sketchConfig;
 
 const overlayPlugin = new OverlayPlugin();
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   xr: {
     enabled: true,
@@ -71,9 +86,7 @@ function initLighting(scene: THREE.Scene) {
   scene.add(ambientLight);
 }
 
-const labelElements: HTMLDivElement[] = [];
-
-const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   props.initControls();
   // props.initControls(({ pane, config }) => {
   // });
@@ -94,40 +107,12 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   );
   reticleGroup.add(reticle);
 
-  const sateliteGeometry = new THREE.RingGeometry(0.005, 0.01, 32).rotateX(
-    -Math.PI / 2
-  );
-  const sateliteCount = 6;
-  const radius = 0.15;
-  for (let i = 0; i < sateliteCount; i++) {
-    const sateliteMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const satelite = new THREE.Mesh(sateliteGeometry, sateliteMaterial);
-    satelite.name = `satelite-${i}`;
-    const angle = ((Math.PI * 2) / sateliteCount) * i;
-    satelite.position.set(
-      Math.cos(angle) * radius,
-      0,
-      Math.sin(angle) * radius
-    );
-    reticleGroup.add(satelite);
-
-    const sateliteLabelElement = document.createElement('div');
-    sateliteLabelElement.textContent = '0.99/0.99';
-    sateliteLabelElement.style.color = '#fff';
-    sateliteLabelElement.style.background = '#000';
-    sateliteLabelElement.style.visibility = 'hidden';
-    document.body.appendChild(sateliteLabelElement);
-    labelElements.push(sateliteLabelElement);
-
-    const sateliteLabel = new HTMLMesh(sateliteLabelElement);
-    sateliteLabel.position.set(satelite.position.x, 0.02, satelite.position.z);
-    reticleGroup.add(sateliteLabel);
-  }
-
-  return { scene, camera, reticle: reticleGroup };
+  return { scene, camera, reticle: reticleGroup, surfaces: [] };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
+const sphereGeometry = new THREE.SphereGeometry(0.003, 32, 32);
+
+export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
   const { renderer, config, state, xrFrame } = props;
   if (!renderer || !config || !xrFrame) throw new Error('???');
 
@@ -143,12 +128,13 @@ const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
   }
 
   let reticleVisible = false;
+  let hitPose: XRPose | undefined = undefined;
   if (state.hitTestSource && referenceSpace) {
     const hitTestResults = xrFrame.getHitTestResults(state.hitTestSource);
     if (hitTestResults.length) {
       const hit = hitTestResults[0];
 
-      const hitPose = hit.getPose(referenceSpace);
+      hitPose = hit.getPose(referenceSpace);
       if (hitPose) {
         reticleVisible = true;
         state.reticle.matrix.fromArray(hitPose.transform.matrix);
@@ -158,41 +144,115 @@ const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
   state.reticle.visible = reticleVisible;
 
   const viewerPose = xrFrame.getViewerPose(referenceSpace);
-  if (viewerPose && reticleVisible) {
+  if (viewerPose && reticleVisible && hitPose) {
     const view = viewerPose.views[0];
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const depthInfo = xrFrame.getDepthInformation(view);
     if (depthInfo) {
-      const satelites = state.reticle.children.filter(
-        (child) =>
-          child.name.startsWith('satelite-') && !('isHTMLMesh' in child)
-      );
-      for (const satelite of satelites) {
-        if (!(satelite instanceof THREE.Mesh)) continue;
+      let hitTestSurface = state.surfaces.find((surface) => {
+        const yOffset =
+          surface.transform.position.y - hitPose!.transform.position.y;
+        // TODO: make tolerance configurable?
+        return Math.abs(yOffset) < 0.2;
+      });
+      if (!hitTestSurface) {
+        hitTestSurface = {
+          transform: hitPose!.transform,
+          points: [],
+        };
+        state.surfaces.push(hitTestSurface);
+      }
 
-        const position = new THREE.Vector3();
-        position.setFromMatrixPosition(satelite.matrixWorld);
-        const idealDepth = position.distanceTo(state.camera.camera.position);
+      const hitTestSurfaceMatrix = new THREE.Matrix4().fromArray(
+        hitTestSurface.transform.matrix
+      );
+      const resolution = 0.05;
+
+      for (let i = 0; i < 50; i++) {
+        const offset = random.range(0, 0.3);
+        const angle = random.range(0, Math.PI * 2);
+
+        // x and z expressed in surface space
+        const x =
+          Math.cos(angle) * offset -
+          hitTestSurface.transform.position.x +
+          hitPose.transform.position.x;
+        const z =
+          Math.sin(angle) * offset -
+          hitTestSurface.transform.position.z +
+          hitPose.transform.position.z;
+
+        const cacheX = Math.round(x / resolution);
+        const cacheZ = Math.round(z / resolution);
+
+        let cachedPoint = hitTestSurface.points.find(
+          (point) => point.x === cacheX && point.z === cacheZ
+        );
+        if (!cachedPoint) {
+          const sphereMaterial = new THREE.MeshBasicMaterial({
+            color: 0x666666,
+          });
+          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          const sphereWorldPosition = new THREE.Vector3(
+            cacheX * resolution,
+            0,
+            cacheZ * resolution
+          ).applyMatrix4(hitTestSurfaceMatrix);
+          sphere.position.copy(sphereWorldPosition);
+          state.scene.add(sphere);
+
+          cachedPoint = {
+            x: cacheX,
+            z: cacheZ,
+            samples: [],
+            pValue: 0,
+            mesh: sphere,
+          };
+          hitTestSurface.points.push(cachedPoint);
+        }
+
+        // Important note: while we cache at cacheX and cacheZ, we test at x
+        // and z
+        const worldPosition = new THREE.Vector3(x, 0, z).applyMatrix4(
+          hitTestSurfaceMatrix
+        );
+
+        const idealDepth = worldPosition.distanceTo(
+          state.camera.camera.position
+        );
 
         // Convert to screen coords
-        position.project(state.camera.camera);
-        const x = (position.x + 1) / 2;
-        const y = 1 - (position.y + 1) / 2;
-        if (x < 0 || x > 1 || y < 0 || y > 1) {
-          satelite.material.color = new THREE.Color(0x666666);
+        const cameraPosition = worldPosition
+          .clone()
+          .project(state.camera.camera);
+        const screenX = (cameraPosition.x + 1) / 2;
+        const screenY = 1 - (cameraPosition.y + 1) / 2;
+        if (screenX < 0 || screenX > 1 || screenY < 0 || screenY > 1) {
           continue;
         }
-        const actualDepth = depthInfo.getDepthInMeters(x, y);
+        const actualDepth = depthInfo.getDepthInMeters(screenX, screenY);
 
-        const depthOffset = Math.abs(actualDepth - idealDepth);
+        let depthOffset = Math.abs(actualDepth - idealDepth);
+        const depthOffsetThreshold = actualDepth / 5;
+        if (depthOffset > depthOffsetThreshold) {
+          depthOffset -= depthOffsetThreshold;
+        } else if (depthOffset < -depthOffsetThreshold) {
+          depthOffset += depthOffsetThreshold;
+        } else {
+          depthOffset = 0;
+        }
+        cachedPoint.samples.push(depthOffset);
 
-        satelite.material.color = new THREE.Color(interpolatePRGn(depthOffset));
-
-        const labelEl = labelElements[Number(satelite.name.split('-')[1])];
-        labelEl.textContent = `${actualDepth.toFixed(2)}/${idealDepth.toFixed(
-          2
-        )}`;
+        cachedPoint.pValue = jStat(cachedPoint.samples).ztest(0) || 0;
+        if (
+          cachedPoint.mesh &&
+          cachedPoint.mesh.material instanceof THREE.MeshBasicMaterial
+        ) {
+          cachedPoint.mesh.material.color = new THREE.Color(
+            interpolatePRGn(cachedPoint.pValue)
+          );
+        }
       }
     } else {
       overlayPlugin.showWarning('no depth info');
@@ -205,9 +265,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
 
   return state;
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);
