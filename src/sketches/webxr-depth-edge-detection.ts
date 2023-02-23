@@ -17,18 +17,21 @@ export const meta = {
   date: '2023-02-20',
 };
 
+interface SurfacePointSample {
+  idealDepth: number;
+  actualDepth: number;
+  adjustedOffset: number;
+}
+
 interface SurfacePoint {
-  x: number;
-  z: number;
-  samples: number[];
+  samples: SurfacePointSample[];
   pValue: number;
   mesh?: THREE.Mesh;
 }
 
 interface Surface {
   transform: XRRigidTransform;
-  // TODO use a different data structure that makes lookup easier
-  points: SurfacePoint[];
+  points: { [key: string]: SurfacePoint };
 }
 
 export interface CanvasState {
@@ -107,10 +110,25 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   );
   reticleGroup.add(reticle);
 
-  return { scene, camera, reticle: reticleGroup, surfaces: [] };
+  const surfaces: Surface[] = [];
+  if (!props.renderer) throw new Error('???');
+  const controller = props.renderer.xr.getController(0);
+  controller.addEventListener('select', () => {
+    for (const surface of surfaces) {
+      for (const point of Object.values(surface.points)) {
+        if (point.mesh) {
+          scene.remove(point.mesh);
+        }
+      }
+    }
+    surfaces.splice(0, surfaces.length);
+  });
+  scene.add(controller);
+
+  return { scene, camera, reticle: reticleGroup, surfaces };
 };
 
-const sphereGeometry = new THREE.SphereGeometry(0.003, 32, 32);
+const sphereGeometry = new THREE.SphereGeometry(0.001, 32, 32);
 
 export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
   const { renderer, config, state, xrFrame } = props;
@@ -159,7 +177,7 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
       if (!hitTestSurface) {
         hitTestSurface = {
           transform: hitPose!.transform,
-          points: [],
+          points: {},
         };
         state.surfaces.push(hitTestSurface);
       }
@@ -167,7 +185,7 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
       const hitTestSurfaceMatrix = new THREE.Matrix4().fromArray(
         hitTestSurface.transform.matrix
       );
-      const resolution = 0.05;
+      const resolution = 0.02;
 
       for (let i = 0; i < 50; i++) {
         const offset = random.range(0, 0.3);
@@ -186,9 +204,11 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
         const cacheX = Math.round(x / resolution);
         const cacheZ = Math.round(z / resolution);
 
-        let cachedPoint = hitTestSurface.points.find(
-          (point) => point.x === cacheX && point.z === cacheZ
-        );
+        const pointKey = `${cacheX},${cacheZ}`;
+        let cachedPoint = hitTestSurface.points[pointKey];
+        if (cachedPoint && cachedPoint.pValue > 0.9) {
+          continue;
+        }
         if (!cachedPoint) {
           const sphereMaterial = new THREE.MeshBasicMaterial({
             color: 0x666666,
@@ -203,13 +223,11 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
           state.scene.add(sphere);
 
           cachedPoint = {
-            x: cacheX,
-            z: cacheZ,
             samples: [],
             pValue: 0,
             mesh: sphere,
           };
-          hitTestSurface.points.push(cachedPoint);
+          hitTestSurface.points[pointKey] = cachedPoint;
         }
 
         // Important note: while we cache at cacheX and cacheZ, we test at x
@@ -234,7 +252,7 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
         const actualDepth = depthInfo.getDepthInMeters(screenX, screenY);
 
         let depthOffset = Math.abs(actualDepth - idealDepth);
-        const depthOffsetThreshold = actualDepth / 5;
+        const depthOffsetThreshold = idealDepth / 5;
         if (depthOffset > depthOffsetThreshold) {
           depthOffset -= depthOffsetThreshold;
         } else if (depthOffset < -depthOffsetThreshold) {
@@ -242,15 +260,31 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
         } else {
           depthOffset = 0;
         }
-        cachedPoint.samples.push(depthOffset);
+        cachedPoint.samples.push({
+          idealDepth,
+          actualDepth,
+          adjustedOffset: depthOffset,
+        });
 
-        cachedPoint.pValue = jStat(cachedPoint.samples).ztest(0) || 0;
+        // Calculations are less accurate when further away so if the camera
+        // gets closer we want that to take priority over the less accurate
+        // samples
+        if (cachedPoint.samples.length > 50) {
+          cachedPoint.samples.sort((a, b) => a.idealDepth - b.idealDepth);
+        }
+        const samples = cachedPoint.samples
+          .slice(0, 100)
+          .map((s) => s.adjustedOffset);
+
+        cachedPoint.pValue = jStat(samples).ztest(0);
         if (
           cachedPoint.mesh &&
           cachedPoint.mesh.material instanceof THREE.MeshBasicMaterial
         ) {
           cachedPoint.mesh.material.color = new THREE.Color(
-            interpolatePRGn(cachedPoint.pValue)
+            interpolatePRGn(
+              isNaN(cachedPoint.pValue) ? 0xff0000 : cachedPoint.pValue
+            )
           );
         }
       }
