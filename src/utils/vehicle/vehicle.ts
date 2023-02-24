@@ -1,3 +1,4 @@
+import * as random from '../random';
 import Vector from '../vector';
 import HasBehaviours from './mixins/has-behaviours';
 import type VehicleGroup from './vehicle-group';
@@ -198,6 +199,15 @@ export default class Vehicle extends HasBehaviours {
           }
         }
       }
+    }
+
+    const wanderBehaviour =
+      this.behaviours.wander || this.group?.behaviours.wander;
+    if (wanderBehaviour) {
+      const wanderForce = this.velocity
+        .rotate(random.range(-2, 2))
+        .scale(wanderBehaviour.weight ?? 1);
+      force = force.add(wanderForce);
     }
 
     force = force.limit(maxForce);

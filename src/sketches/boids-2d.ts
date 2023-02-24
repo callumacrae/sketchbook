@@ -30,6 +30,7 @@ const sketchConfig = {
     separationWeight: 0.5,
     cohesionWeight: 0.4,
     alignmentWeight: 0.6,
+    wanderWeight: 0.1,
     avoidWallsLookAhead: 1,
     avoidWallsWeight: 5,
   },
@@ -96,6 +97,10 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
       min: 0,
       max: 2,
     });
+    behavioursFolder.addInput(config.behaviours, 'wanderWeight', {
+      min: 0,
+      max: 2,
+    });
     behavioursFolder.addInput(config.behaviours, 'avoidWallsLookAhead', {
       min: 0,
       max: 4,
@@ -153,6 +158,7 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
     state.boids.setSeparation(config.behaviours.separationWeight);
     state.boids.setCohesion(config.behaviours.cohesionWeight);
     state.boids.setAlignment(config.behaviours.alignmentWeight);
+    state.boids.setWander(config.behaviours.wanderWeight);
 
     const hitsWall = (current: Vector, ahead: Vector) => {
       const buffer = 50;
