@@ -136,6 +136,8 @@ export default class Vehicle extends HasBehaviours {
     if (avoidWallsBehaviour) {
       const { hitsWall, lookAhead = 0.1, weight } = avoidWallsBehaviour;
 
+      // WARNING WHEN IMPLEMENTING hitsWall FUNCTION:
+      // `ahead` is _relative_ to `current`
       const lookAheadVector = this.velocity.scale(lookAhead);
 
       const rotateVal = 0.1;
