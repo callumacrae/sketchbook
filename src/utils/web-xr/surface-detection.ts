@@ -47,11 +47,15 @@ export default class SurfaceHandler {
 
 export class Surface {
   transform: XRRigidTransform;
+  plane: THREE.Plane;
   points: { [key: string]: SurfacePoint } = {};
   debugGroup = new THREE.Group();
 
   constructor(transform: XRRigidTransform) {
     this.transform = transform;
+    this.plane = new THREE.Plane(new THREE.Vector3(0, 1, 0)).applyMatrix4(
+      this.threeMatrix()
+    );
   }
 
   private threeMatrixCache?: THREE.Matrix4;
@@ -63,6 +67,15 @@ export class Surface {
     }
 
     return this.threeMatrixCache;
+  }
+
+  private inverseThreeMatrixCache?: THREE.Matrix4;
+  private inverseThreeMatrix() {
+    if (!this.inverseThreeMatrixCache) {
+      this.inverseThreeMatrixCache = this.threeMatrix().clone().invert();
+    }
+
+    return this.inverseThreeMatrixCache;
   }
 
   testPoint(
@@ -160,6 +173,26 @@ export class Surface {
     }
 
     return cachedPoint.pValue;
+  }
+
+  learnDepthInfo(camera: THREE.Camera, depthInfo: any) {
+    const raycaster = new THREE.Raycaster();
+    const localPosition = new THREE.Vector3();
+
+    for (let x = 0; x < depthInfo.width; x++) {
+      for (let y = 0; y < depthInfo.height; y++) {
+        // TODO: improve performance so this isn't necessary
+        if (Math.random() < 0.95) continue;
+
+        const screenX = (x / depthInfo.width) * 2 - 1;
+        const screenY = (y / depthInfo.height) * 2 - 1;
+        raycaster.setFromCamera({ x: screenX, y: screenY }, camera);
+        raycaster.ray.intersectPlane(this.plane, localPosition);
+        localPosition.applyMatrix4(this.inverseThreeMatrix());
+
+        this.testPoint(localPosition.x, localPosition.z, camera, depthInfo);
+      }
+    }
   }
 
   clear() {

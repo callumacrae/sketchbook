@@ -144,23 +144,7 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
     const depthInfo = xrFrame.getDepthInformation(view);
     if (depthInfo) {
       const hitTestSurface = state.surfaces.getSurface(hitPose.transform);
-
-      for (let i = 0; i < 50; i++) {
-        const offset = random.range(0, 0.3);
-        const angle = random.range(0, Math.PI * 2);
-
-        // x and z expressed in surface space
-        const x =
-          Math.cos(angle) * offset -
-          hitTestSurface.transform.position.x +
-          hitPose.transform.position.x;
-        const z =
-          Math.sin(angle) * offset -
-          hitTestSurface.transform.position.z +
-          hitPose.transform.position.z;
-
-        hitTestSurface.testPoint(x, z, state.camera.camera, depthInfo);
-      }
+      hitTestSurface.learnDepthInfo(state.camera.camera, depthInfo);
     } else {
       overlayPlugin.showWarning('no depth info');
     }
