@@ -11,10 +11,12 @@ export interface SurfacePointSample {
 export interface SurfacePoint {
   samples: SurfacePointSample[];
   pValue: number;
-  mesh?: THREE.Mesh;
+  debugMatrix: THREE.Matrix4;
+  debugColor: THREE.Color;
 }
 
-const sphereGeometry = new THREE.SphereGeometry(0.001, 32, 32);
+const sphereGeometry = new THREE.CircleGeometry(0.001, 4).rotateX(-Math.PI / 2);
+const sphereMaterial = new THREE.MeshBasicMaterial();
 
 export default class SurfaceHandler {
   surfaces: Surface[] = [];
@@ -78,48 +80,86 @@ export class Surface {
     return this.inverseThreeMatrixCache;
   }
 
+  // TODO: make resolution configurable
+  private readonly resolution = 0.02;
+
+  private updateDebugGroup() {
+    if (!this.debugGroup.visible) {
+      return;
+    }
+
+    const pointsArray = Object.values(this.points);
+
+    let debugPoints = this.debugGroup.children[0];
+    if (
+      !debugPoints ||
+      !(debugPoints instanceof THREE.InstancedMesh) ||
+      debugPoints.count < pointsArray.length
+    ) {
+      if (debugPoints) {
+        this.debugGroup.remove(debugPoints);
+      }
+
+      debugPoints = new THREE.InstancedMesh(
+        sphereGeometry,
+        sphereMaterial,
+        pointsArray.length * 1.5
+      );
+      this.debugGroup.add(debugPoints);
+    }
+
+    if (!(debugPoints instanceof THREE.InstancedMesh)) throw new Error('???');
+
+    for (let i = 0; i < pointsArray.length; i++) {
+      const point = pointsArray[i];
+      debugPoints.setMatrixAt(i, point.debugMatrix);
+      debugPoints.setColorAt(i, point.debugColor);
+    }
+
+    debugPoints.instanceMatrix.needsUpdate = true;
+    if (!debugPoints.instanceColor) throw new Error('???');
+    debugPoints.instanceColor.needsUpdate = true;
+  }
+
+  private getCachedPoint(x: number, z: number) {
+    const cacheX = Math.round(x / this.resolution);
+    const cacheZ = Math.round(z / this.resolution);
+
+    const pointKey = `${cacheX},${cacheZ}`;
+
+    let cachedPoint = this.points[pointKey];
+
+    if (!cachedPoint) {
+      const dummyObj = new THREE.Object3D();
+      dummyObj.position
+        .set(cacheX * this.resolution, 0, cacheZ * this.resolution)
+        .applyMatrix4(this.threeMatrix());
+      dummyObj.updateMatrix();
+
+      cachedPoint = {
+        samples: [],
+        pValue: 0,
+        debugMatrix: dummyObj.matrix,
+        debugColor: new THREE.Color(),
+      };
+      this.points[pointKey] = cachedPoint;
+    }
+
+    return cachedPoint;
+  }
+
   testPoint(
     x: number,
     z: number,
     camera: THREE.Camera,
     depthInfo: any
   ): number {
-    // TODO: make resolution configurable
-    const resolution = 0.02;
+    const cachedPoint = this.getCachedPoint(x, z);
 
-    const cacheX = Math.round(x / resolution);
-    const cacheZ = Math.round(z / resolution);
-
-    const pointKey = `${cacheX},${cacheZ}`;
-
-    let cachedPoint = this.points[pointKey];
-    if (cachedPoint?.pValue > 0.9) {
+    if (cachedPoint.pValue > 0.9) {
       return cachedPoint.pValue;
     }
 
-    if (!cachedPoint) {
-      const sphereMaterial = new THREE.MeshBasicMaterial({
-        color: 0x666666,
-      });
-      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-      const sphereWorldPosition = new THREE.Vector3(
-        cacheX * resolution,
-        0,
-        cacheZ * resolution
-      ).applyMatrix4(this.threeMatrix());
-      sphere.position.copy(sphereWorldPosition);
-      this.debugGroup.add(sphere);
-
-      cachedPoint = {
-        samples: [],
-        pValue: 0,
-        mesh: sphere,
-      };
-      this.points[pointKey] = cachedPoint;
-    }
-
-    // Important note: while we cache at cacheX and cacheZ, we test at x
-    // and z
     const worldPosition = new THREE.Vector3(x, 0, z).applyMatrix4(
       this.threeMatrix()
     );
@@ -161,18 +201,10 @@ export class Surface {
       .map((s) => s.adjustedOffset);
 
     cachedPoint.pValue = jStat(samples).ztest(0);
-    if (
-      cachedPoint.mesh &&
-      cachedPoint.mesh.material instanceof THREE.MeshBasicMaterial
-    ) {
-      cachedPoint.mesh.material.color = new THREE.Color(
-        interpolatePRGn(
-          isNaN(cachedPoint.pValue) ? 0xff0000 : cachedPoint.pValue
-        )
-      );
-    }
-
-    return cachedPoint.pValue;
+    cachedPoint.debugColor.set(
+      interpolatePRGn(isNaN(cachedPoint.pValue) ? 0xff0000 : cachedPoint.pValue)
+    );
+    return isNaN(cachedPoint.pValue) ? 1 : cachedPoint.pValue;
   }
 
   learnDepthInfo(camera: THREE.Camera, depthInfo: any) {
@@ -181,8 +213,8 @@ export class Surface {
 
     for (let x = 0; x < depthInfo.width; x++) {
       for (let y = 0; y < depthInfo.height; y++) {
-        // TODO: improve performance so this isn't necessary
-        if (Math.random() < 0.95) continue;
+        // Performance is too bad to test everything on every frame :(
+        if (Math.random() < 0.9) continue;
 
         const screenX = (x / depthInfo.width) * 2 - 1;
         const screenY = (y / depthInfo.height) * 2 - 1;
@@ -193,6 +225,8 @@ export class Surface {
         this.testPoint(localPosition.x, localPosition.z, camera, depthInfo);
       }
     }
+
+    this.updateDebugGroup();
   }
 
   clear() {
