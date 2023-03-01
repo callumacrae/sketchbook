@@ -1,4 +1,3 @@
-import { interpolatePRGn } from 'd3-scale-chromatic';
 import { jStat } from 'jstat';
 import * as THREE from 'three';
 
@@ -17,6 +16,14 @@ export interface SurfacePoint {
 
 const sphereGeometry = new THREE.CircleGeometry(0.001, 4).rotateX(-Math.PI / 2);
 const sphereMaterial = new THREE.MeshBasicMaterial();
+
+const getDebugColor = (pValue: number) => {
+  if (pValue < 0.4) return 0x7b3294;
+  if (pValue < 0.6) return 0xc2a5cf
+  if (pValue < 0.8) return 0xf7f7f7;
+  if (pValue < 0.9) return 0xa6dba0;
+  return 0x008837;
+};
 
 export default class SurfaceHandler {
   surfaces: Surface[] = [];
@@ -148,68 +155,15 @@ export class Surface {
     return cachedPoint;
   }
 
-  testPoint(
-    x: number,
-    z: number,
-    camera: THREE.Camera,
-    depthInfo: any
-  ): number {
-    const cachedPoint = this.getCachedPoint(x, z);
-
-    if (cachedPoint.pValue > 0.9) {
-      return cachedPoint.pValue;
-    }
-
-    const worldPosition = new THREE.Vector3(x, 0, z).applyMatrix4(
-      this.threeMatrix()
-    );
-
-    const idealDepth = worldPosition.distanceTo(camera.position);
-
-    // Convert to screen coords
-    const cameraPosition = worldPosition.clone().project(camera);
-    const screenX = (cameraPosition.x + 1) / 2;
-    const screenY = 1 - (cameraPosition.y + 1) / 2;
-    if (screenX < 0 || screenX > 1 || screenY < 0 || screenY > 1) {
-      return 0;
-    }
-    const actualDepth = depthInfo.getDepthInMeters(screenX, screenY);
-
-    let depthOffset = Math.abs(actualDepth - idealDepth);
-    const depthOffsetThreshold = idealDepth / 5;
-    if (depthOffset > depthOffsetThreshold) {
-      depthOffset -= depthOffsetThreshold;
-    } else if (depthOffset < -depthOffsetThreshold) {
-      depthOffset += depthOffsetThreshold;
-    } else {
-      depthOffset = 0;
-    }
-    cachedPoint.samples.push({
-      idealDepth,
-      actualDepth,
-      adjustedOffset: depthOffset,
-    });
-
-    // Calculations are less accurate when further away so if the camera
-    // gets closer we want that to take priority over the less accurate
-    // samples
-    if (cachedPoint.samples.length > 50) {
-      cachedPoint.samples.sort((a, b) => a.idealDepth - b.idealDepth);
-    }
-    const samples = cachedPoint.samples
-      .slice(0, 100)
-      .map((s) => s.adjustedOffset);
-
-    cachedPoint.pValue = jStat(samples).ztest(0);
-    cachedPoint.debugColor.set(
-      interpolatePRGn(isNaN(cachedPoint.pValue) ? 0xff0000 : cachedPoint.pValue)
-    );
-    return isNaN(cachedPoint.pValue) ? 1 : cachedPoint.pValue;
+  testPoint(x: number, z: number): number {
+    const { pValue } = this.getCachedPoint(x, z);
+    return isNaN(pValue) ? 1 : pValue;
   }
 
   learnDepthInfo(camera: THREE.Camera, depthInfo: any) {
     const raycaster = new THREE.Raycaster();
     const localPosition = new THREE.Vector3();
+    const worldPosition = new THREE.Vector3();
 
     for (let x = 0; x < depthInfo.width; x++) {
       for (let y = 0; y < depthInfo.height; y++) {
@@ -219,10 +173,54 @@ export class Surface {
         const screenX = (x / depthInfo.width) * 2 - 1;
         const screenY = (y / depthInfo.height) * 2 - 1;
         raycaster.setFromCamera({ x: screenX, y: screenY }, camera);
-        raycaster.ray.intersectPlane(this.plane, localPosition);
-        localPosition.applyMatrix4(this.inverseThreeMatrix());
+        raycaster.ray.intersectPlane(this.plane, worldPosition);
+        localPosition
+          .copy(worldPosition)
+          .applyMatrix4(this.inverseThreeMatrix());
 
-        this.testPoint(localPosition.x, localPosition.z, camera, depthInfo);
+        const cachedPoint = this.getCachedPoint(
+          localPosition.x,
+          localPosition.z
+        );
+
+        if (cachedPoint.pValue > 0.9) {
+          continue;
+        }
+
+        const idealDepth = worldPosition.distanceTo(camera.position);
+
+        const actualDepth = depthInfo.getDepthInMeters(
+          screenX / 2 + 0.5,
+          0.5 - screenY / 2
+        );
+
+        let depthOffset = Math.abs(actualDepth - idealDepth);
+        const depthOffsetThreshold = idealDepth / 5;
+        if (depthOffset > depthOffsetThreshold) {
+          depthOffset -= depthOffsetThreshold;
+        } else if (depthOffset < -depthOffsetThreshold) {
+          depthOffset += depthOffsetThreshold;
+        } else {
+          depthOffset = 0;
+        }
+        cachedPoint.samples.push({
+          idealDepth,
+          actualDepth,
+          adjustedOffset: depthOffset,
+        });
+
+        // Calculations are less accurate when further away so if the camera
+        // gets closer we want that to take priority over the less accurate
+        // samples
+        if (cachedPoint.samples.length > 30) {
+          cachedPoint.samples.sort((a, b) => a.idealDepth - b.idealDepth);
+        }
+        const samples = cachedPoint.samples
+          .slice(0, 30)
+          .map((s) => s.adjustedOffset);
+
+        cachedPoint.pValue = jStat(samples).ztest(0);
+        cachedPoint.debugColor.set(getDebugColor(cachedPoint.pValue));
       }
     }
 

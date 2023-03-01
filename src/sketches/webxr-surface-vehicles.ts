@@ -294,6 +294,7 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
         // TODO: better handling?
         return;
       }
+      hitTestSurface.learnDepthInfo(state.camera.camera, depthInfo);
 
       if (state.boids.vehicles.length === 0) {
         state.boidsGroup.matrix.fromArray(hitPose.transform.matrix);
@@ -318,12 +319,7 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
             return 0;
           }
 
-          const pValue = hitTestSurface.testPoint(
-            x,
-            z,
-            state.camera.camera,
-            depthInfo
-          );
+          const pValue = hitTestSurface.testPoint(x, z);
           if (pValue < 0.8) {
             return t;
           }
