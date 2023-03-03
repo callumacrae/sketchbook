@@ -19,6 +19,8 @@ export default class Vehicle extends HasBehaviours {
 
   group?: VehicleGroup;
 
+  private lastWanderAngle?: number;
+
   constructor(options: VehicleOptions) {
     super();
 
@@ -206,10 +208,17 @@ export default class Vehicle extends HasBehaviours {
     const wanderBehaviour =
       this.behaviours.wander || this.group?.behaviours.wander;
     if (wanderBehaviour) {
+      const lastWanderAngle =
+        this.lastWanderAngle ?? random.range(0, Math.PI * 2);
+      const variance = wanderBehaviour.variance ?? 0.1;
+      const wanderAngle = lastWanderAngle + random.range(-variance, variance);
+
       const wanderForce = this.velocity
-        .rotate(random.range(-2, 2))
+        .add(this.velocity.rotate(wanderAngle))
         .scale(wanderBehaviour.weight ?? 1);
       force = force.add(wanderForce);
+
+      this.lastWanderAngle = wanderAngle;
     }
 
     force = force.limit(maxForce);

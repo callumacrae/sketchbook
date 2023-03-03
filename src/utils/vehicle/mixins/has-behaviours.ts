@@ -8,7 +8,7 @@ export interface BoidBehaviours {
   separation?: { weight?: number };
   cohesion?: { weight?: number };
   alignment?: { weight?: number };
-  wander?: { weight?: number };
+  wander?: { variance?: number; weight?: number };
   avoidWalls?: {
     hitsWall: HasWallFn;
     lookAhead?: number;
@@ -86,11 +86,11 @@ export default class HasBehaviours {
     }
   }
 
-  setWander(weight: number | null) {
+  setWander(weight: number | null, variance?: number) {
     if (weight === null) {
       this.clearBehaviour('wander');
     } else {
-      this.setBehaviour('wander', { weight });
+      this.setBehaviour('wander', { weight, variance });
     }
   }
 
