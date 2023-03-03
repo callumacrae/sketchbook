@@ -28,6 +28,7 @@ export default function sketchbookPlugin(): VitePlugin {
             if (import.meta.hot) {
               import.meta.hot.accept((newModule) => {
                 window.__sketch_canvasData.frameFn = newModule.frame;
+                window.__sketch_canvasData.hasChanged = true;
               });
             }
           `,
