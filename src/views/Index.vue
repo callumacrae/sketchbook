@@ -22,7 +22,7 @@ const sketchPromises = Object.entries(sketchModules).map(
 
     const moduleText = await module();
 
-    const jsMeta = moduleText.indexOf('export const meta =');
+    const jsMeta = moduleText.indexOf('const meta =');
     if (jsMeta !== -1) {
       const metaStart = jsMeta + 7;
       const metaEnd = moduleText.indexOf(';', metaStart) + 1;
@@ -211,7 +211,7 @@ li:last-child {
   height: calc(50vw / 16 * 9);
 
   background-color: white;
-  border: 1px hsl(0, 0%, 80%) solid;
+  border: 3px black solid;
   transition: transform 400ms;
 }
 

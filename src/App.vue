@@ -3,6 +3,10 @@
 </template>
 
 <style>
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @font-face {
   font-family: 'The Happy Giraffe';
   src: url('/the-happy-giraffe/the_happy_giraffe_demo-webfont.woff2')

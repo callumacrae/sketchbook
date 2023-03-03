@@ -52,21 +52,31 @@ export function drawFrame(options: {
   lineWidth?: number;
   resolution?: number;
   wiggle?: number;
+  color?: string;
 }) {
-  const { width, height, lineWidth = 5, resolution = 16, wiggle = 2 } = options;
+  const {
+    width,
+    height,
+    lineWidth = 5,
+    resolution = 16,
+    wiggle = 2,
+    color = 'black',
+  } = options;
 
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('???');
 
-  ctx.canvas.width = width;
-  ctx.canvas.height = height;
+  ctx.canvas.width = width + lineWidth + wiggle * 2;
+  ctx.canvas.height = height + lineWidth + wiggle * 2;
   ctx.lineWidth = lineWidth;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  ctx.strokeStyle = color;
 
   const points = makeFrame(width, height, resolution, wiggle);
 
+  ctx.translate(lineWidth / 2 + wiggle, lineWidth / 2 + wiggle);
   ctx.beginPath();
   ctx.moveTo(...points[0]);
   for (let i = 1; i < points.length; i++) {
@@ -74,6 +84,8 @@ export function drawFrame(options: {
   }
   ctx.closePath();
   ctx.stroke();
+
+  return canvas;
 }
 
 export default {};
