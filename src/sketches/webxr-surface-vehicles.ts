@@ -70,6 +70,7 @@ const sketchConfig = {
     cohesionWeight: 0.4,
     alignmentWeight: 0.6,
     wanderWeight: 0.1,
+    wanderVariance: 0.2,
     avoidWallsLookAhead: 1,
     avoidWallsWeight: 5,
   },
@@ -118,11 +119,15 @@ function newBoid() {
       random.range(0, Math.PI * 2),
       random.range(0, 0.2)
     ),
+    // position: new Vector(0, 0),
     velocity: Vector.fromAngle(
       random.range(0, Math.PI * 2),
-      random.range(sketchConfig.boids.minVelocity, sketchConfig.boids.maxVelocity)
+      random.range(
+        sketchConfig.boids.minVelocity,
+        sketchConfig.boids.maxVelocity
+      )
     ),
-    // velocity: new Vector(-0.2, -0.2),
+    // velocity: new Vector(-sketchConfig.boids.maxVelocity, -0.03),
     mesh: new THREE.Mesh(boidGeometry, boidMaterial),
   });
 }
@@ -192,6 +197,10 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
       min: 0,
       max: 2,
     });
+    behavioursFolder.addInput(config.behaviours, 'wanderVariance', {
+      min: 0,
+      max: 0.5,
+    });
     behavioursFolder.addInput(config.behaviours, 'avoidWallsLookAhead', {
       min: 0,
       max: 4,
@@ -224,7 +233,11 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   if (!props.renderer) throw new Error('???');
   const controller = props.renderer.xr.getController(0);
   controller.addEventListener('select', () => {
-    surfaces.clear();
+    for (let i = 0; i < 1; i++) {
+      const boid = newBoid();
+      boids.addVehicle(boid);
+      boidsGroup.add(boid.mesh);
+    }
   });
   scene.add(controller);
 
@@ -244,7 +257,10 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
     state.boids.setSeparation(config.behaviours.separationWeight);
     state.boids.setCohesion(config.behaviours.cohesionWeight);
     state.boids.setAlignment(config.behaviours.alignmentWeight);
-    state.boids.setWander(config.behaviours.wanderWeight);
+    state.boids.setWander(
+      config.behaviours.wanderWeight,
+      config.behaviours.wanderVariance
+    );
 
     state.boids.minVelocity = config.boids.minVelocity;
     state.boids.maxVelocity = config.boids.maxVelocity;
@@ -296,14 +312,9 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
       }
       hitTestSurface.learnDepthInfo(state.camera.camera, depthInfo);
 
+      // TODO: perf improvement
       if (state.boids.vehicles.length === 0) {
         state.boidsGroup.matrix.fromArray(hitPose.transform.matrix);
-
-        for (let i = 0; i < 1; i++) {
-          const boid = newBoid();
-          state.boids.addVehicle(boid);
-          state.boidsGroup.add(boid.mesh);
-        }
       }
 
       const hitsWall = (current: Vector, ahead: Vector) => {

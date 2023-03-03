@@ -14,12 +14,12 @@ export interface SurfacePoint {
   debugColor: THREE.Color;
 }
 
-const sphereGeometry = new THREE.CircleGeometry(0.001, 4).rotateX(-Math.PI / 2);
+const sphereGeometry = new THREE.CircleGeometry(0.0005, 4).rotateX(-Math.PI / 2);
 const sphereMaterial = new THREE.MeshBasicMaterial();
 
 const getDebugColor = (pValue: number) => {
   if (pValue < 0.4) return 0x7b3294;
-  if (pValue < 0.6) return 0xc2a5cf
+  if (pValue < 0.6) return 0xc2a5cf;
   if (pValue < 0.8) return 0xf7f7f7;
   if (pValue < 0.9) return 0xa6dba0;
   return 0x008837;
@@ -88,10 +88,10 @@ export class Surface {
   }
 
   // TODO: make resolution configurable
-  private readonly resolution = 0.02;
+  private readonly resolution = 0.01;
 
   private updateDebugGroup() {
-    if (!this.debugGroup.visible) {
+    if (!this.debugGroup.visible || !this.debugGroup.parent?.parent) {
       return;
     }
 
@@ -213,11 +213,11 @@ export class Surface {
         // gets closer we want that to take priority over the less accurate
         // samples
         if (cachedPoint.samples.length > 30) {
-          cachedPoint.samples.sort((a, b) => a.idealDepth - b.idealDepth);
+          cachedPoint.samples = cachedPoint.samples
+            .sort((a, b) => a.idealDepth - b.idealDepth)
+            .slice(0, 30);
         }
-        const samples = cachedPoint.samples
-          .slice(0, 30)
-          .map((s) => s.adjustedOffset);
+        const samples = cachedPoint.samples.map((s) => s.adjustedOffset);
 
         cachedPoint.pValue = jStat(samples).ztest(0);
         cachedPoint.debugColor.set(getDebugColor(cachedPoint.pValue));
