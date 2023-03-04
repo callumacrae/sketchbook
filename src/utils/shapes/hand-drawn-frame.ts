@@ -8,6 +8,11 @@ export function makeFrame(
   resolution = 16,
   wiggle = 2
 ): Point[] {
+  if (width < 1) throw new Error('width must be >= 1');
+  if (height < 1) throw new Error('height must be >= 1');
+  if (resolution < 1) throw new Error('resolution must be >= 1');
+  if (wiggle < 0) throw new Error('wiggle must be >= 0');
+
   function makeXLine(x1: number, x2: number, y: number): Point[] {
     const points: Point[] = [[x1, y]];
 
