@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, computed, ref } from 'vue';
+import DrawnFrame from '@/components/DrawnFrame.vue';
 
 interface RouteObject {
   path: string;
@@ -108,13 +109,15 @@ const filteredRoutes = computed(() => {
     <div
       class="preview"
     >
-      <h1>callum's sketchbook</h1>
+      <h1 class="mt-0 text-3xl">callum's sketchbook</h1>
       <p>
         disclaimer: some of this is real shitty, this is called "sketchbook" not
         "gallery"!
       </p>
 
-      <iframe :src="preview?.path"></iframe>
+      <DrawnFrame class="border-black" :line-width="3">
+        <iframe :src="preview?.path"></iframe>
+      </DrawnFrame>
 
       <!-- Added to the DOM even when empty for the transition -->
       <a
@@ -147,10 +150,6 @@ export default {
 .index {
   width: 250px;
   overflow: auto;
-}
-
-h1 {
-  margin-top: 0;
 }
 
 .toggle-favourites {
@@ -211,10 +210,6 @@ li:last-child {
 .preview iframe {
   width: 50vw;
   height: calc(50vw / 16 * 9);
-
-  background-color: white;
-  border: 3px black solid;
-  transition: transform 400ms;
 }
 
 .preview__link {
