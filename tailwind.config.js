@@ -1,12 +1,13 @@
+/* eslint-env node */
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./src/**/*.vue"],
+  content: ['./src/**/*.vue'],
   theme: {
     extend: {
       fontFamily: {
-        'handwriting': ['The Happy Giraffe', 'sans-serif'],
-      }
+        handwriting: ['The Happy Giraffe', 'sans-serif'],
+      },
     },
   },
   plugins: [],
-}
+};

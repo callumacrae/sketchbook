@@ -10,7 +10,12 @@ export default function sketchbookPlugin(): VitePlugin {
       if (!id.includes('/sketches')) return null;
 
       if (id.endsWith('.ts')) {
-        if (code.includes('toCanvasComponent')) return null;
+        if (
+          code.includes('toCanvasComponent') ||
+          !code.includes('CanvasState') ||
+          !code.includes('sketchbookConfig')
+        )
+          return null;
 
         return {
           code: `

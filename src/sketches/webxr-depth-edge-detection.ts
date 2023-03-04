@@ -9,7 +9,6 @@ import type {
   InitProps,
   FrameFn,
 } from '@/utils/renderers/vanilla';
-import * as random from '@/utils/random';
 
 export const meta = {
   name: 'WebXR surface edge detection',

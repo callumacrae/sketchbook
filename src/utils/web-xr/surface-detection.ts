@@ -14,7 +14,9 @@ export interface SurfacePoint {
   debugColor: THREE.Color;
 }
 
-const sphereGeometry = new THREE.CircleGeometry(0.0005, 4).rotateX(-Math.PI / 2);
+const sphereGeometry = new THREE.CircleGeometry(0.0005, 4).rotateX(
+  -Math.PI / 2
+);
 const sphereMaterial = new THREE.MeshBasicMaterial();
 
 const getDebugColor = (pValue: number) => {

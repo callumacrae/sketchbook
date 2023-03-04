@@ -22,13 +22,15 @@ const sketchPromises = Object.entries(sketchModules).map(
 
     const moduleText = await module();
 
-    const jsMeta = moduleText.indexOf('const meta =');
+    let jsMeta = moduleText.indexOf('const meta =');
+    if (jsMeta === -1) {
+      jsMeta = moduleText.indexOf('const _meta =');
+    }
     if (jsMeta !== -1) {
-      const metaStart = jsMeta + 7;
-      const metaEnd = moduleText.indexOf(';', metaStart) + 1;
+      const metaEnd = moduleText.indexOf(';', jsMeta) + 1;
 
       const meta: Record<string, any> = eval(
-        moduleText.slice(metaStart, metaEnd) + 'meta'
+        moduleText.slice(jsMeta, metaEnd).replace('_meta', 'meta') + 'meta'
       );
 
       return { path, meta };

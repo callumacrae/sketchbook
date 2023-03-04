@@ -60,11 +60,15 @@ watch(
   }
 );
 
-const lineWidth = computed(() => (props.lineWidth > 0 ? props.lineWidth : 4));
-const resolution = computed(() =>
-  props.resolution > 0 ? props.resolution : 10
+const lineWidth = computed(() =>
+  props.lineWidth && props.lineWidth > 0 ? props.lineWidth : 4
 );
-const wiggle = computed(() => (props.wiggle >= 0 ? props.wiggle : 1));
+const resolution = computed(() =>
+  props.resolution && props.resolution > 0 ? props.resolution : 10
+);
+const wiggle = computed(() =>
+  props.wiggle && props.wiggle >= 0 ? props.wiggle : 1
+);
 const frameCanvas = computed(() => {
   let color = props.color;
   if (!color) {

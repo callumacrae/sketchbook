@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import DrawnFrame from '@/components/DrawnFrame.vue';
 
-const meta = {
+const _meta = {
   name: 'Handdrawn Frame Vue',
   date: '2023-03-03',
 };
