@@ -20,15 +20,11 @@ const wiggle = ref(1);
     class="bg-fuchsia-100 flex items-center justify-center flex-col gap-4 w-screen h-screen"
   >
     <DrawnFrame
-      color="#86198f"
       :line-width="lineWidth"
       :resolution="resolution"
       :wiggle="wiggle"
-      class="bg-fuchsia-300 p-4 flex items-center justify-center font-handwriting"
-      :style="{
-        width: width + 'px',
-        height: height + 'px',
-      }"
+      class="border-fuchsia-800 bg-fuchsia-300 p-4 flex items-center justify-center font-handwriting"
+      :style="{ width: width + 'px', height: height + 'px' }"
     >
       <div class="flex flex-col gap-2">
         <p>Width: <input class="px-1" type="number" v-model="width" /></p>

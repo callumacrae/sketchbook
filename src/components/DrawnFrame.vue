@@ -60,31 +60,39 @@ watch(
   }
 );
 
-const lineWidth = computed(() => props.lineWidth ?? 4);
-const resolution = computed(() => props.resolution ?? 10);
-const wiggle = computed(() => props.wiggle ?? 1);
-const color = computed(() => props.color ?? 'black');
-
+const lineWidth = computed(() => (props.lineWidth > 0 ? props.lineWidth : 4));
+const resolution = computed(() =>
+  props.resolution > 0 ? props.resolution : 10
+);
+const wiggle = computed(() => (props.wiggle >= 0 ? props.wiggle : 1));
 const frameCanvas = computed(() => {
+  let color = props.color;
+  if (!color) {
+    if (wrapperEl.value) {
+      color = getComputedStyle(wrapperEl.value).borderColor;
+    } else {
+      color = 'black';
+    }
+  }
+
   return drawFrame({
     width: width.value * dpr.value,
     height: height.value * dpr.value,
     lineWidth: lineWidth.value * dpr.value,
     resolution: resolution.value * dpr.value,
     wiggle: wiggle.value * dpr.value,
-    color: color.value,
+    color,
   });
 });
-const frame = computed(() => {
-  return frameCanvas.value.toDataURL();
-});
+const frame = computed(() => frameCanvas.value.toDataURL());
 </script>
 
 <template>
   <div
     ref="wrapperEl"
     :style="{
-      border: `${(lineWidth / 2 + wiggle) * dpr}px solid black`,
+      borderWidth: `${(lineWidth / 2 + wiggle) * dpr}px`,
+      borderStyle: 'solid',
       borderImage: `url(${frame}) ${(lineWidth + wiggle * 2) * dpr}`,
       borderImageOutset: `${(lineWidth / 2) * dpr}px`,
     }"
