@@ -22,6 +22,7 @@ export interface Config<CanvasState = undefined, SketchConfig = undefined> {
         enabled: true;
         permissionsButton: (renderer: THREE.WebGLRenderer) => HTMLElement;
       };
+  preview?: boolean;
   showLoading: boolean;
   animate: boolean;
   capture?: {
@@ -217,7 +218,7 @@ export async function toVanillaCanvas<
     timestamp: 0,
     config,
     initControls: (cb) => {
-      if (!config) {
+      if (!config || sketchbookConfig.preview) {
         return;
       }
 
@@ -553,6 +554,9 @@ export async function toVanillaCanvas<
   return {
     callFrame,
     data,
+    updateConfig(newConfig: Partial<typeof sketchbookConfig>) {
+      Object.assign(sketchbookConfig, newConfig);
+    },
     teardown() {
       window.removeEventListener('resize', handleResize);
 

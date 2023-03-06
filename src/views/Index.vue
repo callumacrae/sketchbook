@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import { onMounted, computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 import advancedFormat from 'dayjs/plugin/advancedFormat';
 
-import DrawnFrame from '@/components/DrawnFrame.vue';
-import IconLink from '@/components/IconLink.vue';
+import SketchPreview from '@/components/SketchPreview.vue';
 
+// TODO: replace with something better
 interface RouteObject {
   path: string;
   name: string;
@@ -18,6 +19,7 @@ onMounted(() => {
   document.body.style.removeProperty('background');
 });
 
+const router = useRouter();
 function finishMeta(meta: Record<string, any>, filePath: string) {
   if (meta.date) {
     meta.date = dayjs(meta.date);
@@ -29,6 +31,12 @@ function finishMeta(meta: Record<string, any>, filePath: string) {
   if (meta.tags && typeof meta.tags === 'string') {
     meta.tags = meta.tags.split(',').map((tag) => tag.trim());
   }
+
+  // TODO: clean up
+  const path = '/' + filePath.split('/').pop()?.split('.').shift();
+
+  const route = router.getRoutes().find((route) => route.path === path);
+  meta.component = route?.components.default;
 }
 
 const sketchModules = import.meta.glob('../sketches/*.{ts,glsl,vue}', {
@@ -133,53 +141,11 @@ const filteredRoutes = computed(() => {
     <div
       class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-10"
     >
-      <div v-for="route in filteredRoutes" :key="route.path">
-        <RouterLink :to="route.path">
-          <DrawnFrame class="border-zinc-800" :line-width="3" no-border>
-            <div
-              class="w-full aspect-video bg-zinc-300 flex items-center justify-center"
-            >
-              <p>Previews returning soon</p>
-            </div>
-          </DrawnFrame>
-        </RouterLink>
-
-        <div class="mt-4 flex justify-between items-center">
-          <RouterLink :to="route.path">
-            <h2>
-              <span v-if="route.meta && route.meta.favourite">
-                <span aria-hidden="true">⭐️</span>
-                <span class="sr-only">Favourite:</span>
-              </span>
-              {{ route.name || route.path }}
-            </h2>
-          </RouterLink>
-
-          <div v-if="route.meta?.date" class="text-xs text-zinc-500">
-            {{ route.meta.date.format('Do MMMM YYYY') }}
-          </div>
-        </div>
-
-        <div v-if="route.meta" class="flex justify-between gap-4 mt-2">
-          <div v-if="route.meta?.tags" class="flex flex-wrap gap-2">
-            <div
-              v-for="tag in route.meta?.tags"
-              :key="tag"
-              class="inline-block text-xs px-1.5 py-1 bg-zinc-600 text-zinc-50 rounded-sm"
-            >
-              {{ tag }}
-            </div>
-          </div>
-          <div class="flex gap-2 justify-end grow">
-            <IconLink :href="route.meta.codepen" icon="codepen" />
-            <IconLink :href="route.meta.shadertoy" icon="shadertoy">
-              <img src="/icon-shadertoy-57.png" alt="View on Shadertoy" />
-            </IconLink>
-            <IconLink :href="route.meta.twitter" icon="twitter" />
-            <IconLink :href="route.meta.github" icon="github" />
-          </div>
-        </div>
-      </div>
+      <SketchPreview
+        v-for="route in filteredRoutes"
+        :key="route.path"
+        :sketch="route"
+      />
     </div>
   </div>
 </template>
