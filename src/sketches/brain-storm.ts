@@ -19,8 +19,9 @@ import type {
 export const meta = {
   name: 'Brain storm',
   date: '2022-12-13',
+  tags: ['Three.js', 'Generative art'],
   favourite: true,
-  link: 'https://codepen.io/callumacrae/full/zYLOrWZ',
+  codepen: 'https://codepen.io/callumacrae/full/zYLOrWZ',
 };
 
 interface CanvasState {

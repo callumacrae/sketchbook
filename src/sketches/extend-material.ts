@@ -12,6 +12,7 @@ import type {
 export const meta = {
   name: 'three-extend-material',
   date: '2022-12-21',
+  tags: ['Three.js'],
 };
 
 const glsl = String.raw;

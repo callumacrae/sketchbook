@@ -14,10 +14,11 @@
 #define GLITCH_OTHER_BLANK_ENABLED true
 #define GLITCH_OTHER_LINE_WIDTH_CHANGES_ENABLED true
 
-// name: Glitch art (#genuary3) (glsl)
+// name: Glitch art
 // date: 2023-01-03
+// tags: GLSL, #genuary, #genuary2023, #genuary3
 // favourite: true
-// link: https://www.shadertoy.com/view/ct2Gzz
+// shadertoy: https://www.shadertoy.com/view/ct2Gzz
 
 /** VENDOR START **/
 

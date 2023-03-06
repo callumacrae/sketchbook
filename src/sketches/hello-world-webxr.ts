@@ -11,6 +11,7 @@ import type {
 export const meta = {
   name: 'Hello world (WebXR)',
   date: '2023-02-17',
+  tags: ['WebXR', 'Three.js', 'Hello World'],
 };
 
 export interface CanvasState {

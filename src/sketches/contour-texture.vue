@@ -9,6 +9,7 @@ import BlobCanvas from '../utils/textures/blobs';
 export const meta = {
   name: 'Contour texture v2',
   date: '2020-06-01',
+  tags: ['Canvas 2D', 'Noise'],
 };
 
 const simplex = new SimplexNoise();

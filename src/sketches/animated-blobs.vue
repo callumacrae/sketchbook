@@ -28,6 +28,7 @@ import SimplexNoise from 'simplex-noise';
 export const meta = {
   name: 'Contour texture v1',
   date: '2020-05-12',
+  tags: ['Canvas 2D', 'Noise'],
 };
 
 const simplex = new SimplexNoise();

@@ -186,7 +186,8 @@ import SimplexNoise from 'simplex-noise';
 export const meta = {
   name: 'Plant projection mapping',
   date: '2020-07-06',
-  link: 'https://twitter.com/callumacrae/status/1279855080523563009',
+  tags: ['SVG', 'Projection mapping'],
+  twitter: 'https://twitter.com/callumacrae/status/1279855080523563009',
 };
 
 const simplexNoise = new SimplexNoise();

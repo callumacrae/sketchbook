@@ -3,6 +3,7 @@ import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 export const meta = {
   name: 'Hello World',
   date: '2022-01-18',
+  tags: ['Canvas 2D', 'Hello World'],
 };
 
 export interface CanvasState {

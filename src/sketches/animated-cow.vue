@@ -12,6 +12,7 @@ import SimplexNoise from 'simplex-noise';
 export const meta = {
   name: 'Shitty animated cow',
   date: '2020-06-04',
+  tags: ['Three.js'],
 };
 
 const simplex = new SimplexNoise();

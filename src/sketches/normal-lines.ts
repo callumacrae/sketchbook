@@ -8,8 +8,9 @@ import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 export const meta = {
   name: 'Normal lines',
   date: '2020-06-10',
+  tags: ['Canvas 2D', 'Generative art'],
   favourite: true,
-  link: 'https://codepen.io/callumacrae/full/RwRmgog',
+  codepen: 'https://codepen.io/callumacrae/full/RwRmgog',
 };
 
 interface CanvasState {

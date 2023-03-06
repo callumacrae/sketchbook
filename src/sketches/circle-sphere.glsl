@@ -2,10 +2,11 @@
 #define ELLIPSE_SQUASH_FACTOR 3.85
 #define TIME_FACTOR 1.0
 
-// name: Circle sphere (glsl)
+// name: Circle sphere
 // date: 2022-12-28
+// tags: GLSL
 // favourite: true
-// link: https://www.shadertoy.com/view/dtX3Dj
+// shadertoy: https://www.shadertoy.com/view/dtX3Dj
 
 // https://web.archive.org/web/20200207113336/http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
 vec3 hsv2rgb(vec3 c) {

@@ -10,9 +10,10 @@ import type {
 } from '@/utils/renderers/vanilla';
 
 export const meta = {
-  name: 'Rolling sphere (#genuary day 1)',
+  name: 'Rolling sphere',
   date: '2023-01-03',
-  link: 'https://codepen.io/callumacrae/full/QWBEmVR',
+  tags: ['Three.js', '#genuary', '#genuary2023', '#genuary1'],
+  codepen: 'https://codepen.io/callumacrae/full/QWBEmVR',
 };
 
 interface CanvasState {

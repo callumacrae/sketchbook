@@ -10,6 +10,7 @@ import SimplexNoise from 'simplex-noise';
 export const meta = {
   name: 'Simplex lines',
   date: '2020-06-14',
+  tags: ['SVG', 'Noise'],
 };
 
 const simplex = new SimplexNoise();

@@ -4,6 +4,7 @@ import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 export const meta = {
   name: 'Golden hour',
   date: '2022-12-13',
+  tags: ['Canvas 2D'],
 };
 
 interface CanvasState {

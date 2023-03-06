@@ -15,8 +15,9 @@ import type {
 export const meta = {
   name: 'Moving mirrors',
   date: '2023-01-09',
+  tags: ['Three.js', 'Generative art'],
   favourite: true,
-  link: 'https://codepen.io/callumacrae/full/qByPVNr',
+  codepen: 'https://codepen.io/callumacrae/full/qByPVNr',
 };
 
 const glsl = String.raw;

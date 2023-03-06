@@ -5,6 +5,7 @@ import DrawnFrame from '@/components/DrawnFrame.vue';
 const _meta = {
   name: 'Handdrawn Frame Vue',
   date: '2023-03-03',
+  tags: ['Vue component'],
 };
 
 const width = ref(window?.innerWidth > 800 ? 600 : 400);

@@ -6,6 +6,7 @@ import Vector from '@/utils/vector';
 export const meta = {
   name: 'Line shapes',
   date: '2022-02-07',
+  tags: ['Canvas 2D', 'Generative art', 'Noise'],
 };
 
 interface CanvasState {

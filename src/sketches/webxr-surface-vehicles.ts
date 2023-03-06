@@ -17,6 +17,8 @@ import * as random from '@/utils/random';
 export const meta = {
   name: 'WebXR surface with vehicles',
   date: '2023-02-27',
+  tags: ['WebXR', 'Three.js', 'Boids'],
+  twitter: 'https://twitter.com/callumacrae/status/1631671993081769987',
 };
 
 class ThreeSurfaceVehicle extends Vehicle {

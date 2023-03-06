@@ -17,8 +17,9 @@ import type {
 export const meta = {
   name: 'Illuminating shapes',
   date: '2023-01-05',
+  tags: ['Three.js', 'Generative art', 'Slow'],
   favourite: true,
-  link: 'https://codepen.io/callumacrae/full/MWBbeJz',
+  codepen: 'https://codepen.io/callumacrae/full/MWBbeJz',
 };
 
 const glsl = String.raw;

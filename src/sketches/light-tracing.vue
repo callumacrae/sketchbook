@@ -62,7 +62,8 @@
 export const meta = {
   name: 'Light tracing',
   date: '2020-06-30',
-  link: 'https://twitter.com/callumacrae/status/1272626085365264387',
+  tags: ['SVG', 'Projection mapping'],
+  twitter: 'https://twitter.com/callumacrae/status/1272626085365264387',
 };
 
 export default {

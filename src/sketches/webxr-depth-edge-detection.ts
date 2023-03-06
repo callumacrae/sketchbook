@@ -13,6 +13,8 @@ import type {
 export const meta = {
   name: 'WebXR surface edge detection',
   date: '2023-02-20',
+  tags: ['WebXR', 'Three.js'],
+  twitter: 'https://twitter.com/callumacrae/status/1628820514130075648',
 };
 
 export interface CanvasState {

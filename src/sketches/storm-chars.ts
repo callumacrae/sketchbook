@@ -7,6 +7,7 @@ import * as random from '@/utils/random';
 export const meta = {
   name: 'Storm chars',
   date: '2022-02-15',
+  tags: ['Canvas 2D', 'Generative art', 'Slow'],
 };
 
 interface CanvasState {

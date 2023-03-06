@@ -10,6 +10,7 @@ import type {
 export const meta = {
   name: 'Hello world (threejs)',
   date: '2022-12-13',
+  tags: ['Three.js', 'Hello World'],
 };
 
 export interface CanvasState {

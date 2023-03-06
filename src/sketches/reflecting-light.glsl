@@ -3,8 +3,9 @@
 #define LIGHT_START_POWER 0.6
 #define LIGHT_DISTANCE 1500.0
 
-// name: Reflecting light experiment (glsl)
+// name: Reflecting light experiment
 // date: 2023-01-11
+// tags: GLSL
 
 mat3 rotationMatrix(float angle) {
   float c = cos(angle);

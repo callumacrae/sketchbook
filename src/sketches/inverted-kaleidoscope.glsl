@@ -16,10 +16,11 @@
 
 #define PI 3.1415926535897932384626433832795 // no-config
 
-// name: Inverted kaleidoscope (glsl)
+// name: Inverted kaleidoscope
 // date: 2023-01-20
+// tags: GLSL
 // favourite: true
-// link: https://www.shadertoy.com/view/dtXSWr 
+// shadertoy: https://www.shadertoy.com/view/dtXSWr 
 
 /** VENDOR START **/
 

@@ -14,6 +14,7 @@ import { randomEquilateral } from '../utils/shapes/triangles';
 export const meta = {
   name: 'Generative triangles',
   date: '2020-05-10',
+  tags: ['Canvas 2D', 'Generative art'],
   favourite: true,
 };
 

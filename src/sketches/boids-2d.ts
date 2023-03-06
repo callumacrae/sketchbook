@@ -8,6 +8,7 @@ import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 export const meta = {
   name: 'Boids (2D)',
   date: '2023-02-15',
+  tags: ['Canvas 2D', 'Boids'],
 };
 
 interface CanvasState {

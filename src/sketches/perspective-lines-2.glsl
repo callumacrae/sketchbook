@@ -7,9 +7,10 @@
 #define ROW_DENSITY 5.0
 #define LIGHT_FADE_FACTOR 2.0
 
-// name: Perspective lines (glsl)
+// name: Perspective lines 2 (glsl)
 // date: 2022-12-23
-// link: https://www.shadertoy.com/view/clXGD7
+// tags: GLSL
+// shadertoy: https://www.shadertoy.com/view/clXGD7
 
 float colorForCol(vec2 fragCoord, float rowFactor) {
   float barHeight = (BAR_HEIGHT) * rowFactor;

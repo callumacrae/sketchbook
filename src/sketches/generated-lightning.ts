@@ -9,6 +9,7 @@ import type { LightningNode } from '@/utils/shapes/lightning';
 export const meta = {
   name: 'Generated lightning',
   date: '2023-02-02',
+  tags: ['Canvas 2D', 'Generative art'],
 };
 
 interface CanvasState {

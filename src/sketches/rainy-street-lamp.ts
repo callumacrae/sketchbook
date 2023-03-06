@@ -19,8 +19,9 @@ import type {
 export const meta = {
   name: 'Rainy street lamp',
   date: '2023-01-24',
+  tags: ['Three.js', 'WebGL', 'GLSL'],
   favourite: true,
-  link: 'https://codepen.io/callumacrae/full/LYBrjEP',
+  codepen: 'https://codepen.io/callumacrae/full/LYBrjEP',
 };
 
 const glsl = String.raw;

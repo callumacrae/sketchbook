@@ -15,8 +15,9 @@ import type {
 export const meta = {
   name: '3D exploding text',
   date: '2022-12-20',
+  tags: ['Three.js'],
   favourite: true,
-  link: 'https://codepen.io/callumacrae/full/VwBLvWN',
+  codepen: 'https://codepen.io/callumacrae/full/VwBLvWN',
 };
 
 const glsl = String.raw;
@@ -33,8 +34,6 @@ type SketchConfig = typeof sketchConfig;
 
 const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
-  width: 1280,
-  height: 720,
   capture: {
     enabled: false,
     duration: 3000,

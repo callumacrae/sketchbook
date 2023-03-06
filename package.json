@@ -21,6 +21,7 @@
     "chroma-js": "^2.4.2",
     "d3-ease": "^3.0.1",
     "d3-scale-chromatic": "^3.0.0",
+    "dayjs": "^1.11.7",
     "eases": "^1.0.8",
     "jstat": "^1.9.6",
     "matter-js": "^0.18.0",

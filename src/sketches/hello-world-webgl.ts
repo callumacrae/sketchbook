@@ -5,6 +5,7 @@ import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 export const meta = {
   name: 'Hello world (webgl)',
   date: '2023-02-13',
+  tags: ['WebGL', 'Hello World'],
 };
 
 const glsl = String.raw;

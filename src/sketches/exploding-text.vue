@@ -19,8 +19,9 @@ import BezierEasing from 'bezier-easing';
 export const meta = {
   name: 'Exploding text',
   date: '2022-07-08',
+  tags: ['Canvas 2D'],
   favourite: true,
-  link: 'https://codepen.io/callumacrae/full/GRodzvO',
+  codepen: 'https://codepen.io/callumacrae/full/GRodzvO',
 };
 
 const rotationEasing = BezierEasing(0.9, 0.25, 0.1, 0.75);

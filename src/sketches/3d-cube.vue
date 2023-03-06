@@ -12,6 +12,7 @@ import BlobCanvas from '../utils/textures/blobs';
 export const meta = {
   name: 'Contour texture on cube',
   date: '2020-06-15',
+  tags: ['Three.js', 'Canvas 2D', 'Noise'],
   favourite: true,
 };
 
