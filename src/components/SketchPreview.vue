@@ -1,51 +1,107 @@
 <script lang="ts" setup>
 import { ref, shallowRef, watch } from 'vue';
+import { useIntersectionObserver } from '@vueuse/core';
+import type { Component } from 'vue';
 
+import LoadingIcon from '@/components/LoadingIcon.vue';
+import LoadQueue from '@/utils/load-queue';
 import DrawnFrame from '@/components/DrawnFrame.vue';
 import IconLink from '@/components/IconLink.vue';
+import type { Sketch } from '@/utils/sketch-parsing';
 
 const props = defineProps<{
-  sketch: {
-    path: string;
-    name: string;
-    meta: Record<string, any>;
-  };
+  sketch: Sketch;
+  loadQueue: LoadQueue;
 }>();
+
+const state = ref<'waiting' | 'loading' | 'loaded'>('waiting');
 
 const animating = ref(false);
 const sketchPreview = shallowRef<Component | null>(null);
-watch(
-  () => animating.value,
-  async () => {
-    if (animating.value && !sketchPreview.value) {
-      const loadedComponent = await props.sketch.meta.component();
+
+const loadedCallback = ref<() => void>(null);
+
+async function loadPreview() {
+  if (state.value !== 'waiting') return;
+
+  const sketch = props.sketch;
+  const sketchIsGlsl = sketch.filePath.endsWith('.glsl');
+
+  let baseScore = 0;
+  if (sketchIsGlsl) baseScore -= 50;
+  if (sketch.tags.includes('Three.js')) baseScore += 20;
+  baseScore += 10 * (sketch.moduleText.match(/\.load/g) || []).length;
+  if (sketch.tags.includes('Slow')) baseScore += 1000;
+
+  props.loadQueue.request({
+    key: sketch,
+    priority(other) {
+      // Lowest score loads first
+      let score = baseScore;
+
+      const otherIsGlsl = other.filePath.endsWith('.glsl');
+      if (sketchIsGlsl && otherIsGlsl) {
+        const thisLength = sketch.moduleText.length;
+        const otherLength = other.moduleText.length;
+
+        // Prefer the shorter one
+        if (thisLength < otherLength) score -= 1;
+        if (thisLength > otherLength) score += 1;
+      }
+
+      return score;
+    },
+    work: async () => {
+      const loadedComponent = await sketch.component();
       sketchPreview.value = loadedComponent.default;
-    }
-  }
-);
+
+      await new Promise<void>((resolve) => {
+        loadedCallback.value = resolve;
+      });
+    },
+  });
+
+  state.value = 'loading';
+}
+
+function setAnimating(animate: boolean) {
+  animating.value = animate;
+  if (animate) loadPreview();
+}
+
+const wrapperEl = ref<HTMLElement | null>(null);
+useIntersectionObserver(wrapperEl, ([entry]) => {
+  if (entry.isIntersecting) loadPreview();
+});
 </script>
 
 <template>
-  <div>
+  <div ref="wrapperEl">
     <RouterLink :to="sketch.path">
       <DrawnFrame
         class="border-zinc-800"
         :line-width="3"
         no-border
-        @mouseenter="animating = true"
-        @mouseleave="animating = false"
+        @mouseenter="setAnimating(true)"
+        @mouseleave="setAnimating(false)"
       >
-        <div
-          class="w-full aspect-video bg-zinc-300 flex items-center justify-center overflow-hidden"
-        >
-          <div v-if="sketchPreview">
+        <div class="w-full aspect-video bg-zinc-300 relative overflow-hidden">
+          <Transition name="fade" mode="in-out">
             <component
+              v-if="sketchPreview"
               :is="sketchPreview"
+              class="bg-white absolute inset-0"
               preview
               :animating-override="animating"
+              @frame.once="loadedCallback?.()"
             />
-          </div>
-          <p v-else class="text-center">Hover to<br />load preview</p>
+            <div
+              v-else
+              class="absolute inset-0 flex items-center justify-center text-2xl"
+            >
+              <LoadingIcon />
+            </div>
+          </Transition>
         </div>
       </DrawnFrame>
     </RouterLink>
@@ -53,7 +109,7 @@ watch(
     <div class="mt-4 flex justify-between items-center">
       <RouterLink :to="sketch.path">
         <h2>
-          <span v-if="sketch.meta?.favourite">
+          <span v-if="sketch.favourite">
             <span aria-hidden="true">⭐️</span>
             <span class="sr-only">Favourite:</span>
           </span>
@@ -61,15 +117,15 @@ watch(
         </h2>
       </RouterLink>
 
-      <div v-if="sketch.meta?.date" class="text-xs text-zinc-500">
-        {{ sketch.meta.date.format('Do MMMM YYYY') }}
+      <div v-if="sketch.date" class="text-xs text-zinc-500">
+        {{ sketch.date.format('Do MMMM YYYY') }}
       </div>
     </div>
 
-    <div v-if="sketch.meta" class="flex justify-between gap-4 mt-2">
-      <div v-if="sketch.meta?.tags" class="flex flex-wrap gap-2">
+    <div class="flex justify-between gap-4 mt-2">
+      <div v-if="sketch.tags.length" class="flex flex-wrap gap-2">
         <div
-          v-for="tag in sketch.meta?.tags"
+          v-for="tag in sketch.tags"
           :key="tag"
           class="inline-block text-xs px-1.5 py-1 bg-zinc-600 text-zinc-50 rounded-sm"
         >
@@ -77,13 +133,25 @@ watch(
         </div>
       </div>
       <div class="flex gap-2 justify-end grow">
-        <IconLink :href="sketch.meta.codepen" icon="codepen" />
-        <IconLink :href="sketch.meta.shadertoy" icon="shadertoy">
+        <IconLink :href="sketch.codepen" icon="codepen" />
+        <IconLink :href="sketch.shadertoy" icon="shadertoy">
           <img src="/icon-shadertoy-57.png" alt="View on Shadertoy" />
         </IconLink>
-        <IconLink :href="sketch.meta.twitter" icon="twitter" />
-        <IconLink :href="sketch.meta.github" icon="github" />
+        <IconLink :href="sketch.twitter" icon="twitter" />
+        <IconLink :href="sketch.github" icon="github" />
       </div>
     </div>
   </div>
 </template>
+
+<style lang="scss" scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

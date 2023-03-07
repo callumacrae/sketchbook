@@ -2,7 +2,6 @@ import Vector from '@/utils/vector';
 import generatePath from '@/utils/shapes/wobbly-path';
 import * as random from '@/utils/random';
 import { doWorkOffscreen } from '@/utils/canvas/utils';
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
@@ -13,7 +12,7 @@ export const meta = {
   codepen: 'https://codepen.io/callumacrae/full/RwRmgog',
 };
 
-interface CanvasState {
+export interface CanvasState {
   lines: any[];
   bitmaps: any[];
 }
@@ -40,14 +39,19 @@ const sketchConfig = {
     randomFactor: 1,
   },
 };
-type SketchConfig = typeof sketchConfig;
+export type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   sketchConfig,
 };
 
-const init: InitFn<CanvasState, SketchConfig> = ({ config, width, height }) => {
-  if (!config) throw new Error('???');
+function initLines(props: {
+  config: SketchConfig;
+  width: number;
+  height: number;
+  [extra: string]: any;
+}) {
+  const { config, width, height } = props;
 
   const uvFactor = Math.min(width, height);
 
@@ -89,17 +93,19 @@ const init: InitFn<CanvasState, SketchConfig> = ({ config, width, height }) => {
   }
 
   return { lines, bitmaps };
+}
+
+export const init: InitFn<CanvasState, SketchConfig> = (props) => {
+  return initLines(props);
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = ({
-  config,
-  ctx,
-  state,
-  width,
-  height,
-  timestamp,
-}) => {
-  if (!ctx || !config) throw new Error('???');
+export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+  const { config, ctx, state, width, height, timestamp, hasChanged } = props;
+  if (!ctx) throw new Error('???');
+
+  if (hasChanged) {
+    Object.assign(state, initLines(props));
+  }
 
   const t = timestamp / 12e3;
 
@@ -114,10 +120,6 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
     ctx.globalAlpha = alpha;
     ctx.drawImage(bitmap, 0, 0, width, height);
   });
-};
 
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);
+  return state;
+};

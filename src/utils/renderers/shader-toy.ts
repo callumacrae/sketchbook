@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { FolderApi, InputParams } from 'tweakpane';
 
+import parseSketchMeta from '../sketch-parsing';
 import { toCanvasComponent } from './vue';
 import type { Config, InitFn, FrameFn } from './vanilla';
 
@@ -33,14 +34,19 @@ export function shaderToyComponent(glsl: string) {
       enabled: false,
       duration: 15000,
       fps: 24,
-      directory: location.pathname.slice(1),
     },
     sketchConfig,
   };
 
-  if (location.pathname.slice(1) === 'glitch-art') {
-    sketchbookConfig.width = 500;
-    sketchbookConfig.height = 500;
+  const meta = parseSketchMeta('', glsl);
+  if (meta.config) {
+    try {
+      // yolo
+      const extraConfig = eval(`(${meta.config})`);
+      Object.assign(sketchbookConfig, extraConfig);
+    } catch (err) {
+      console.error('config for this sketch seems to be broken', err);
+    }
   }
 
   const originalConfig: Record<

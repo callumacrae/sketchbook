@@ -68,14 +68,13 @@ export default {
 };
 </script>
 
-<style lang="scss">
+<style scoped>
 svg {
   width: 100vw;
   height: 100vh;
-
-  path {
-    stroke-width: 2;
-    stroke: black;
-  }
+}
+svg path {
+  stroke-width: 2;
+  stroke: black;
 }
 </style>

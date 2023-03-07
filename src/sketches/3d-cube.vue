@@ -1,6 +1,9 @@
 <template>
-  <div @click="status = status === 'playing' ? 'paused' : 'playing'">
-    <canvas ref="canvas"></canvas>
+  <div
+    :class="this.preview ? 'w-full h-full' : 'w-screen h-screen'"
+    @click="status = status === 'playing' ? 'paused' : 'playing'"
+  >
+    <canvas ref="canvas" class="w-full h-full"></canvas>
   </div>
 </template>
 
@@ -19,6 +22,16 @@ export const meta = {
 const simplex = new SimplexNoise();
 
 export default {
+  props: {
+    preview: {
+      type: Boolean,
+      default: false,
+    },
+    animatingOverride: {
+      type: [Boolean, undefined],
+      default: undefined,
+    },
+  },
   data: () => ({
     status: 'playing',
     timestamp: 0,
@@ -77,7 +90,7 @@ export default {
     frame(timestamp) {
       this.frameId = requestAnimationFrame(this.frame);
 
-      if (this.status === 'paused') {
+      if (this.status === 'paused' || this.animatingOverride === false) {
         return;
       }
 
@@ -179,10 +192,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-canvas {
-  width: 100vw;
-  height: 100vh;
-}
-</style>

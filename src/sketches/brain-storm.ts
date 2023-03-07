@@ -55,9 +55,6 @@ const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
     fps: 24,
     directory: 'brain-storm',
   },
-  width: 800,
-  height: 800,
-  pageBg: 'black',
   sketchConfig,
 };
 

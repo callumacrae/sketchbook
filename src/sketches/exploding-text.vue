@@ -7,6 +7,7 @@
   <canvas
     v-else
     ref="mainCanvas"
+    :class="this.preview ? 'w-full h-full' : 'w-screen h-screen'"
     @click="status = status === 'playing' ? 'paused' : 'playing'"
   ></canvas>
 </template>
@@ -27,6 +28,16 @@ export const meta = {
 const rotationEasing = BezierEasing(0.9, 0.25, 0.1, 0.75);
 
 export default {
+  props: {
+    preview: {
+      type: Boolean,
+      default: false,
+    },
+    animatingOverride: {
+      type: [Boolean, undefined],
+      default: undefined,
+    },
+  },
   data: () => ({
     status: typeof OffscreenCanvas === 'undefined' ? 'unsupported' : 'playing',
     frameId: undefined,
@@ -52,11 +63,19 @@ export default {
   beforeUnmount() {
     cancelAnimationFrame(this.frameId);
   },
+  computed: {
+    shrinkFactor() {
+      return this.preview ? 0.5 : 1;
+    },
+  },
   methods: {
     frame(timestamp = 0) {
       this.frameId = requestAnimationFrame(this.frame);
 
-      if (this.status === 'paused') {
+      if (
+        this.status === 'paused' ||
+        (this.animatingOverride === false && timestamp !== 0)
+      ) {
         return;
       }
 
@@ -97,7 +116,10 @@ export default {
       ctx.restore();
     },
     generateTiles(text, styleFn, tilesX = 15, tilesY = 7) {
-      const textCanvas = new OffscreenCanvas(300, 75);
+      const textCanvas = new OffscreenCanvas(
+        300 * this.shrinkFactor,
+        75 * this.shrinkFactor
+      );
       const textCtx = textCanvas.getContext('2d');
 
       const textWidth = textCtx.canvas.width;
@@ -205,7 +227,7 @@ export default {
       });
 
       textCtx.fillStyle = 'black';
-      textCtx.font = '100px sans-serif';
+      textCtx.font = `${100 * this.shrinkFactor}px sans-serif`;
       textCtx.textAlign = 'center';
       textCtx.textBaseline = 'middle';
 
@@ -254,7 +276,7 @@ export default {
       ctx.lineTo(0, this.height / 2);
       ctx.clip();
 
-      const offsetY = 250;
+      const offsetY = 250 * this.shrinkFactor;
       const centerX = (this.width - textWidth) / 2;
       const centerY = (this.height - textHeight - offsetY) / 2;
       ctx.translate(centerX, centerY);

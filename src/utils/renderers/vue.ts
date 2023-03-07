@@ -18,18 +18,41 @@ export function toCanvasComponent<
         default: false,
       },
       animatingOverride: {
-        type: Boolean,
+        type: [Boolean, undefined],
+        default: undefined,
       },
     },
     data: () => ({ mouseover: false }),
-    render: () => h('div', { class: 'sketch' }, h('canvas', { ref: 'canvas' })),
+    render() {
+      return h(
+        'div',
+        {
+          class: [
+            this.preview ? 'w-full h-full' : 'w-screen h-screen',
+            'overflow-hidden flex items-center justify-center',
+          ],
+        },
+        h('canvas', { ref: 'canvas', class: 'bg-white shadow-2xl' })
+      );
+    },
     async mounted() {
       const canvas = this.$refs.canvas as HTMLCanvasElement | null;
       const config = { ...sketchbookConfig, preview: this.preview };
+      if (this.preview) {
+        delete config.width;
+        delete config.height;
+      }
+      if (this.animatingOverride !== undefined) {
+        config.animate = this.animatingOverride;
+      }
+      const frameWithSpy: typeof frame = (...args) => {
+        this.$emit('frame');
+        frame(...args);
+      };
       const { teardown, data, updateConfig } = await toVanillaCanvas<
         CanvasState,
         SketchConfig
-      >(canvas, init, frame, config);
+      >(canvas, init, frameWithSpy, config);
 
       this.$options.teardown = teardown;
       this.$options.updateConfig = updateConfig;

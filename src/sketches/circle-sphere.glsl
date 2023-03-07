@@ -1,6 +1,7 @@
-#define SPHERE_RADIUS 200.0
-#define ELLIPSE_SQUASH_FACTOR 3.85
-#define TIME_FACTOR 1.0
+#define SPHERE_RADIUS 0.35 // 0.1 - 0.6
+#define ELLIPSE_SQUASH_FACTOR 3.85 // 1.0 - 10.0
+#define TIME_FACTOR 1.0 // 0.1 - 10.0
+#define LINE_THICKNESS_FACTOR 120.0 // 50.0 - 300.0
 
 // name: Circle sphere
 // date: 2022-12-28
@@ -15,13 +16,14 @@ vec3 hsv2rgb(vec3 c) {
   return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-void drawCircle(inout vec4 fragColor, vec2 fragCoord, float yOffset, float hue) {
+void drawCircle(inout vec4 fragColor, vec2 fragCoord, float offsetFactor, float hue, float sphereRadius) {
   // ellipse: ( y * a ) ^ 2 + x ^ 2 = radius ^ 2
   // line to point: y = fragCoord.x / fragCoord.y * x
   // adjustedRadius = sqrt(pow(x, 2.0) + pow(y, 2.0));
 
   vec2 origin = iResolution.xy / 2.0;
-  float radius = sqrt(pow(SPHERE_RADIUS, 2.0) - pow(yOffset, 2.0));
+  float yOffset = offsetFactor * sphereRadius;
+  float radius = sqrt(pow(sphereRadius, 2.0) - pow(yOffset, 2.0));
 
   float a = ELLIPSE_SQUASH_FACTOR;
 
@@ -40,8 +42,8 @@ void drawCircle(inout vec4 fragColor, vec2 fragCoord, float yOffset, float hue) 
 
   float dist = sqrt(pow(x, 2.0) + pow(y, 2.0));
 
-  float innerLineWidth = 2.0;
-  float outerLineWidth = 8.0;
+  float innerLineWidth = sphereRadius / LINE_THICKNESS_FACTOR;
+  float outerLineWidth = sphereRadius / LINE_THICKNESS_FACTOR * 3.0;
 
   float alpha = 0.0;
   if (dist < adjustedRadius + innerLineWidth / 2.0 && dist > adjustedRadius - innerLineWidth / 2.0) {
@@ -62,10 +64,11 @@ void mainImage(out vec4 fragColor, vec2 fragCoord) {
 
   float adjustedTime = iTime * TIME_FACTOR;
 
+  float sphereRadius = min(iResolution.x, iResolution.y) * SPHERE_RADIUS;
   float layers = 20.0;
   for (float i = 0.0; i != layers; ++i) {
     float offsetFactor = cos(3.1416 / layers * (i + mod(adjustedTime, 1.0)));
     float hue = mod((i - floor(adjustedTime)) / layers, 1.0);
-    drawCircle(fragColor, fragCoord, offsetFactor * SPHERE_RADIUS, hue);
+    drawCircle(fragColor, fragCoord, offsetFactor, hue, sphereRadius);
   }
 }

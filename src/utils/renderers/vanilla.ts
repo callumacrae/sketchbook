@@ -431,6 +431,7 @@ export async function toVanillaCanvas<
         height: data.height,
         dpr: data.dpr,
         state: data.canvasState as CanvasState,
+        // TODO: can we use delta to avoid big jumps in time?
         timestamp,
         delta: timestamp - data.previousFrameTime,
         config: data.sketchbookConfig.sketchConfig,
@@ -510,11 +511,15 @@ export async function toVanillaCanvas<
 
     const config = data.sketchbookConfig;
 
+    const wrapperRect = canvasEl.parentElement?.getBoundingClientRect();
+
     const dpr = config.capture?.enabled ? 1 : window.devicePixelRatio;
     const canvasDpr = config.type !== 'threejs' ? dpr : 1;
     const threeDpr = config.type === 'threejs' ? dpr : 1;
-    data.width = (config?.width ?? window.innerWidth) * canvasDpr;
-    data.height = (config?.height ?? window.innerHeight) * canvasDpr;
+    data.width =
+      (config?.width ?? wrapperRect?.width ?? window.innerWidth) * canvasDpr;
+    data.height =
+      (config?.height ?? wrapperRect?.height ?? window.innerHeight) * canvasDpr;
     data.dpr = dpr;
     canvasEl.width = data.width;
     canvasEl.height = data.height;
