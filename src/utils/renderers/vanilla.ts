@@ -22,7 +22,7 @@ export interface Config<CanvasState = undefined, SketchConfig = undefined> {
         enabled: true;
         permissionsButton: (renderer: THREE.WebGLRenderer) => HTMLElement;
       };
-  preview?: boolean;
+  isPreview: boolean;
   showLoading: boolean;
   animate: boolean;
   capture?: {
@@ -56,6 +56,7 @@ export interface InitProps<CanvasState, SketchConfig = undefined> {
   dpr: number;
   timestamp: number;
   config: SketchConfig;
+  isPreview: boolean;
   initControls(cb?: (props: InitControlsProps<SketchConfig>) => void): void;
   addEvent<K extends keyof HTMLElementEventMap>(
     type: K,
@@ -81,6 +82,7 @@ export interface FrameProps<CanvasState, SketchConfig = undefined> {
   timestamp: number;
   delta: number;
   config: SketchConfig;
+  isPreview: boolean;
   hasChanged: boolean;
   xrFrame?: XRFrame;
 }
@@ -100,6 +102,7 @@ export interface EventProps<
   state: CanvasState;
   timestamp: number;
   config: SketchConfig;
+  isPreview: boolean;
 }
 
 export type InitFn<CanvasState, SketchConfig> = (
@@ -121,6 +124,7 @@ export async function toVanillaCanvas<
   const sketchbookConfig: Config<CanvasState, SketchConfig> = Object.assign(
     {
       type: 'context2d',
+      isPreview: false,
       showLoading: false,
       animate: true,
       resizeDelay: 50,
@@ -176,7 +180,7 @@ export async function toVanillaCanvas<
   }
   const initialConfig = JSON.stringify(flattenedConfig);
 
-  if (sketchbookConfig.pageBg && !sketchbookConfig.preview) {
+  if (sketchbookConfig.pageBg && !sketchbookConfig.isPreview) {
     document.body.style.background = sketchbookConfig.pageBg;
   }
 
@@ -221,8 +225,9 @@ export async function toVanillaCanvas<
     dpr: data.dpr,
     timestamp: 0,
     config,
+    isPreview: sketchbookConfig.isPreview,
     initControls: (cb) => {
-      if (!config || sketchbookConfig.preview) {
+      if (!config || sketchbookConfig.isPreview) {
         return;
       }
 
@@ -313,6 +318,7 @@ export async function toVanillaCanvas<
           state: data.canvasState as CanvasState,
           timestamp: data.lastTimestamp,
           config: data.sketchbookConfig.sketchConfig,
+          isPreview: sketchbookConfig.isPreview,
         });
 
         if (hasChanged) {
@@ -450,6 +456,7 @@ export async function toVanillaCanvas<
         timestamp,
         delta: timestamp - data.previousFrameTime,
         config: data.sketchbookConfig.sketchConfig,
+        isPreview: sketchbookConfig.isPreview,
         // hasChanged can be used to see if the config has changed
         hasChanged: data.hasChanged,
         xrFrame,

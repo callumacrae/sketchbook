@@ -1,7 +1,6 @@
 import { defineComponent, h } from 'vue';
 import type { Component } from 'vue';
 
-import router from '../../router';
 import { toVanillaCanvas } from './vanilla';
 import type { Config, InitFn, FrameFn } from './vanilla';
 import type { Sketch } from '../sketch-parsing';
@@ -53,7 +52,7 @@ export function toCanvasComponent<
     },
     async mounted() {
       const canvas = this.$refs.canvas as HTMLCanvasElement | null;
-      const config = { ...sketchbookConfig, preview: this.preview };
+      const config = { ...sketchbookConfig, isPreview: this.preview };
       if (this.preview) {
         delete config.width;
         delete config.height;

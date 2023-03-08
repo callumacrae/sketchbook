@@ -77,7 +77,14 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   sketchConfig,
 };
 
-async function initCharsCanvas(config: SketchConfig) {
+async function initCharsCanvas({
+  config,
+  isPreview,
+}: {
+  config: SketchConfig;
+  isPreview: boolean;
+  [key: string]: any;
+}) {
   const font = new FontFace(
     'PublicPixel',
     'url(/public_pixel/PublicPixel.ttf)'
@@ -85,20 +92,21 @@ async function initCharsCanvas(config: SketchConfig) {
   await font.load();
   document.fonts.add(font);
 
+  const shrinkFactor = isPreview ? 0.5 : 1;
   const { chars, charSize } = config.visualisation;
-  const width = charSize * chars.length;
-  const height = charSize;
+  const width = charSize * shrinkFactor * chars.length;
+  const height = charSize * shrinkFactor;
   return doWorkOffscreen(width, height, (ctx) => {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, width, height);
 
-    ctx.font = `${charSize * 0.75}px PublicPixel`;
+    ctx.font = `${charSize * shrinkFactor * 0.75}px PublicPixel`;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     ctx.fillStyle = 'white';
 
     for (let i = 0; i < chars.length; i++) {
-      ctx.fillText(chars[i], (i + 0.5) * charSize, height / 2);
+      ctx.fillText(chars[i], (i + 0.5) * charSize * shrinkFactor, height / 2);
     }
   });
 }
@@ -108,19 +116,25 @@ function requestLightning(props: {
   height: number;
   config: SketchConfig;
   state: CanvasState;
+  isPreview: boolean;
+  [key: string]: any;
 }) {
-  props.state.lightningRequested = true;
+  const { width, height, config, state, isPreview } = props;
 
-  const { width, height, config } = props;
+  state.lightningRequested = true;
+
   const generateMessage: LightningWorkerMessageIn = {
     type: 'generate',
     props: {
       width,
       height,
       config: {
-        maxWidth: config.maxWidth,
+        maxWidth: isPreview ? 2 : config.maxWidth,
         visualisation: config.visualisation,
-        branch: config.branch,
+        branch: {
+          ...config.branch,
+          ...(isPreview ? { factor: 0.04, factorWithDepth: 0.06 } : {}),
+        },
         wobble: config.wobble,
         bloom: config.bloom,
         origin: 'random',
@@ -206,15 +220,8 @@ void main() {
 }
 `;
 
-export const init: InitFn<CanvasState, SketchConfig> = async ({
-  testSupport,
-  initControls,
-  gl,
-  width,
-  height,
-  timestamp,
-  config,
-}) => {
+export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
+  const { testSupport, initControls, gl, timestamp, config, isPreview } = props;
   if (!config || !gl) throw new Error('???');
 
   testSupport(() => {
@@ -277,7 +284,7 @@ export const init: InitFn<CanvasState, SketchConfig> = async ({
   const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
 
   const charsTexture = twgl.createTexture(gl, {
-    src: await initCharsCanvas(config),
+    src: await initCharsCanvas(props),
     mag: gl.NEAREST,
   });
 
@@ -325,7 +332,10 @@ export const init: InitFn<CanvasState, SketchConfig> = async ({
     });
     state.lightningRequested = false;
 
-    if (loadingStateResolver && lightning.length >= config.preload) {
+    if (
+      loadingStateResolver &&
+      lightning.length >= (isPreview ? 1 : config.preload)
+    ) {
       loadingStateResolver();
     }
   };
@@ -341,8 +351,8 @@ export const init: InitFn<CanvasState, SketchConfig> = async ({
     lightningWorker,
   };
 
-  for (let i = 0; i < config.preload; i++) {
-    requestLightning({ width, height, config, state });
+  for (let i = 0; i < (isPreview ? 1 : config.preload); i++) {
+    requestLightning({ ...props, state });
   }
 
   // Pre-generate lightning for up to one second
@@ -367,25 +377,28 @@ export const init: InitFn<CanvasState, SketchConfig> = async ({
   return state;
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = async ({
-  gl,
-  width,
-  height,
-  timestamp,
-  delta,
-  config,
-  state,
-  hasChanged,
-}) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
+  const {
+    gl,
+    width,
+    height,
+    timestamp,
+    delta,
+    config,
+    state,
+    hasChanged,
+    isPreview,
+  } = props;
   if (!gl) throw new Error('???');
   const { programInfo, bufferInfo } = state;
 
+  const shrinkFactor = isPreview ? 0.5 : 1;
   const { charSize } = config.visualisation;
-  const cols = Math.floor(width / charSize);
-  const rows = Math.floor(height / charSize);
+  const cols = Math.floor(width / (charSize * shrinkFactor));
+  const rows = Math.floor(height / (charSize * shrinkFactor));
 
   if (hasChanged) {
-    const charsCanvas = await initCharsCanvas(config);
+    const charsCanvas = await initCharsCanvas(props);
     state.charsTexture = twgl.createTexture(gl, {
       src: charsCanvas,
       mag: gl.NEAREST,
@@ -404,8 +417,8 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async ({
   if (state.resetAfter && state.resetAfter < Date.now()) {
     state.resetAfter = undefined;
     state.lightning.splice(0, state.lightning.length);
-    for (let i = 0; i < config.preload; i++) {
-      requestLightning({ width, height, config, state });
+    for (let i = 0; i < (isPreview ? 1 : config.preload); i++) {
+      requestLightning(props);
     }
   }
 
@@ -432,7 +445,7 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async ({
 
     // Conditional to ensure only one lightning is requested at a time
     if (!state.lightningRequested) {
-      requestLightning({ width, height, config, state });
+      requestLightning(props);
     }
   }
 
@@ -441,7 +454,7 @@ export const frame: FrameFn<CanvasState, SketchConfig> = async ({
     state.lightning[state.lightningId];
 
   const uniforms = {
-    charSize,
+    charSize: charSize * shrinkFactor,
     charsAvailable: config.visualisation.chars.length,
     lightenFactor: config.visualisation.lighten,
     randomness: config.visualisation.randomness,
