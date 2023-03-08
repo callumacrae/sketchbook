@@ -1,5 +1,4 @@
 import bloomCanvas from '@/utils/canvas/unreal-bloom';
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import * as random from '@/utils/random';
 import Vector from '@/utils/vector';
 import generateLightning from '@/utils/shapes/lightning';
@@ -53,13 +52,13 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   width: 400,
   height: 400,
   sketchConfig,
 };
 
-const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   if (!props.ctx) throw new Error('???');
 
   props.initControls(({ pane, config }) => {
@@ -146,7 +145,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { ctx, config, state, width, height, hasChanged } = props;
   if (!ctx || !config) throw new Error('???');
 
@@ -233,9 +232,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
 
   return state;
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

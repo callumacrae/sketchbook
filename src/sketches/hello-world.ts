@@ -19,8 +19,7 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   sketchConfig,
 };
 
-export const init: InitFn<CanvasState, SketchConfig> = ({ width }) => {
-  console.log(width);
+export const init: InitFn<CanvasState, SketchConfig> = () => {
   return { num: 0.25 + Math.random() * 0.5 };
 };
 

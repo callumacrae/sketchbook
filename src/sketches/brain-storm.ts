@@ -8,7 +8,6 @@ import getMorseCoder from '@/utils/morse-code';
 
 import figurePoints from './brain-storm-path.json';
 
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
   InitFn,
@@ -47,7 +46,7 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   capture: {
     enabled: false,
@@ -295,7 +294,7 @@ async function initSphere(
   return { frame };
 }
 
-const init: InitFn<CanvasState, SketchConfig> = async (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   props.initControls(({ pane, config }) => {
     const figureFolder = pane.addFolder({ title: 'Figure' });
     figureFolder.addInput(config.figure, 'lineWidth', { min: 0, max: 5 });
@@ -326,7 +325,7 @@ const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { renderer, config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
@@ -335,9 +334,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
 
   renderer.render(state.scene, state.camera);
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

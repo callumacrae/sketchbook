@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { extendMaterial } from '@/utils/three-extend-material';
 
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
   InitFn,
@@ -29,7 +28,7 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   sketchConfig,
 };
@@ -119,7 +118,7 @@ function initShaderCube(scene: THREE.Scene) {
   return { frame };
 }
 
-const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   props.initControls(({ pane, config }) => {
     pane.addInput(config, 'speedY', { min: -0.2, max: 0.2 });
   });
@@ -134,7 +133,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { scene, camera, normalCube, shaderCube };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { renderer, config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
@@ -143,9 +142,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
 
   renderer.render(state.scene, state.camera);
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

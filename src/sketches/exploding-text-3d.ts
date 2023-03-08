@@ -4,7 +4,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { extendMaterial } from '@/utils/three-extend-material';
 import { easePolyInOut } from 'd3-ease';
 
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
   InitFn,
@@ -32,7 +31,7 @@ interface CanvasState {
 const sketchConfig = {};
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   capture: {
     enabled: false,
@@ -268,7 +267,7 @@ async function initLetters(
   return { frame };
 }
 
-const init: InitFn<CanvasState, SketchConfig> = async (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   if (!props.renderer) throw new Error('???');
 
   props.renderer.shadowMap.enabled = true;
@@ -288,7 +287,7 @@ const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   return { scene, camera, lighting, letters };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { renderer, config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
@@ -297,9 +296,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
 
   renderer.render(state.scene, state.camera);
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

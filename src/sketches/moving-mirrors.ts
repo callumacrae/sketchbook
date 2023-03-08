@@ -4,7 +4,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import SimplexNoise from 'simplex-noise';
 
 import { extendMaterial } from '@/utils/three-extend-material';
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
   InitFn,
@@ -45,7 +44,7 @@ type SketchConfig = typeof sketchConfig;
 const mirrorsX = 5;
 const mirrorsY = 5;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   // capture: {
   //   enabled: false,
@@ -337,7 +336,7 @@ function initMirrors(scene: THREE.Scene) {
   return { frame };
 }
 
-const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   if (!props.renderer) throw new Error('???');
 
   props.initControls(({ pane, config }) => {
@@ -379,7 +378,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { renderer, config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
@@ -388,9 +387,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
 
   renderer.render(state.scene, state.camera.camera);
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

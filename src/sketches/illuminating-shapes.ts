@@ -4,7 +4,6 @@ import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUt
 import SimplexNoise from 'simplex-noise';
 
 import * as random from '@/utils/random';
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import { extendMaterial } from '@/utils/three-extend-material';
 import type {
   Config,
@@ -44,7 +43,7 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   showLoading: true,
   capture: {
@@ -318,7 +317,7 @@ function initHighlighter(
   return { frame };
 }
 
-const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   if (!props.renderer) throw new Error('???');
 
   props.initControls(({ pane, config }) => {
@@ -345,7 +344,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { simplex, scene, camera, shapes, highlighter };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { renderer, config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
@@ -355,9 +354,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
 
   renderer.render(state.scene, state.camera.camera);
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

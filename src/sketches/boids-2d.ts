@@ -2,7 +2,6 @@ import Vector from '@/utils/vector';
 import Vehicle from '@/utils/vehicle/vehicle';
 import VehicleGroup from '@/utils/vehicle/vehicle-group';
 import * as random from '@/utils/random';
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
@@ -39,7 +38,7 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   sketchConfig,
 };
 
@@ -56,7 +55,7 @@ function newBoid(width: number, height: number) {
   });
 }
 
-const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   const { addEvent, initControls, width, height } = props;
 
   initControls(({ pane, config }) => {
@@ -149,7 +148,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { boids };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = ({
+export const frame: FrameFn<CanvasState, SketchConfig> = ({
   ctx,
   state,
   width,
@@ -241,9 +240,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
     ctx.resetTransform();
   }
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

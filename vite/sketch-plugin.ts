@@ -17,16 +17,25 @@ export default function sketchbookPlugin(): VitePlugin {
         )
           return null;
 
+        const githubLink = id.replace(
+          /^.*\/sketches\/(.*)$/,
+          'https://github.com/callumacrae/sketchbook/blob/main/src/sketches/$1'
+        );
         return {
           code: `
             import { toCanvasComponent } from '@/utils/renderers/vue';
+            import SketchLinks from '@/components/SketchLinks.vue';
 
             ${code}
 
             const component = toCanvasComponent<CanvasState, SketchConfig>(
               init,
               frame,
-              sketchbookConfig
+              sketchbookConfig,
+              {
+                component: SketchLinks,
+                meta: { github: '${githubLink}', ...(meta ?? _meta) },
+              },
             );
             export default component;
 
@@ -42,13 +51,16 @@ export default function sketchbookPlugin(): VitePlugin {
       }
 
       if (id.endsWith('.glsl')) {
+        const filePath = id.replace(/^.*\/sketches\//, '../sketches/');
+
         return {
           code: `
             import { shaderToyComponent } from '@/utils/renderers/shader-toy';
+            import SketchLinks from '@/components/SketchLinks.vue';
 
             export const glsl = \`${code}\`;
 
-            export default shaderToyComponent(\`${code}\`);
+            export default shaderToyComponent(\`${code}\`, '${filePath}', SketchLinks);
 
             if (import.meta.hot) {
               import.meta.hot.accept((newModule) => {

@@ -15,10 +15,6 @@ const router = createRouter({
       name: 'home',
       component: () => import('./views/Index.vue'),
     },
-    {
-      path: '/test',
-      component: () => import('./views/Test.vue'),
-    },
     ...sketchRoutes,
     {
       path: '/:pathMatch(.*)*',

@@ -124,7 +124,7 @@ export async function toVanillaCanvas<
       showLoading: false,
       animate: true,
       resizeDelay: 50,
-      maxDelta: 1000 / 60 * 4,
+      maxDelta: (1000 / 60) * 4,
       sketchConfig: {} as SketchConfig,
       plugins: [],
     },

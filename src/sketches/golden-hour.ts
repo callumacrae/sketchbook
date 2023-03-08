@@ -1,4 +1,3 @@
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
@@ -21,7 +20,7 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   sketchConfig,
 };
 
-const init: InitFn<CanvasState, SketchConfig> = async () => {
+export const init: InitFn<CanvasState, SketchConfig> = async () => {
   const bgImg = new Image();
   await new Promise<void>((resolve) => {
     bgImg.addEventListener('load', () => {
@@ -33,7 +32,7 @@ const init: InitFn<CanvasState, SketchConfig> = async () => {
   return { bg: bgImg };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = ({
+export const frame: FrameFn<CanvasState, SketchConfig> = ({
   ctx,
   width,
   height,
@@ -101,9 +100,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
   name('SAS', '(FOX AND BADGE, NOISILY)', start + offset * 6);
   name2('DROYMA', 'SOMMEZ', '(GOLDEN HOUR)', start + offset * 7);
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

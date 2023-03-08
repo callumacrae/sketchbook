@@ -1,5 +1,4 @@
 import SimplexNoise from 'simplex-noise';
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import Vector from '@/utils/vector';
 
@@ -37,7 +36,7 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   sketchConfig,
 };
 
-const init: InitFn<CanvasState, SketchConfig> = ({ initControls }) => {
+export const init: InitFn<CanvasState, SketchConfig> = ({ initControls }) => {
   initControls(({ pane, config }) => {
     pane.addInput(config, 'circleRadius', { min: 0.1, max: 0.9 });
     pane.addInput(config, 'distFactSmallA', { min: 50, max: 1000, step: 1 });
@@ -59,7 +58,7 @@ const init: InitFn<CanvasState, SketchConfig> = ({ initControls }) => {
 
 type VectorAry = [number, number];
 
-const frame: FrameFn<CanvasState, SketchConfig> = ({
+export const frame: FrameFn<CanvasState, SketchConfig> = ({
   ctx,
   width,
   height,
@@ -156,9 +155,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = ({
     ctx.stroke();
   }
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

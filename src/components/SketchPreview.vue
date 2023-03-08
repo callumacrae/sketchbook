@@ -6,7 +6,8 @@ import type { Component } from 'vue';
 
 import LoadingIcon from '@/components/LoadingIcon.vue';
 import DrawnFrame from '@/components/DrawnFrame.vue';
-import IconLink from '@/components/IconLink.vue';
+import SketchLinks from '@/components/SketchLinks.vue';
+import { isSketch } from '@/utils/sketch-parsing';
 import type { Sketch } from '@/utils/sketch-parsing';
 import type LoadQueue from '@/utils/load-queue';
 
@@ -41,9 +42,8 @@ async function loadPreview() {
 
   props.loadQueue.request({
     key: sketch,
-    priority(o) {
-      // TODO: make not gross?
-      const other = o as Sketch;
+    priority(other) {
+      if (!isSketch(other)) return 0;
 
       // Lowest score loads first
       let score = baseScore;
@@ -66,17 +66,19 @@ async function loadPreview() {
       if (!component)
         throw new Error(`No component found for ${sketch.name || sketch.path}`);
 
-      // I don't really understand what's going on with the types here, but I
-      // don't want to work on this anymore lol
-      function assertLazyComponent(
+      // I don't understand why I can't just use the async component or even do
+      // `if (typeof component === 'function')`, but whatever…
+      function isLazyComponent(
         c: typeof component
-      ): asserts c is () => Promise<{ default: Component }> {
-        if (typeof c !== 'function') throw new Error('not a lazy component');
+      ): c is () => Promise<{ default: Component }> {
+        return typeof c === 'function';
       }
-      assertLazyComponent(component);
-
-      const resolvedComponent = await component();
-      sketchPreview.value = resolvedComponent.default;
+      if (isLazyComponent(component)) {
+        const resolvedComponent = await component();
+        sketchPreview.value = resolvedComponent.default;
+      } else {
+        sketchPreview.value = component;
+      }
 
       await new Promise<void>((resolve) => {
         loadedCallback.value = resolve;
@@ -167,14 +169,7 @@ useIntersectionObserver(wrapperEl, ([entry]) => {
           {{ tag }}
         </div>
       </div>
-      <div class="flex gap-2 justify-end grow">
-        <IconLink :href="sketch.codepen" icon="codepen" />
-        <IconLink :href="sketch.shadertoy" icon="shadertoy">
-          <img src="/icon-shadertoy-57.png" alt="View on Shadertoy" />
-        </IconLink>
-        <IconLink :href="sketch.twitter" icon="twitter" />
-        <IconLink :href="sketch.github" icon="github" />
-      </div>
+      <SketchLinks :sketch="sketch" size="small" class="justify-end grow" />
     </div>
   </div>
 </template>

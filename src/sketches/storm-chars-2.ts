@@ -1,6 +1,5 @@
 import * as twgl from 'twgl.js';
 
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import { doWorkOffscreen } from '@/utils/canvas/utils';
 import * as random from '@/utils/random';
@@ -206,7 +205,7 @@ void main() {
 }
 `;
 
-const init: InitFn<CanvasState, SketchConfig> = async ({
+export const init: InitFn<CanvasState, SketchConfig> = async ({
   testSupport,
   initControls,
   gl,
@@ -367,7 +366,7 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
   return state;
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = async ({
+export const frame: FrameFn<CanvasState, SketchConfig> = async ({
   gl,
   width,
   height,
@@ -465,9 +464,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = async ({
   twgl.drawBufferInfo(gl, bufferInfo);
   return state;
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

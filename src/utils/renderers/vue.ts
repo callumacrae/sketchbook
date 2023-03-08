@@ -1,7 +1,10 @@
 import { defineComponent, h } from 'vue';
+import type { Component } from 'vue';
 
+import router from '../../router';
 import { toVanillaCanvas } from './vanilla';
 import type { Config, InitFn, FrameFn } from './vanilla';
+import type { Sketch } from '../sketch-parsing';
 
 export function toCanvasComponent<
   CanvasState = undefined,
@@ -9,7 +12,8 @@ export function toCanvasComponent<
 >(
   init: InitFn<CanvasState, SketchConfig>,
   frame: FrameFn<CanvasState, SketchConfig>,
-  sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {}
+  sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {},
+  metaLinks?: { meta?: Sketch; component: Component }
 ) {
   return defineComponent({
     props: {
@@ -22,7 +26,7 @@ export function toCanvasComponent<
         default: undefined,
       },
     },
-    data: () => ({ mouseover: false }),
+    data: () => ({ mouseover: false, meta: metaLinks?.meta }),
     render() {
       return h(
         'div',
@@ -32,8 +36,30 @@ export function toCanvasComponent<
             'overflow-hidden flex items-center justify-center',
           ],
         },
-        h('canvas', { ref: 'canvas', class: 'bg-white shadow-2xl' })
+        [
+          h('canvas', { ref: 'canvas', class: 'bg-white shadow-2xl' }),
+          this.preview || !metaLinks?.meta
+            ? null
+            : h(
+                'div',
+                {
+                  class:
+                    'absolute top-4 left-4 p-1.5 flex gap-2 text-xl md:text-2xl bg-zinc-300 rounded-full opacity-60 hover:opacity-100 transition-opacity',
+                },
+                h(metaLinks.component, { sketch: this.meta, size: 'medium' })
+              ),
+        ]
       );
+    },
+    methods: {
+      goBack() {
+        const lastPath = router.options.history.state.back;
+        if (lastPath) {
+          router.back();
+        } else {
+          router.push('/');
+        }
+      },
     },
     async mounted() {
       const canvas = this.$refs.canvas as HTMLCanvasElement | null;

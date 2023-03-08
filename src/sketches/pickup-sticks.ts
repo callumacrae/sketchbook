@@ -1,4 +1,3 @@
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
   InitFn,
@@ -44,7 +43,7 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   // width: 600,
   // height: 600,
   // useDpr: true,
@@ -52,7 +51,7 @@ const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   sketchConfig,
 };
 
-const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   props.initControls(({ pane, config }) => {
     pane.addInput(config, 'minSticks', { min: 1, max: 10000, step: 1 });
     pane.addInput(config, 'maxSticks', { min: 1, max: 50000, step: 1 });
@@ -145,7 +144,7 @@ function generateStick(
   return true;
 }
 
-const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { ctx, config, width, height, dpr, state } = props;
 
   const size = Math.min(width, height);
@@ -277,9 +276,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   state.needsRerender = false;
   return state;
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

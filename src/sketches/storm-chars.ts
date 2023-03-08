@@ -1,5 +1,4 @@
 import SimplexNoise from 'simplex-noise';
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import { pixelateImage } from '@/utils/textures/sampler';
 import * as random from '@/utils/random';
@@ -60,7 +59,7 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   sketchConfig,
 };
 
-const init: InitFn<CanvasState, SketchConfig> = async ({
+export const init: InitFn<CanvasState, SketchConfig> = async ({
   initControls,
   config,
   width,
@@ -99,7 +98,7 @@ const init: InitFn<CanvasState, SketchConfig> = async ({
   return { simplex: new SimplexNoise('seed') };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = async ({
+export const frame: FrameFn<CanvasState, SketchConfig> = async ({
   ctx,
   width,
   height,
@@ -245,9 +244,3 @@ function luminosityToChar(l: number, lighten: number) {
   if (adjustedL < 0.98) return 'x';
   return 'X';
 }
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

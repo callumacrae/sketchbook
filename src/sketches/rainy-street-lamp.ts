@@ -8,7 +8,6 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 
 import { extendMaterial } from '@/utils/three-extend-material';
 import * as random from '@/utils/random';
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
   InitFn,
@@ -97,7 +96,7 @@ const presets = {
   },
 };
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   postprocessing: true,
   sketchConfig,
@@ -492,7 +491,7 @@ function initBloom(
   return { composer, frame };
 }
 
-const init: InitFn<CanvasState, SketchConfig> = async (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   const controlsInitedAt = Date.now();
   props.initControls(({ pane, config, actualPane }) => {
     pane
@@ -562,7 +561,7 @@ const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   return { composer: bloom.composer, scene, camera, lighting, rain, bloom };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { renderer, config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
@@ -572,9 +571,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
 
   state.composer.render();
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

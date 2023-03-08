@@ -84,7 +84,7 @@ export default {
       }
 
       const delta = timestamp - this.lastTimestamp;
-      const maxDelta = 1000 / 60 * 4;
+      const maxDelta = (1000 / 60) * 4;
       if (delta > maxDelta) {
         const adjustment = delta - maxDelta;
         this.timestampOffset -= adjustment;

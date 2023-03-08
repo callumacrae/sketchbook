@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import Matter from 'matter-js';
 
-import { toCanvasComponent } from '@/utils/renderers/vue';
 import type {
   Config,
   InitFn,
@@ -28,7 +27,7 @@ const sketchConfig = {
 };
 type SketchConfig = typeof sketchConfig;
 
-const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   type: 'threejs',
   // width: 720,
   // height: 720,
@@ -53,7 +52,7 @@ function initCamera(
   return camera;
 }
 
-const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   if (!props.renderer || !props.config) throw new Error('???');
   // props.initControls(({ pane, config }) => {
   // });
@@ -174,7 +173,7 @@ const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { scene, camera, engine, frame };
 };
 
-const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
   const { renderer, config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
@@ -185,9 +184,3 @@ const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
 
   renderer.render(state.scene, state.camera);
 };
-
-export default toCanvasComponent<CanvasState, SketchConfig>(
-  init,
-  frame,
-  sketchbookConfig
-);

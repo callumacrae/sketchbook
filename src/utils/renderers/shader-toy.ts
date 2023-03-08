@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { FolderApi, InputParams } from 'tweakpane';
+import type { Component } from 'vue';
 
 import parseSketchMeta from '../sketch-parsing';
 import { toCanvasComponent } from './vue';
@@ -24,7 +25,11 @@ const parseValue = (value: string) => {
   return value;
 };
 
-export function shaderToyComponent(glsl: string) {
+export function shaderToyComponent(
+  glsl: string,
+  filePath: string,
+  SketchLinks: Component
+) {
   const sketchConfig: Record<string, any> = {};
   type SketchConfig = typeof sketchConfig;
 
@@ -38,7 +43,7 @@ export function shaderToyComponent(glsl: string) {
     sketchConfig,
   };
 
-  const meta = parseSketchMeta(glsl);
+  const meta = parseSketchMeta(glsl, filePath);
   if (meta?.config) {
     try {
       // yolo
@@ -213,6 +218,7 @@ export function shaderToyComponent(glsl: string) {
   return toCanvasComponent<CanvasState, SketchConfig>(
     init,
     frame,
-    sketchbookConfig
+    sketchbookConfig,
+    { meta, component: SketchLinks }
   );
 }
