@@ -13,7 +13,7 @@ export const meta = {
   date: '2023-02-13',
   tags: ['WebGL', 'TWGL.js', 'Generative art', 'Slow'],
   favourite: true,
-  codpen: 'https://codepen.io/callumacrae/full/YzOPqNz',
+  codepen: 'https://codepen.io/callumacrae/full/YzOPqNz',
 };
 
 const glsl = String.raw;
