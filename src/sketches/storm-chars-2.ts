@@ -130,7 +130,10 @@ function requestLightning(props: {
       height,
       config: {
         maxWidth: isPreview ? 2 : config.maxWidth,
-        visualisation: config.visualisation,
+        visualisation: {
+          ...config.visualisation,
+          charSize: config.visualisation.charSize * (isPreview ? 0.5 : 1),
+        },
         branch: {
           ...config.branch,
           ...(isPreview ? { factor: 0.04, factorWithDepth: 0.06 } : {}),
