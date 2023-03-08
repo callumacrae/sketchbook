@@ -5,7 +5,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        handwriting: ['The Happy Giraffe', 'sans-serif'],
+        handwriting: ['Shantell Sans', 'sans-serif'],
       },
     },
   },

@@ -10,15 +10,12 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: 'The Happy Giraffe';
-  src: url('/the-happy-giraffe/the_happy_giraffe_demo-webfont.woff2')
-      format('woff2'),
-    url('/the-happy-giraffe/the_happy_giraffe_demo-webfont.woff') format('woff');
-  font-weight: normal;
+  font-family: 'Shantell Sans';
+  src: url('/shantell-sans/Shantell_Sans-Normal-Medium.woff2') format('woff2');
+  font-weight: medium;
   font-style: normal;
   font-display: swap;
 }
-
 .sketch canvas {
   background-color: white;
   box-shadow: -5px 10px 10px 0px rgba(0, 0, 0, 0.15);
