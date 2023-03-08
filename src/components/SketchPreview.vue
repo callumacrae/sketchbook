@@ -28,6 +28,9 @@ async function loadPreview() {
   if (state.value !== 'waiting') return;
 
   const sketch = props.sketch;
+  if (sketch.tags.includes('WebXR') || sketch.tags.includes('No preview'))
+    return;
+
   const sketchIsGlsl = sketch.filePath.endsWith('.glsl');
 
   let baseScore = 0;
@@ -117,9 +120,21 @@ useIntersectionObserver(wrapperEl, ([entry]) => {
             />
             <div
               v-else
-              class="absolute inset-0 flex items-center justify-center text-2xl"
+              class="absolute inset-0 flex items-center justify-center"
             >
-              <LoadingIcon />
+              <span
+                v-if="sketch.tags.includes('WebXR')"
+                class="text-xl text-center"
+              >
+                Click to preview<br />WebXR sketch
+              </span>
+              <span
+                v-else-if="sketch.tags.includes('No preview')"
+                class="text-xl text-center"
+              >
+                No preview available
+              </span>
+              <LoadingIcon v-else class="text-2xl" />
             </div>
           </Transition>
         </div>

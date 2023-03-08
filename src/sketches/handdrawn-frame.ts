@@ -14,7 +14,7 @@ export interface CanvasState {
 
 const sketchConfig = {
   width: 500,
-  height: 500,
+  height: 200,
   strokeWidth: 5,
   resolution: 16,
   wiggle: 2,

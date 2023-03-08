@@ -81,7 +81,7 @@ export default {
     this.camera = new THREE.PerspectiveCamera(80, width / height, 0.1, 1000);
     this.camera.position.z = 4;
 
-    this.frameId = requestAnimationFrame(this.frame);
+    this.frame(0);
   },
   beforeUnmount() {
     cancelAnimationFrame(this.frameId);
@@ -90,7 +90,10 @@ export default {
     frame(timestamp) {
       this.frameId = requestAnimationFrame(this.frame);
 
-      if (this.status === 'paused' || this.animatingOverride === 'false') {
+      if (
+        this.status === 'paused' ||
+        (this.animatingOverride === 'false' && timestamp !== 0)
+      ) {
         return;
       }
 

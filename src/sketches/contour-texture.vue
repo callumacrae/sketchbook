@@ -15,6 +15,16 @@ export const meta = {
 const simplex = new SimplexNoise();
 
 export default {
+  props: {
+    preview: {
+      type: Boolean,
+      default: false,
+    },
+    animatingOverride: {
+      type: String,
+      default: undefined,
+    },
+  },
   mounted() {
     this.blobCanvas = new BlobCanvas({
       context: this.$el.getContext('2d'),
@@ -28,8 +38,9 @@ export default {
   },
   methods: {
     frame(timestamp = 0) {
-      this.blobCanvas.frame(timestamp);
       this.frameId = requestAnimationFrame(this.frame);
+      if (this.animatingOverride === 'false') return;
+      this.blobCanvas.frame(timestamp);
     },
   },
 };

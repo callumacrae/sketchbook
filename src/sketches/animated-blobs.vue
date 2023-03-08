@@ -1,5 +1,8 @@
 <template>
-  <div class="triangles">
+  <div
+    class="triangles"
+    :class="preview ? 'w-full h-full' : 'w-screen h-screen'"
+  >
     <canvas
       ref="canvas"
       width="600"
@@ -34,6 +37,16 @@ export const meta = {
 const simplex = new SimplexNoise();
 
 export default {
+  props: {
+    preview: {
+      type: Boolean,
+      default: false,
+    },
+    animatingOverride: {
+      type: String,
+      default: undefined,
+    },
+  },
   data: () => ({
     shapes: [],
     highlightPixels: [],
@@ -43,10 +56,11 @@ export default {
     this.paint();
 
     const frame = () => {
+      requestAnimationFrame(frame);
+      if (this.animatingOverride === 'false') return;
+
       this.z += 0.005;
       this.paint();
-
-      requestAnimationFrame(frame);
     };
 
     requestAnimationFrame(frame);
@@ -202,8 +216,6 @@ export default {
 
 <style scoped>
 .triangles {
-  width: 100vw;
-  height: 100vh;
   background-color: #2c003e;
 }
 

@@ -1,5 +1,8 @@
 <template>
-  <svg viewBox="0 0 850 450">
+  <svg
+    viewBox="0 0 850 450"
+    :class="preview ? 'w-full h-full' : 'w-screen h-screen'"
+  >
     <path v-for="(point, i) in points" :key="i" :d="d(point)" />
   </svg>
 </template>
@@ -16,6 +19,16 @@ export const meta = {
 const simplex = new SimplexNoise();
 
 export default {
+  props: {
+    preview: {
+      type: Boolean,
+      default: false,
+    },
+    animatingOverride: {
+      type: String,
+      default: undefined,
+    },
+  },
   data: () => ({
     points: [],
     z: 0,
@@ -33,9 +46,11 @@ export default {
     }
 
     const frame = () => {
-      this.z += 1;
-
       requestAnimationFrame(frame);
+
+      if (this.animatingOverride !== 'false') {
+        this.z += 1;
+      }
     };
 
     requestAnimationFrame(frame);
@@ -69,10 +84,6 @@ export default {
 </script>
 
 <style scoped>
-svg {
-  width: 100vw;
-  height: 100vh;
-}
 svg path {
   stroke-width: 2;
   stroke: black;

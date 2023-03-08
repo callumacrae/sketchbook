@@ -193,6 +193,16 @@ export const meta = {
 const simplexNoise = new SimplexNoise();
 
 export default {
+  props: {
+    preview: {
+      type: Boolean,
+      default: false,
+    },
+    animatingOverride: {
+      type: String,
+      default: undefined,
+    },
+  },
   data: () => ({
     frameId: undefined,
     algorithm: 'simplex',
@@ -233,10 +243,12 @@ export default {
   },
   methods: {
     frame(timestamp = 0) {
+      this.frameId = requestAnimationFrame(this.frame);
+      if (this.animatingOverride === 'false') return;
+
       this.children.forEach(({ x, y, element }) => {
         element.style.opacity = this.getValue(x, y, timestamp);
       });
-      this.frameId = requestAnimationFrame(this.frame);
     },
     getValue(x, y, z) {
       if (this.algorithm === 'simplex') {

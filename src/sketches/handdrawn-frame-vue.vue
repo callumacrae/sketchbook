@@ -8,8 +8,24 @@ const _meta = {
   tags: ['Vue component'],
 };
 
+const props = defineProps({
+  preview: {
+    type: Boolean,
+    default: false,
+  },
+  animatingOverride: {
+    type: String,
+    default: undefined,
+  },
+});
+
 const width = ref(window?.innerWidth > 800 ? 600 : 400);
 const height = ref(window?.innerWidth > 800 ? 400 : 300);
+
+if (props.preview) {
+  width.value = 350;
+  height.value = 200;
+}
 
 const lineWidth = ref(4);
 const resolution = ref(10);
@@ -18,7 +34,8 @@ const wiggle = ref(1);
 
 <template>
   <div
-    class="bg-fuchsia-100 flex items-center justify-center flex-col gap-4 w-screen h-screen"
+    class="bg-fuchsia-100 flex items-center justify-center flex-col gap-4"
+    :class="preview ? 'w-full h-full' : 'w-screen h-screen'"
   >
     <DrawnFrame
       :line-width="lineWidth"

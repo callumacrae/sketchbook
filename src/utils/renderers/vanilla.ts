@@ -172,7 +172,7 @@ export async function toVanillaCanvas<
   }
   const initialConfig = JSON.stringify(flattenedConfig);
 
-  if (sketchbookConfig.pageBg) {
+  if (sketchbookConfig.pageBg && !sketchbookConfig.preview) {
     document.body.style.background = sketchbookConfig.pageBg;
   }
 

@@ -1,5 +1,8 @@
 <template>
-  <canvas ref="canvas"></canvas>
+  <canvas
+    ref="canvas"
+    :class="preview ? 'w-full h-full' : 'w-screen h-screen'"
+  ></canvas>
 </template>
 
 <script>
@@ -18,6 +21,16 @@ export const meta = {
 const simplex = new SimplexNoise();
 
 export default {
+  props: {
+    preview: {
+      type: Boolean,
+      default: false,
+    },
+    animatingOverride: {
+      type: String,
+      default: undefined,
+    },
+  },
   data: () => ({
     frameId: undefined,
     z: 0,
@@ -74,6 +87,9 @@ export default {
   },
   methods: {
     frame() {
+      this.frameId = requestAnimationFrame(this.frame);
+      if (this.animatingOverride === 'false') return;
+
       this.z += 0.01;
       const newTexture = this.generateTexture();
       this.material.map = newTexture;
@@ -81,7 +97,6 @@ export default {
 
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
-      this.frameId = requestAnimationFrame(this.frame);
     },
     generateTexture() {
       // Generate texture for cube faces
@@ -112,10 +127,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-canvas {
-  width: 100vw;
-  height: 100vh;
-}
-</style>
