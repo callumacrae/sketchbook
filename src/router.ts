@@ -20,6 +20,10 @@ const router = createRouter({
       component: () => import('./views/Test.vue'),
     },
     ...sketchRoutes,
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/',
+    },
   ],
 });
 
