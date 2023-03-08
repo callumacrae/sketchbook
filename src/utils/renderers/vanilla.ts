@@ -588,6 +588,11 @@ export async function toVanillaCanvas<
         data.pane.dispose();
       }
 
+      if (data.renderer) {
+        data.renderer.dispose();
+        data.renderer = null;
+      }
+
       for (const plugin of sketchbookConfig.plugins) {
         if (plugin.onDispose) {
           plugin.onDispose();

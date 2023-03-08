@@ -11,7 +11,8 @@ import type {
 export const meta = {
   name: 'Storm chars 2',
   date: '2023-02-13',
-  tags: ['Three.js', 'Generative art', 'Slow'],
+  tags: ['WebGL', 'TWGL.js', 'Generative art', 'Slow'],
+  favourite: true,
   codpen: 'https://codepen.io/callumacrae/full/YzOPqNz',
 };
 

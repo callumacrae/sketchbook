@@ -25,6 +25,27 @@ const sketchPreview = shallowRef<Component | null>(null);
 
 const loadedCallback = ref<(() => void) | null>(null);
 
+async function getSketchComponent(sketch: Sketch) {
+  const route = router.resolve(sketch.path);
+  const component = route?.matched[0]?.components?.default;
+  if (!component)
+    throw new Error(`No component found for ${sketch.name || sketch.path}`);
+
+  // I don't understand why I can't just use the async component or even do
+  // `if (typeof component === 'function')`, but whatever…
+  function isLazyComponent(
+    c: typeof component
+  ): c is () => Promise<{ default: Component }> {
+    return typeof c === 'function';
+  }
+  if (isLazyComponent(component)) {
+    const resolvedComponent = await component();
+    return resolvedComponent.default;
+  }
+
+  return component;
+}
+
 async function loadPreview() {
   if (state.value !== 'waiting') return;
 
@@ -34,10 +55,27 @@ async function loadPreview() {
 
   const sketchIsGlsl = sketch.filePath.endsWith('.glsl');
 
+  const assetsToPreload: string[] = [];
+  try {
+    const text = sketch.moduleText;
+
+    // Three.js loaders
+    for (const match of text.matchAll(/\.load(?:Async)?\(\s*'([^']+)'/g)) {
+      assetsToPreload.push(match[1]);
+    }
+
+    // CSS font loading API
+    for (const match of text.matchAll(/FontFace\([^()]+url\(([^)]+)\)'/g)) {
+      assetsToPreload.push(match[1]);
+    }
+  } catch (e) {
+    console.error('Error caught detecting loaders', e);
+  }
+
   let baseScore = 0;
   if (sketchIsGlsl) baseScore -= 50;
   if (sketch.tags.includes('Three.js')) baseScore += 20;
-  baseScore += 10 * (sketch.moduleText.match(/\.load/g) || []).length;
+  baseScore += 10 * assetsToPreload.length;
   if (sketch.tags.includes('Slow')) baseScore += 1000;
 
   props.loadQueue.request({
@@ -60,25 +98,14 @@ async function loadPreview() {
 
       return score;
     },
+    preload: () => {
+      return Promise.all([
+        getSketchComponent(sketch),
+        ...assetsToPreload.map((url) => fetch(url)),
+      ]);
+    },
     work: async () => {
-      const route = router.resolve(sketch.path);
-      const component = route?.matched[0]?.components?.default;
-      if (!component)
-        throw new Error(`No component found for ${sketch.name || sketch.path}`);
-
-      // I don't understand why I can't just use the async component or even do
-      // `if (typeof component === 'function')`, but whatever…
-      function isLazyComponent(
-        c: typeof component
-      ): c is () => Promise<{ default: Component }> {
-        return typeof c === 'function';
-      }
-      if (isLazyComponent(component)) {
-        const resolvedComponent = await component();
-        sketchPreview.value = resolvedComponent.default;
-      } else {
-        sketchPreview.value = component;
-      }
+      sketchPreview.value = await getSketchComponent(sketch);
 
       await new Promise<void>((resolve) => {
         loadedCallback.value = resolve;
@@ -89,6 +116,11 @@ async function loadPreview() {
   state.value = 'loading';
 }
 
+function hidePreview() {
+  state.value = 'waiting';
+  sketchPreview.value = null;
+}
+
 function setAnimating(animate: boolean) {
   animating.value = animate ? 'true' : 'false';
   if (animate) loadPreview();
@@ -96,7 +128,11 @@ function setAnimating(animate: boolean) {
 
 const wrapperEl = ref<HTMLElement | null>(null);
 useIntersectionObserver(wrapperEl, ([entry]) => {
-  if (entry.isIntersecting) loadPreview();
+  if (entry.isIntersecting) {
+    loadPreview();
+  } else {
+    hidePreview();
+  }
 });
 </script>
 

@@ -26,11 +26,9 @@ const sketchPromises = Object.entries(sketchModules).map(
 
 const sketches = ref<SketchWithPath[]>([]);
 Promise.all(sketchPromises).then((unsortedSketches) => {
-  sketches.value = unsortedSketches
-    .filter(isSketchWithPath)
-    .sort((a, b) => {
-      return b.date.diff(a.date);
-    });
+  sketches.value = unsortedSketches.filter(isSketchWithPath).sort((a, b) => {
+    return b.date.diff(a.date);
+  });
 });
 
 const shouldFilter = ref(true);
@@ -40,7 +38,11 @@ const filteredRoutes = computed(() => {
     : sketches.value;
 });
 
-const loadQueue = new LoadQueue({ prioritised: true, maxConcurrent: 3 });
+const loadQueue = new LoadQueue({
+  prioritised: true,
+  maxConcurrent: 3,
+  preloadAhead: 3,
+});
 </script>
 
 <template>

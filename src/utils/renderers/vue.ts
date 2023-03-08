@@ -51,16 +51,6 @@ export function toCanvasComponent<
         ]
       );
     },
-    methods: {
-      goBack() {
-        const lastPath = router.options.history.state.back;
-        if (lastPath) {
-          router.back();
-        } else {
-          router.push('/');
-        }
-      },
-    },
     async mounted() {
       const canvas = this.$refs.canvas as HTMLCanvasElement | null;
       const config = { ...sketchbookConfig, preview: this.preview };
@@ -95,7 +85,7 @@ export function toCanvasComponent<
         }
       },
     },
-    unmounted() {
+    beforeUnmount() {
       if (this.$options.teardown) {
         this.$options.teardown();
       }

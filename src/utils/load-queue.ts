@@ -3,18 +3,20 @@ interface LoadQueueConfig {
   maxConcurrent?: number;
   throttleTime?: number;
   timeOutTime?: number;
+  preloadAhead?: number;
 }
 
 interface LoadQueueRequest {
   key: any;
   priority?: (other: unknown) => number;
+  preload?: () => Promise<unknown>;
   work: () => Promise<unknown>;
 }
 
 enum LoadQueueStatus {
   Pending,
+  Preloading,
   Loading,
-  Loaded,
   Error,
   TimedOut,
 }
@@ -24,6 +26,7 @@ export default class LoadQueue {
   private maxConcurrent: number;
   private throttleTime: number;
   private timeOutTime: number;
+  private preloadAhead: number;
 
   private queue: (LoadQueueRequest & { status: LoadQueueStatus })[] = [];
   private doWorkTimeout?: ReturnType<typeof setTimeout>;
@@ -33,12 +36,10 @@ export default class LoadQueue {
     this.maxConcurrent = config?.maxConcurrent || 1;
     this.throttleTime = config?.throttleTime || 100;
     this.timeOutTime = config?.timeOutTime || 2000;
+    this.preloadAhead = config?.preloadAhead || 0;
   }
 
-  // TODO: Speed things up by preloading loaded assets? (probably not until
-  // it's a few away in the queue though)
   request(request: LoadQueueRequest) {
-    // return;
     this.queue.push({ ...request, status: LoadQueueStatus.Pending });
 
     if (this.prioritised) {
@@ -70,24 +71,25 @@ export default class LoadQueue {
       return;
     }
 
-    const nextPending = this.queue.find(
-      (request) => request.status === LoadQueueStatus.Pending
+    const nextPendingIndex = this.queue.findIndex((request) =>
+      [LoadQueueStatus.Pending, LoadQueueStatus.Preloading].includes(
+        request.status
+      )
     );
 
-    if (!nextPending) {
-      return;
-    }
+    if (nextPendingIndex === -1) return;
+    const nextPending = this.queue[nextPendingIndex];
 
     nextPending.status = LoadQueueStatus.Loading;
 
     nextPending
       .work()
       .then(() => {
-        nextPending.status = LoadQueueStatus.Loaded;
+        this.queue.splice(this.queue.indexOf(nextPending), 1);
       })
       .catch((err) => {
         nextPending.status = LoadQueueStatus.Error;
-        console.error(err);
+        console.error('error loading', err);
       })
       .finally(() => {
         this.doWorkThrottled();
@@ -99,6 +101,17 @@ export default class LoadQueue {
         this.doWorkThrottled();
       }
     }, this.timeOutTime);
+
+    const toPreload = this.queue
+      .slice(nextPendingIndex + 1, nextPendingIndex + this.preloadAhead + 1)
+      .filter((request) => request.status === LoadQueueStatus.Pending);
+
+    for (const request of toPreload) {
+      request.status = LoadQueueStatus.Preloading;
+      request.preload?.().catch((err) => {
+        console.error('error preloading', err);
+      });
+    }
 
     // Run multiple times to fill up maxConcurrent
     this.doWork();
