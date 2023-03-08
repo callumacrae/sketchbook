@@ -337,24 +337,24 @@ export async function toVanillaCanvas<
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        const mult = window.innerWidth < 550 ? 0.5 : 1;
+        const sizeFactor = data.width / data.dpr < 550 ? 0.6 : 1;
         ctx.font = `bold ${
-          70 * mult
-        }px Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
+          80 * sizeFactor
+        }px Shantell Sans, Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
         ctx.fillStyle = 'red';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(
           'browser not supported :(',
           data.width / 2,
-          data.height / 2 - 50 * mult
+          data.height / 2 - 50 * sizeFactor
         );
 
         ctx.font = `${
-          40 * mult
-        }px Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
+          50 * sizeFactor
+        }px Shantell Sans, Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
         ctx.fillStyle = 'white';
-        ctx.fillText(supported, data.width / 2, data.height / 2 + 50 * mult);
+        ctx.fillText(supported, data.width / 2, data.height / 2 + 50 * sizeFactor);
       });
 
       throw new Error('Sketch not supported in this browser');

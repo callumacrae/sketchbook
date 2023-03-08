@@ -67,7 +67,7 @@ function paint(simplex, z, color, valueFormula, scaleFactor = 1 / 80) {
   });
 }
 
-const svgEl = ref(null);
+const wrapperEl = ref(null);
 const width = ref(0);
 const height = ref(0);
 
@@ -84,14 +84,14 @@ onMounted(() => {
       }
     });
 
-    if (svgEl.value) {
-      resizeObserver.value.observe(svgEl.value);
+    if (wrapperEl.value) {
+      resizeObserver.value.observe(wrapperEl.value);
     }
   }
 });
 
 watch(
-  () => svgEl.value,
+  () => wrapperEl.value,
   (el, oldEl) => {
     if (!el) return;
     if (resizeObserver.value) {
@@ -106,7 +106,7 @@ watch(
 
 watch(
   () => [props.animatingOverride, width.value, height.value],
-  () => {
+  (vals, oldVals) => {
     if (props.animatingOverride === 'false' && shapes.value.length) return;
 
     const colors = random.colorPalette4();
@@ -115,23 +115,30 @@ watch(
     shapes.value = [];
 
     const simplex = new SimplexNoise();
+
+    const startT = Date.now();
+
+    // This is REAL slow in Safari, so we stop it if it takes too long
     paint(simplex, 0, colors[0], (val) => val ** 3 * 100);
-    paint(simplex, 0.5, colors[1], (val) => val ** 3 * 100);
-    paint(simplex, 10, colors[2], (val) => val ** 3 * 100);
-    paint(simplex, 15, colors[0], (val) => val ** 3 * 100);
-    paint(simplex, 100, colors[1], (val) => val ** 2 * 70, 1 / 50);
-    paint(simplex, 110, colors[2], (val) => val ** 2 * 60, 1 / 50);
+    if (Date.now() - startT < 1000)
+      paint(simplex, 0.5, colors[1], (val) => val ** 3 * 100);
+    if (Date.now() - startT < 1000)
+      paint(simplex, 10, colors[2], (val) => val ** 3 * 100);
+    if (Date.now() - startT < 1000)
+      paint(simplex, 15, colors[0], (val) => val ** 3 * 100);
+    if (Date.now() - startT < 1000)
+      paint(simplex, 100, colors[1], (val) => val ** 2 * 70, 1 / 50);
+    if (Date.now() - startT < 1500)
+      paint(simplex, 110, colors[2], (val) => val ** 2 * 60, 1 / 50);
     shuffle(shapes.value);
   }
 );
 </script>
 
 <template>
-  <svg
-    ref="svgEl"
-    :style="{ background: bgColor }"
-    :class="['w-full', preview ? 'h-full' : 'h-screen']"
-  >
-    <path v-for="(shape, i) in shapes" v-bind="shape" :key="`shape-${i}`" />
-  </svg>
+  <div ref="wrapperEl" :class="['w-full', preview ? 'h-full' : 'h-screen']">
+    <svg class="w-full h-full" :style="{ background: bgColor }">
+      <path v-for="(shape, i) in shapes" v-bind="shape" :key="`shape-${i}`" />
+    </svg>
+  </div>
 </template>
