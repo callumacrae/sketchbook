@@ -1,25 +1,28 @@
 <script lang="ts" setup>
-import { ref, shallowRef, watch } from 'vue';
+import { ref, shallowRef } from 'vue';
+import { useRouter } from 'vue-router';
 import { useIntersectionObserver } from '@vueuse/core';
 import type { Component } from 'vue';
 
 import LoadingIcon from '@/components/LoadingIcon.vue';
-import LoadQueue from '@/utils/load-queue';
 import DrawnFrame from '@/components/DrawnFrame.vue';
 import IconLink from '@/components/IconLink.vue';
 import type { Sketch } from '@/utils/sketch-parsing';
+import type LoadQueue from '@/utils/load-queue';
 
 const props = defineProps<{
   sketch: Sketch;
   loadQueue: LoadQueue;
 }>();
 
+const router = useRouter();
+
 const state = ref<'waiting' | 'loading' | 'loaded'>('waiting');
 
-const animating = ref(false);
+const animating = ref<'true' | 'false'>('false');
 const sketchPreview = shallowRef<Component | null>(null);
 
-const loadedCallback = ref<() => void>(null);
+const loadedCallback = ref<(() => void) | null>(null);
 
 async function loadPreview() {
   if (state.value !== 'waiting') return;
@@ -35,7 +38,10 @@ async function loadPreview() {
 
   props.loadQueue.request({
     key: sketch,
-    priority(other) {
+    priority(o) {
+      // TODO: make not gross?
+      const other = o as Sketch;
+
       // Lowest score loads first
       let score = baseScore;
 
@@ -52,8 +58,22 @@ async function loadPreview() {
       return score;
     },
     work: async () => {
-      const loadedComponent = await sketch.component();
-      sketchPreview.value = loadedComponent.default;
+      const route = router.resolve(sketch.path);
+      const component = route?.matched[0]?.components?.default;
+      if (!component)
+        throw new Error(`No component found for ${sketch.name || sketch.path}`);
+
+      // I don't really understand what's going on with the types here, but I
+      // don't want to work on this anymore lol
+      function assertLazyComponent(
+        c: typeof component
+      ): asserts c is () => Promise<{ default: Component }> {
+        if (typeof c !== 'function') throw new Error('not a lazy component');
+      }
+      assertLazyComponent(component);
+
+      const resolvedComponent = await component();
+      sketchPreview.value = resolvedComponent.default;
 
       await new Promise<void>((resolve) => {
         loadedCallback.value = resolve;
@@ -65,7 +85,7 @@ async function loadPreview() {
 }
 
 function setAnimating(animate: boolean) {
-  animating.value = animate;
+  animating.value = animate ? 'true' : 'false';
   if (animate) loadPreview();
 }
 

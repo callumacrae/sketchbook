@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+<script setup>
 import { onMounted, ref, watch } from 'vue';
 import SimplexNoise from 'simplex-noise';
 
@@ -19,7 +19,7 @@ const props = defineProps({
     default: false,
   },
   animatingOverride: {
-    type: [Boolean, undefined],
+    type: String,
     default: undefined,
   },
 });
@@ -29,7 +29,7 @@ const props = defineProps({
  *   A   B=A
  *  /__C__\
  */
-function randomEquilateral(centroid: { x: number; y: number }, A: number) {
+function randomEquilateral(centroid, A) {
   const C = A * 0.8;
 
   const height = Math.sqrt(A ** 2 - (C / 2) ** 2);
@@ -41,16 +41,10 @@ function randomEquilateral(centroid: { x: number; y: number }, A: number) {
   return `M ${a.join(' ')} L ${b.join(' ')} L ${c.join(' ')} Z`;
 }
 
-const bgColor = ref<string>(null);
+const bgColor = ref(null);
 const shapes = ref([]);
 
-function paint(
-  simplex: SimplexNoise,
-  z: number,
-  color: string,
-  valueFormula: (val: number) => number,
-  scaleFactor = 1 / 80
-) {
+function paint(simplex, z, color, valueFormula, scaleFactor = 1 / 80) {
   const shrinkFactor = width.value < 600 ? 0.5 : 1;
   scaleFactor /= shrinkFactor;
 
@@ -73,11 +67,11 @@ function paint(
   });
 }
 
-const svgEl = ref<SVGSVGElement>();
+const svgEl = ref(null);
 const width = ref(0);
 const height = ref(0);
 
-const resizeObserver = ref<ResizeObserver | null>(null);
+const resizeObserver = ref(null);
 onMounted(() => {
   if (typeof window === 'undefined') return;
 
@@ -113,7 +107,7 @@ watch(
 watch(
   () => [props.animatingOverride, width.value, height.value],
   () => {
-    if (props.animatingOverride === false && shapes.value.length) return;
+    if (props.animatingOverride === 'false' && shapes.value.length) return;
 
     const colors = random.colorPalette4();
     bgColor.value = colors.splice(random.floorRange(0, 3), 1);

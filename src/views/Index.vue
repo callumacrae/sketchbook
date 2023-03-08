@@ -4,8 +4,8 @@ import { useRouter } from 'vue-router';
 
 import SketchPreview from '@/components/SketchPreview.vue';
 import LoadQueue from '@/utils/load-queue';
-import parseSketchMeta from '@/utils/sketch-parsing';
-import type { Sketch } from '@/utils/sketch-parsing';
+import parseSketchMeta, { isSketchWithPath } from '@/utils/sketch-parsing';
+import type { SketchWithPath } from '@/utils/sketch-parsing';
 
 onMounted(() => {
   document.body.style.removeProperty('background');
@@ -20,21 +20,14 @@ const sketchModules = import.meta.glob('../sketches/*.{ts,glsl,vue}', {
 const sketchPromises = Object.entries(sketchModules).map(
   async ([filePath, module]) => {
     const moduleText = await module();
-    const sketch = parseSketchMeta(filePath, moduleText);
-
-    const route = routes.find((route) => route.path === sketch.path);
-    if (!route)
-      throw new Error(`No route found for ${sketch.name || sketch.path}`);
-    sketch.component = route?.components.default;
-
-    return sketch;
+    return parseSketchMeta(moduleText, filePath);
   }
 );
 
-const sketches = ref<Sketch[]>([]);
+const sketches = ref<SketchWithPath[]>([]);
 Promise.all(sketchPromises).then((unsortedSketches) => {
   sketches.value = unsortedSketches
-    .filter((sketch): sketch is Sketch => !!sketch?.name)
+    .filter(isSketchWithPath)
     .sort((a, b) => {
       return b.date.diff(a.date);
     });

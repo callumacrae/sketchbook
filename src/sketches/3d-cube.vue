@@ -28,7 +28,7 @@ export default {
       default: false,
     },
     animatingOverride: {
-      type: [Boolean, undefined],
+      type: String,
       default: undefined,
     },
   },
@@ -90,7 +90,7 @@ export default {
     frame(timestamp) {
       this.frameId = requestAnimationFrame(this.frame);
 
-      if (this.status === 'paused' || this.animatingOverride === false) {
+      if (this.status === 'paused' || this.animatingOverride === 'false') {
         return;
       }
 

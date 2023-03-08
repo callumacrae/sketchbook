@@ -18,7 +18,7 @@ export function toCanvasComponent<
         default: false,
       },
       animatingOverride: {
-        type: [Boolean, undefined],
+        type: String,
         default: undefined,
       },
     },
@@ -43,7 +43,7 @@ export function toCanvasComponent<
         delete config.height;
       }
       if (this.animatingOverride !== undefined) {
-        config.animate = this.animatingOverride;
+        config.animate = this.animatingOverride === 'true';
       }
       const frameWithSpy: typeof frame = (...args) => {
         this.$emit('frame');
@@ -65,7 +65,7 @@ export function toCanvasComponent<
     watch: {
       animatingOverride(animate) {
         if (animate !== undefined) {
-          this.$options.updateConfig({ animate });
+          this.$options.updateConfig({ animate: animate === 'true' });
         }
       },
     },

@@ -34,7 +34,7 @@ export default {
       default: false,
     },
     animatingOverride: {
-      type: [Boolean, undefined],
+      type: String,
       default: undefined,
     },
   },
@@ -74,7 +74,7 @@ export default {
 
       if (
         this.status === 'paused' ||
-        (this.animatingOverride === false && timestamp !== 0)
+        (this.animatingOverride === 'false' && timestamp !== 0)
       ) {
         return;
       }
@@ -316,12 +316,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-canvas {
-  display: block;
-  width: 100vw;
-  height: 100vh;
-  border: 1px #efefef solid;
-}
-</style>

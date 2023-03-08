@@ -38,8 +38,8 @@ export function shaderToyComponent(glsl: string) {
     sketchConfig,
   };
 
-  const meta = parseSketchMeta('', glsl);
-  if (meta.config) {
+  const meta = parseSketchMeta(glsl);
+  if (meta?.config) {
     try {
       // yolo
       const extraConfig = eval(`(${meta.config})`);

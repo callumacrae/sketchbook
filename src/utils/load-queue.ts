@@ -25,13 +25,13 @@ export default class LoadQueue {
   private throttleTime: number;
   private timeOutTime: number;
 
-  private queue: (LoadQueueRequest | { status: LoadQueueStatus })[] = [];
+  private queue: (LoadQueueRequest & { status: LoadQueueStatus })[] = [];
   private doWorkTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(config?: LoadQueueConfig) {
     this.prioritised = config?.prioritised || false;
     this.maxConcurrent = config?.maxConcurrent || 1;
-    this.throttleTime = config?.throttleRate || 100;
+    this.throttleTime = config?.throttleTime || 100;
     this.timeOutTime = config?.timeOutTime || 2000;
   }
 
@@ -79,7 +79,6 @@ export default class LoadQueue {
     }
 
     nextPending.status = LoadQueueStatus.Loading;
-    console.time(nextPending.key.name);
 
     nextPending
       .work()
@@ -91,15 +90,12 @@ export default class LoadQueue {
         console.error(err);
       })
       .finally(() => {
-        console.timeEnd(nextPending.key.name);
         this.doWorkThrottled();
       });
 
     setTimeout(() => {
       if (nextPending.status === LoadQueueStatus.Loading) {
         nextPending.status = LoadQueueStatus.TimedOut;
-        console.log('timed out', nextPending.key.name);
-        console.timeEnd(nextPending.key.name);
         this.doWorkThrottled();
       }
     }, this.timeOutTime);

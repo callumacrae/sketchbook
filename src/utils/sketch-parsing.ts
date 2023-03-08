@@ -1,32 +1,63 @@
 import dayjs from 'dayjs';
-import type { Component } from 'vue';
 
 export interface Sketch {
-  filePath: string;
-  path: string;
   name: string;
   date: dayjs.Dayjs;
   favourite?: boolean;
   shadertoy?: string;
   twitter?: string;
   codepen?: string;
-  github: string;
+  github?: string;
   tags: string[];
   moduleText: string;
-  component: Component;
   [key: string]: any;
 }
+export interface SketchWithPath extends Sketch {
+  filePath: string;
+  path: string;
+}
 
+export function isSketch(sketch: any): sketch is Sketch {
+  return (
+    !!sketch.name &&
+    !!dayjs.isDayjs(sketch.date) &&
+    !!Array.isArray(sketch.tags) &&
+    !!sketch.moduleText
+  );
+}
+export function isSketchWithPath(sketch: any): sketch is SketchWithPath {
+  return isSketch(sketch) && !!sketch.filePath && !!sketch.path;
+}
+export function assertIsSketch(sketch: any): asserts sketch is Sketch {
+  if (!isSketch(sketch)) {
+    throw new Error('Invalid sketch');
+  }
+}
+export function assertIsSketchWithPath(
+  sketch: any
+): asserts sketch is SketchWithPath {
+  if (!isSketchWithPath(sketch)) {
+    throw new Error('Invalid sketch with path');
+  }
+}
+
+export default function parseSketchMeta(moduleText: string): Sketch | undefined;
 export default function parseSketchMeta(
-  filePath: string,
-  moduleText: string
-): Omit<Sketch, 'component'> | undefined {
+  moduleText: string,
+  filePath: string
+): SketchWithPath | undefined;
+export default function parseSketchMeta(
+  moduleText: string,
+  filePath?: string
+): Sketch | undefined {
   const sketch: Partial<Sketch> = {
     filePath,
-    path: '/' + filePath.split('/').pop()?.split('.').shift(),
     tags: [],
     moduleText,
   };
+  if (filePath) {
+    sketch.path = '/' + filePath.split('/').pop()?.split('.').shift();
+  }
 
   let jsMeta = moduleText.indexOf('const meta =');
   if (jsMeta === -1) {
@@ -67,10 +98,13 @@ export default function parseSketchMeta(
     throw new Error(`No date found for ${sketch.name || sketch.path}`);
   sketch.date = dayjs(sketch.date);
 
-  sketch.github = filePath.replace(
-    '..',
-    'https://github.com/callumacrae/sketchbook/blob/main/src'
-  );
+  if (filePath) {
+    sketch.github = filePath.replace(
+      '..',
+      'https://github.com/callumacrae/sketchbook/blob/main/src'
+    );
+  }
 
+  assertIsSketch(sketch);
   return sketch;
 }
