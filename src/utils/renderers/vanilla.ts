@@ -36,6 +36,7 @@ export interface Config<CanvasState = undefined, SketchConfig = undefined> {
   postprocessing?: boolean;
   pageBg?: string;
   resizeDelay: number;
+  maxDelta: number;
   sketchConfig: SketchConfig;
   plugins: SketchPlugin<CanvasState, SketchConfig>[];
 }
@@ -123,6 +124,7 @@ export async function toVanillaCanvas<
       showLoading: false,
       animate: true,
       resizeDelay: 50,
+      maxDelta: 1000 / 60 * 4,
       sketchConfig: {} as SketchConfig,
       plugins: [],
     },
@@ -135,6 +137,8 @@ export async function toVanillaCanvas<
     height: 0,
     dpr: 0,
     lastTimestamp: 0,
+    // Used to adjust timestamp after clamping delta to maxDelta
+    timestampOffset: 0,
     hasChanged: true,
     sketchbookConfig: sketchbookConfig,
     canvas: null as HTMLCanvasElement | null,
@@ -409,10 +413,12 @@ export async function toVanillaCanvas<
 
   window.addEventListener('resize', handleResize);
 
-  async function callFrame(timestamp: number, xrFrame?: XRFrame) {
+  async function callFrame(unadjustedTimestamp: number, xrFrame?: XRFrame) {
     if (data.fpsGraph) {
       data.fpsGraph.begin();
     }
+
+    let timestamp = unadjustedTimestamp + data.timestampOffset;
 
     data.lastTimestamp = timestamp;
 
@@ -423,6 +429,15 @@ export async function toVanillaCanvas<
     const hasChanged = data.hasChanged || sketchbookConfig.animate;
 
     if (hasChanged) {
+      let delta = timestamp - data.previousFrameTime;
+
+      if (delta > sketchbookConfig.maxDelta) {
+        const adjustment = delta - sketchbookConfig.maxDelta;
+        data.timestampOffset -= adjustment;
+        timestamp -= adjustment;
+        delta = sketchbookConfig.maxDelta;
+      }
+
       const frameProps: FrameProps<CanvasState, SketchConfig> = {
         ctx: data.ctx,
         gl: data.gl,

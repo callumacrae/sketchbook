@@ -43,6 +43,8 @@ export default {
     frameId: undefined,
     width: undefined,
     height: undefined,
+    lastTimestamp: 0,
+    timestampOffset: 0,
   }),
   mounted() {
     const canvas = this.$el;
@@ -69,8 +71,10 @@ export default {
     },
   },
   methods: {
-    frame(timestamp = 0) {
+    frame(unadjustedTimestamp = 0) {
       this.frameId = requestAnimationFrame(this.frame);
+
+      let timestamp = unadjustedTimestamp + this.timestampOffset;
 
       if (
         this.status === 'paused' ||
@@ -78,6 +82,15 @@ export default {
       ) {
         return;
       }
+
+      const delta = timestamp - this.lastTimestamp;
+      const maxDelta = 1000 / 60 * 4;
+      if (delta > maxDelta) {
+        const adjustment = delta - maxDelta;
+        this.timestampOffset -= adjustment;
+        timestamp -= adjustment;
+      }
+      this.lastTimestamp = timestamp;
 
       const ctx = this.ctx;
       const t = timestamp / 400;
