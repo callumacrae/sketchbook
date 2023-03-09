@@ -43,7 +43,7 @@ export function toCanvasComponent<
                 'div',
                 {
                   class:
-                    'absolute top-4 left-4 p-1.5 flex gap-2 text-xl md:text-2xl bg-zinc-300 rounded-full opacity-60 hover:opacity-100 transition-opacity',
+                    'absolute top-2 left-2 p-1.5 flex gap-2 text-xl md:text-2xl bg-zinc-300 rounded-full opacity-60 hover:opacity-100 transition-opacity',
                 },
                 h(metaLinks.component, { sketch: this.meta, size: 'medium' })
               ),

@@ -179,7 +179,7 @@ useIntersectionObserver(wrapperEl, ([entry]) => {
       </DrawnFrame>
     </RouterLink>
 
-    <div class="mt-4 flex justify-between items-center">
+    <div class="mt-3 md:mt-4 flex justify-between items-center">
       <RouterLink :to="sketch.path">
         <h2>
           <span v-if="sketch.favourite">

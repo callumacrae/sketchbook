@@ -21,11 +21,13 @@
   box-shadow: -5px 10px 10px 0px rgba(0, 0, 0, 0.15);
 }
 
-/* Increase tweakpane label width */
-.tp-dfwv {
-  min-width: 290px;
+/* Tweak tweakpane widths */
+.tp-lblv:not(.tp-lblv-nol) .tp-lblv_v {
+  width: 50% !important;
 }
-.tp-lblv_v {
-  min-width: 110px;
+@media screen and (min-width: 640px) {
+  .tp-dfwv {
+    min-width: 300px;
+  }
 }
 </style>

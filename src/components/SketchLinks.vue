@@ -32,7 +32,10 @@ function goBack() {
     <IconLink
       :href="sketch.shadertoy"
       icon="shadertoy"
-      :class="size === 'small' ? 'w-5 h-5' : 'w-6 h-6'"
+      :class="{
+        'w-5 h-5': true,
+        'md:w-6 md:h-6': size === 'medium',
+      }"
     />
     <IconLink :href="sketch.twitter" icon="twitter" />
     <IconLink :href="sketch.github" icon="github" />
