@@ -8,6 +8,7 @@ interface LoadQueueConfig {
 
 interface LoadQueueRequest {
   key: any;
+  maxConcurrencyOverride?: number | null;
   priority?: (other: unknown) => number;
   preload?: () => Promise<unknown>;
   work: () => Promise<unknown>;
@@ -79,6 +80,13 @@ export default class LoadQueue {
 
     if (nextPendingIndex === -1) return;
     const nextPending = this.queue[nextPendingIndex];
+
+    if (
+      nextPending.maxConcurrencyOverride &&
+      loading.length >= nextPending.maxConcurrencyOverride
+    ) {
+      return;
+    }
 
     nextPending.status = LoadQueueStatus.Loading;
 

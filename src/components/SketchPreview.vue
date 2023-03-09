@@ -44,6 +44,7 @@ async function loadPreview() {
     return;
 
   const sketchIsGlsl = sketch.filePath.endsWith('.glsl');
+  const sketchIsSlow = sketch.tags.includes('Slow');
 
   const assetsToPreload: string[] = [];
   try {
@@ -66,10 +67,11 @@ async function loadPreview() {
   if (sketchIsGlsl) baseScore -= 50;
   if (sketch.tags.includes('Three.js')) baseScore += 20;
   baseScore += 10 * assetsToPreload.length;
-  if (sketch.tags.includes('Slow')) baseScore += 1000;
+  if (sketchIsSlow) baseScore += 1000;
 
   props.loadQueue.request({
     key: sketch,
+    maxConcurrencyOverride: sketchIsSlow ? 1 : null,
     priority(other) {
       if (!isSketch(other)) return 0;
 
