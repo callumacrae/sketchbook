@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { onMounted, computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
 
 import SketchPreview from '@/components/SketchPreview.vue';
 import LoadQueue from '@/utils/load-queue';
@@ -11,25 +10,15 @@ onMounted(() => {
   document.body.style.removeProperty('background');
 });
 
-const router = useRouter();
-const routes = router.getRoutes();
-
+const sketches = ref<SketchWithPath[]>([]);
 const sketchModules = import.meta.glob('../sketches/*.{ts,glsl,vue}', {
   as: 'raw',
+  eager: true,
 });
-const sketchPromises = Object.entries(sketchModules).map(
-  async ([filePath, module]) => {
-    const moduleText = await module();
-    return parseSketchMeta(moduleText, filePath);
-  }
-);
-
-const sketches = ref<SketchWithPath[]>([]);
-Promise.all(sketchPromises).then((unsortedSketches) => {
-  sketches.value = unsortedSketches.filter(isSketchWithPath).sort((a, b) => {
-    return b.date.diff(a.date);
-  });
-});
+sketches.value = Object.entries(sketchModules)
+  .map(([filePath, moduleText]) => parseSketchMeta(moduleText, filePath))
+  .filter(isSketchWithPath)
+  .sort((a, b) => b.date.diff(a.date));
 
 const shouldFilter = ref(true);
 const filteredRoutes = computed(() => {
