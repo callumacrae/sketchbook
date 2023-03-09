@@ -106,7 +106,7 @@ watch(
 
 watch(
   () => [props.animatingOverride, width.value, height.value],
-  (vals, oldVals) => {
+  () => {
     if (props.animatingOverride === 'false' && shapes.value.length) return;
 
     const colors = random.colorPalette4();

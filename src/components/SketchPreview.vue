@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, shallowRef } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, loadRouteLocation } from 'vue-router';
 import { useIntersectionObserver } from '@vueuse/core';
 import type { Component } from 'vue';
 
@@ -27,21 +27,11 @@ const loadedCallback = ref<(() => void) | null>(null);
 
 async function getSketchComponent(sketch: Sketch) {
   const route = router.resolve(sketch.path);
-  const component = route?.matched[0]?.components?.default;
+  const loadedRoute = await loadRouteLocation(route);
+
+  const component = loadedRoute?.matched[0]?.components?.default;
   if (!component)
     throw new Error(`No component found for ${sketch.name || sketch.path}`);
-
-  // I don't understand why I can't just use the async component or even do
-  // `if (typeof component === 'function')`, but whatever…
-  function isLazyComponent(
-    c: typeof component
-  ): c is () => Promise<{ default: Component }> {
-    return typeof c === 'function';
-  }
-  if (isLazyComponent(component)) {
-    const resolvedComponent = await component();
-    return resolvedComponent.default;
-  }
 
   return component;
 }

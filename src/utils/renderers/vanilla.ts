@@ -354,7 +354,11 @@ export async function toVanillaCanvas<
           50 * sizeFactor
         }px Shantell Sans, Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
         ctx.fillStyle = 'white';
-        ctx.fillText(supported, data.width / 2, data.height / 2 + 50 * sizeFactor);
+        ctx.fillText(
+          supported,
+          data.width / 2,
+          data.height / 2 + 50 * sizeFactor
+        );
       });
 
       throw new Error('Sketch not supported in this browser');
