@@ -364,15 +364,18 @@ export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
       resolve();
       loadingStateResolver = null;
     };
-    setTimeout(() => {
-      if (lightning.length) {
-        if (loadingStateResolver) {
-          loadingStateResolver();
+    setTimeout(
+      () => {
+        if (lightning.length) {
+          if (loadingStateResolver) {
+            loadingStateResolver();
+          }
+        } else {
+          reject(new Error('Failed to generate lightning'));
         }
-      } else {
-        reject(new Error('Failed to generate lightning'));
-      }
-    }, 1000);
+      },
+      props.isPreview ? 2000 : 1000
+    );
   });
 
   lightning[0].strikeAt.push(timestamp);

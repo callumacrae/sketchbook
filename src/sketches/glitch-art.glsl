@@ -16,7 +16,7 @@
 
 // name: Glitch art
 // date: 2023-01-03
-// tags: GLSL, glitch, #genuary, #genuary2023, #genuary3
+// tags: GLSL, glitch, #genuary, #genuary2023
 // favourite: true
 // shadertoy: https://www.shadertoy.com/view/ct2Gzz
 // config: { width: 500, height: 500 }

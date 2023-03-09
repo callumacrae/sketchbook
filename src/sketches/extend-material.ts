@@ -75,6 +75,8 @@ function initShaderCube(scene: THREE.Scene) {
   const extendedMaterial = extendMaterial(THREE.MeshPhongMaterial, {
     class: THREE.ShaderMaterial,
 
+    explicit: false,
+
     vertexHeader: glsl`
       uniform float yRotation;
       mat4 rotationYMatrix(float angle) {
