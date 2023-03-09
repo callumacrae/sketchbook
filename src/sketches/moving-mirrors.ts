@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-// import { Reflector } from 'three/examples/jsm/objects/Reflector';
 import SimplexNoise from 'simplex-noise';
 
 import { extendMaterial } from '@/utils/three-extend-material';
@@ -111,6 +110,8 @@ function initLighting(scene: THREE.Scene) {
 
 const floorMaterial = extendMaterial(THREE.MeshPhongMaterial, {
   class: THREE.ShaderMaterial,
+
+  explicit: false,
 
   header: glsl`
     #define USE_ENVMAP

@@ -175,6 +175,8 @@ let oldRainGeometryScale = 1;
 const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
   class: THREE.ShaderMaterial,
 
+  explicit: false,
+
   header: glsl`
     varying float vIsBelowLight;
   `,

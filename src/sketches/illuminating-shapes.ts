@@ -90,6 +90,8 @@ const getCoords = (p: number) => [
 const shapeMaterial = extendMaterial(THREE.MeshBasicMaterial, {
   class: THREE.ShaderMaterial,
 
+  explicit: true,
+
   vertexHeader: glsl`
     attribute vec3 aCenter;
     varying vec3 vCenter;

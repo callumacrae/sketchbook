@@ -208,6 +208,8 @@ async function initLetters(
   helloMesh.material = extendMaterial(THREE.MeshPhongMaterial, {
     class: THREE.ShaderMaterial,
 
+    explicit: false,
+
     vertexHeader: glsl`
       uniform float uTime;
       attribute vec3 aWorldPosition;
@@ -252,12 +254,12 @@ async function initLetters(
 
   helloMesh.material.customDepthMaterial = extendMaterial(
     THREE.MeshDepthMaterial,
-    { template: helloMesh.material }
+    { explicit: true, template: helloMesh.material }
   );
 
   helloMesh.material.customDistanceMaterial = extendMaterial(
     THREE.MeshDistanceMaterial,
-    { template: helloMesh.material }
+    { explicit: true, template: helloMesh.material }
   );
 
   const frame: FrameFn<CanvasState, SketchConfig> = ({ timestamp }) => {
