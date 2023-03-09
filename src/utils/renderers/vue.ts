@@ -72,10 +72,12 @@ export function toCanvasComponent<
       this.$options.teardown = teardown;
       this.$options.updateConfig = updateConfig;
 
-      // TODO: Find a less hacky way to pass this to HMR handling
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      window.__sketch_canvasData = data;
+      if (!this.preview) {
+        // TODO: Find a less hacky way to pass this to HMR handling
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        window.__sketch_canvasData = data;
+      }
     },
     watch: {
       animatingOverride(animate) {
@@ -88,6 +90,10 @@ export function toCanvasComponent<
       if (this.$options.teardown) {
         this.$options.teardown();
       }
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      delete window.__sketch_canvasData;
     },
   });
 }

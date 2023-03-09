@@ -180,7 +180,9 @@ export function shaderToyComponent(
     const { renderer, config, state, timestamp, hasChanged } = props;
     if (!renderer || !config) throw new Error('???');
 
-    const newGlsl: string = (window as any).__sketch_glsl;
+    const newGlsl: string = props.isPreview
+      ? ''
+      : (window as any).__sketch_glsl;
     if (hasChanged || newGlsl) {
       const fragmentShader = (
         newGlsl ? wrapShaderText(newGlsl) : state.material.fragmentShader
