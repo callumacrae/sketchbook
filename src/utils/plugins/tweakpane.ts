@@ -37,7 +37,6 @@ export default class TweakpanePlugin<CanvasState, UserConfig>
     this.cb = cb;
   }
 
-  // TODO: don't do on preview
   onBeforeInit(props: InitProps<CanvasState, UserConfig>) {
     const { userConfig, sketchConfig, renderer } = props;
 

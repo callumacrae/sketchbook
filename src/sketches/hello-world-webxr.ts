@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { ARButton } from 'three/examples/jsm/webxr/ARButton';
 
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
+import ThreeXRPlugin from '@/utils/plugins/three-xr-plugin';
 import type {
   SketchConfig,
   InitFn,
@@ -25,25 +25,20 @@ export interface CanvasState {
 const userConfig = {};
 export type UserConfig = typeof userConfig;
 
-const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>();
+const tweakpanePlugin = new TweakpanePlugin();
+const threeXRPlugin = new ThreeXRPlugin({
+  requiredFeatures: ['hit-test'],
+  // requiredFeatures: ['depth-sensing', 'hit-test'],
+  // depthSensing: {
+  //   usagePreference: ['cpu-optimized'],
+  //   dataFormatPreference: ['luminance-alpha'],
+  // },
+});
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
-  xr: {
-    enabled: true,
-    permissionsButton(renderer: THREE.WebGLRenderer) {
-      return ARButton.createButton(renderer, {
-        requiredFeatures: ['hit-test'],
-        // requiredFeatures: ['depth-sensing', 'hit-test'],
-        // depthSensing: {
-        //   usagePreference: ['cpu-optimized'],
-        //   dataFormatPreference: ['luminance-alpha'],
-        // },
-      });
-    },
-  },
   userConfig,
-  plugins: [tweakpanePlugin],
+  plugins: [tweakpanePlugin, threeXRPlugin],
 };
 
 function initCamera(
@@ -107,7 +102,9 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = async (props) => {
-  const { renderer, userConfig: config, state, xrFrame } = props;
+  const { renderer, userConfig: config, state } = props;
+  const { xrFrame } = threeXRPlugin;
+
   if (!renderer || !config || !xrFrame) throw new Error('???');
 
   const referenceSpace = renderer.xr.getReferenceSpace();

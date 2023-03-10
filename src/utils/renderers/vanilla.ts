@@ -6,12 +6,6 @@ type Type = 'context2d' | 'webgl' | 'threejs';
 
 export interface SketchConfig<CanvasState = undefined, UserConfig = undefined> {
   type: Type;
-  xr?:
-    | { enabled: false; [key: string]: any }
-    | {
-        enabled: true;
-        permissionsButton: (renderer: THREE.WebGLRenderer) => HTMLElement;
-      };
   isPreview: boolean;
   showLoading: boolean;
   animate: boolean;
@@ -50,6 +44,8 @@ export interface InitProps<CanvasState, UserConfig = undefined> {
   testSupport(cb: () => true | string): void;
 }
 
+export type CallFrameFn = (unadjustedTimestamp: number) => Promise<void>;
+
 export interface FrameProps<CanvasState, UserConfig = undefined> {
   ctx: CanvasRenderingContext2D | null;
   gl: WebGLRenderingContext | null;
@@ -63,7 +59,6 @@ export interface FrameProps<CanvasState, UserConfig = undefined> {
   userConfig: UserConfig;
   sketchConfig: SketchConfig<CanvasState, UserConfig>;
   hasChanged: boolean;
-  xrFrame?: XRFrame;
 }
 
 export interface EventProps<
@@ -164,15 +159,13 @@ export async function toVanillaCanvas<
       antialias: !sketchConfig.postprocessing,
       stencil: !sketchConfig.postprocessing,
       depth: !sketchConfig.postprocessing,
-      alpha: !!sketchConfig.xr?.enabled,
     });
     data.renderer.info.autoReset = false;
 
-    if (sketchConfig.xr?.enabled) {
-      data.renderer.xr.enabled = true;
-
-      const xrButton = sketchConfig.xr.permissionsButton(data.renderer);
-      document.body.appendChild(xrButton);
+    for (const plugin of sketchConfig.plugins) {
+      if (plugin.onThreeRenderer) {
+        plugin.onThreeRenderer(data.renderer);
+      }
     }
   }
 
@@ -311,24 +304,14 @@ export async function toVanillaCanvas<
     );
   }
 
-  if (sketchConfig.xr?.enabled && data.renderer) {
-    data.renderer.setAnimationLoop((timestamp, xrFrame) => {
-      if (data.renderer?.xr.isPresenting) {
-        callFrame(timestamp, xrFrame);
-      }
-    });
-  } else {
-    callFrame(0);
-  }
+  let customAnimationLoop = false;
 
-  window.addEventListener('resize', handleResize);
-
-  async function callFrame(unadjustedTimestamp: number, xrFrame?: XRFrame) {
+  const callFrame: CallFrameFn = async (unadjustedTimestamp: number) => {
     let timestamp = unadjustedTimestamp + data.timestampOffset;
 
     data.lastTimestamp = timestamp;
 
-    if (!sketchConfig.capture?.enabled && !sketchConfig.xr?.enabled) {
+    if (!sketchConfig.capture?.enabled && !customAnimationLoop) {
       data.animationFrame = requestAnimationFrame(callFrame);
     }
 
@@ -368,7 +351,6 @@ export async function toVanillaCanvas<
         sketchConfig: data.sketchConfig,
         // hasChanged can be used to see if the userConfig has changed
         hasChanged: pluginHasChanged || data.hasChanged,
-        xrFrame,
       };
 
       if (data.renderer) {
@@ -421,7 +403,22 @@ export async function toVanillaCanvas<
         callFrame(timestamp);
       }
     }
+  };
+
+  for (const plugin of sketchConfig.plugins) {
+    if (plugin.customAnimationLoop) {
+      const isLoopSet = plugin.customAnimationLoop(callFrame);
+      if (isLoopSet) {
+        customAnimationLoop = true;
+        break;
+      }
+    }
   }
+  if (!customAnimationLoop) {
+    callFrame(0);
+  }
+
+  window.addEventListener('resize', handleResize);
 
   function handleResize() {
     if (data.resizeTimeout) {

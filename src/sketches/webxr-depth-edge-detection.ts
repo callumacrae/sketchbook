@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { ARButton } from 'three/examples/jsm/webxr/ARButton';
 
 import SurfaceHandler from '@/utils/web-xr/surface-detection';
 import OverlayPlugin from '@/utils/plugins/webxr-overlay';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
+import ThreeXRPlugin from '@/utils/plugins/three-xr-plugin';
 import type {
   SketchConfig,
   InitFn,
@@ -31,27 +31,22 @@ export type UserConfig = typeof userConfig;
 
 const tweakpanePlugin = new TweakpanePlugin();
 const overlayPlugin = new OverlayPlugin();
+const threeXRPlugin = new ThreeXRPlugin({
+  requiredFeatures: ['hit-test', 'depth-sensing'],
+  optionalFeatures: ['dom-overlay'],
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  depthSensing: {
+    usagePreference: ['cpu-optimized'],
+    dataFormatPreference: ['luminance-alpha'],
+  },
+  domOverlay: { root: overlayPlugin.getRoot() },
+});
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
-  xr: {
-    enabled: true,
-    permissionsButton(renderer: THREE.WebGLRenderer) {
-      return ARButton.createButton(renderer, {
-        requiredFeatures: ['hit-test', 'depth-sensing'],
-        optionalFeatures: ['dom-overlay'],
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        depthSensing: {
-          usagePreference: ['cpu-optimized'],
-          dataFormatPreference: ['luminance-alpha'],
-        },
-        domOverlay: { root: overlayPlugin.getRoot() },
-      });
-    },
-  },
   userConfig,
-  plugins: [tweakpanePlugin, overlayPlugin],
+  plugins: [tweakpanePlugin, threeXRPlugin, overlayPlugin],
 };
 
 function initCamera(
@@ -105,7 +100,8 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = async (props) => {
-  const { renderer, userConfig: config, state, xrFrame } = props;
+  const { renderer, userConfig: config, state } = props;
+  const { xrFrame } = threeXRPlugin;
   if (!renderer || !config || !xrFrame) throw new Error('???');
 
   const referenceSpace = renderer.xr.getReferenceSpace();

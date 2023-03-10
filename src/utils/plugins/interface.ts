@@ -1,9 +1,13 @@
-import type { FrameProps, InitProps } from '../renderers/vanilla';
+import type * as THREE from 'three';
+import type { CallFrameFn, FrameProps, InitProps } from '../renderers/vanilla';
 
 export interface SketchPlugin<CanvasState, UserConfig> {
   readonly name: string;
 
   hasChanged?: boolean;
+
+  onThreeRenderer?(renderer: THREE.WebGLRenderer): void;
+  customAnimationLoop?(callFrame: CallFrameFn): boolean;
 
   onBeforeInit?(initProps: InitProps<CanvasState, UserConfig>): void;
   onInit?(
