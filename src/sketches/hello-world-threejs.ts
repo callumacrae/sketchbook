@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   InitProps,
   FrameFn,
@@ -18,17 +19,20 @@ export interface CanvasState {
   camera: ReturnType<typeof initCamera>;
 }
 
-const sketchConfig = {};
-export type SketchConfig = typeof sketchConfig;
+const userConfig = {};
+export type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>();
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
-  sketchConfig,
+  userConfig,
+  plugins: [tweakpanePlugin],
 };
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height }: InitProps<CanvasState, SketchConfig>
+  { width, height }: InitProps<CanvasState, UserConfig>
 ) {
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
   camera.position.z = 5;
@@ -46,10 +50,7 @@ function initLighting(scene: THREE.Scene) {
   scene.add(ambientLight);
 }
 
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
-  // props.initControls(({ pane, config }) => {
-  // });
-
+export const init: InitFn<CanvasState, UserConfig> = (props) => {
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
@@ -58,8 +59,8 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { scene, camera };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-  const { renderer, config, state } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+  const { renderer, userConfig: config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
   renderer.render(state.scene, state.camera.camera);

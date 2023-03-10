@@ -2,16 +2,16 @@ import { defineComponent, h } from 'vue';
 import type { Component } from 'vue';
 
 import { toVanillaCanvas } from './vanilla';
-import type { Config, InitFn, FrameFn } from './vanilla';
+import type { SketchConfig, InitFn, FrameFn } from './vanilla';
 import type { Sketch } from '../sketch-parsing';
 
 export function toCanvasComponent<
   CanvasState = undefined,
-  SketchConfig = undefined
+  UserConfig = undefined
 >(
-  init: InitFn<CanvasState, SketchConfig>,
-  frame: FrameFn<CanvasState, SketchConfig>,
-  sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {},
+  init: InitFn<CanvasState, UserConfig>,
+  frame: FrameFn<CanvasState, UserConfig>,
+  sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {},
   metaLinks?: { meta?: Sketch; component: Component }
 ) {
   return defineComponent({
@@ -52,7 +52,7 @@ export function toCanvasComponent<
     },
     async mounted() {
       const canvas = this.$refs.canvas as HTMLCanvasElement | null;
-      const config = { ...sketchbookConfig, isPreview: this.preview };
+      const config = { ...sketchConfig, isPreview: this.preview };
       if (this.preview) {
         delete config.width;
         delete config.height;
@@ -66,7 +66,7 @@ export function toCanvasComponent<
       };
       const { teardown, data, updateConfig } = await toVanillaCanvas<
         CanvasState,
-        SketchConfig
+        UserConfig
       >(canvas, init, frameWithSpy, config);
 
       this.$options.teardown = teardown;

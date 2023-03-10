@@ -1,8 +1,10 @@
 import * as THREE from 'three';
+
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import { extendMaterial } from '@/utils/three-extend-material';
 
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   InitProps,
   FrameFn,
@@ -23,19 +25,26 @@ interface CanvasState {
   shaderCube: Awaited<ReturnType<typeof initShaderCube>>;
 }
 
-const sketchConfig = {
+const userConfig = {
   speedY: 0.01,
 };
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
+    pane.addInput(config, 'speedY', { min: -0.2, max: 0.2 });
+  }
+);
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
-  sketchConfig,
+  userConfig,
+  plugins: [tweakpanePlugin],
 };
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height }: InitProps<CanvasState, SketchConfig>
+  { width, height }: InitProps<CanvasState, UserConfig>
 ) {
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
   camera.position.z = 5;
@@ -62,7 +71,10 @@ function initNormalCube(scene: THREE.Scene) {
   cube.translateY(-1);
   scene.add(cube);
 
-  const frame: FrameFn<CanvasState, SketchConfig> = ({ config, delta }) => {
+  const frame: FrameFn<CanvasState, UserConfig> = ({
+    userConfig: config,
+    delta,
+  }) => {
     if (!config) throw new Error('???');
 
     cube.rotation.y += (config.speedY / 16.6) * delta;
@@ -112,7 +124,10 @@ function initShaderCube(scene: THREE.Scene) {
   cube.translateY(1);
   scene.add(cube);
 
-  const frame: FrameFn<CanvasState, SketchConfig> = ({ config, delta }) => {
+  const frame: FrameFn<CanvasState, UserConfig> = ({
+    userConfig: config,
+    delta,
+  }) => {
     if (!config) throw new Error('???');
 
     extendedMaterial.uniforms.yRotation.value += (config.speedY / 16.6) * delta;
@@ -120,11 +135,7 @@ function initShaderCube(scene: THREE.Scene) {
   return { frame };
 }
 
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
-  props.initControls(({ pane, config }) => {
-    pane.addInput(config, 'speedY', { min: -0.2, max: 0.2 });
-  });
-
+export const init: InitFn<CanvasState, UserConfig> = (props) => {
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
@@ -135,8 +146,8 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { scene, camera, normalCube, shaderCube };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-  const { renderer, config, state } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+  const { renderer, userConfig: config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
   state.normalCube.frame(props);

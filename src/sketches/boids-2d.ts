@@ -2,7 +2,8 @@ import Vector from '@/utils/vector';
 import Vehicle from '@/utils/vehicle/vehicle';
 import VehicleGroup from '@/utils/vehicle/vehicle-group';
 import * as random from '@/utils/random';
-import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
+import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
   name: 'Boids (2D)',
@@ -14,7 +15,7 @@ interface CanvasState {
   boids: VehicleGroup;
 }
 
-const sketchConfig = {
+const userConfig = {
   boids: {
     count: 300,
     minVelocity: 200,
@@ -36,29 +37,10 @@ const sketchConfig = {
     avoidWallsWeight: 5,
   },
 };
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
-  sketchConfig,
-};
-
-function newBoid(width: number, height: number) {
-  return new Vehicle({
-    position: new Vector(
-      random.range(50, width - 50),
-      random.range(50, height - 50)
-    ),
-    velocity: Vector.fromAngle(
-      random.range(0, Math.PI * 2),
-      random.range(200, 400)
-    ),
-  });
-}
-
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
-  const { addEvent, initControls, width, height } = props;
-
-  initControls(({ pane, config }) => {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
     const boidsFolder = pane.addFolder({ title: 'Boids' });
     boidsFolder.addInput(config.boids, 'count', { min: 1, max: 1000, step: 1 });
     boidsFolder.addInput(config.boids, 'minVelocity', {
@@ -114,15 +96,37 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
       min: 0,
       max: 10,
     });
+  }
+);
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
+  userConfig,
+  plugins: [tweakpanePlugin],
+};
+
+function newBoid(width: number, height: number) {
+  return new Vehicle({
+    position: new Vector(
+      random.range(50, width - 50),
+      random.range(50, height - 50)
+    ),
+    velocity: Vector.fromAngle(
+      random.range(0, Math.PI * 2),
+      random.range(200, 400)
+    ),
   });
+}
+
+export const init: InitFn<CanvasState, UserConfig> = (props) => {
+  const { addEvent, width, height } = props;
 
   const boids = new VehicleGroup();
 
-  for (let i = 0; i < sketchConfig.boids.count; i++) {
+  for (let i = 0; i < userConfig.boids.count; i++) {
     boids.addVehicle(newBoid(width, height));
   }
 
-  addEvent('mousemove', ({ config, ctx, event, dpr, state }) => {
+  addEvent('mousemove', ({ userConfig: config, ctx, event, dpr, state }) => {
     if (!ctx) throw new Error('???');
     if (!event.buttons) return;
     const bb = ctx.canvas.getBoundingClientRect();
@@ -148,14 +152,14 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { boids };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = ({
+export const frame: FrameFn<CanvasState, UserConfig> = ({
   ctx,
   state,
   width,
   height,
   delta,
   hasChanged,
-  config,
+  userConfig: config,
 }) => {
   if (!ctx) throw new Error('???');
 

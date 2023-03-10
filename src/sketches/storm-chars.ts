@@ -1,7 +1,8 @@
 import SimplexNoise from 'simplex-noise';
-import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import { pixelateImage } from '@/utils/textures/sampler';
 import * as random from '@/utils/random';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
+import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
   name: 'Storm chars',
@@ -45,31 +46,17 @@ const images = [
   '/storm-chars/iStock-97739310.jpg',
 ];
 
-const sketchConfig = {
+const userConfig = {
   image: 'random',
   charSize: window.devicePixelRatio > 1 ? 15 : 8,
   lighten: 0.75,
   randomness: 0.8,
 };
 
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
-  // animate: false,
-  sketchConfig,
-};
-
-export const init: InitFn<CanvasState, SketchConfig> = async ({
-  initControls,
-  config,
-  width,
-  height,
-}) => {
-  if (!config) {
-    throw new Error('no config??');
-  }
-
-  initControls(({ pane, config }) => {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
     pane.addInput(config, 'image', {
       options: {
         random: 'random',
@@ -79,7 +66,23 @@ export const init: InitFn<CanvasState, SketchConfig> = async ({
     pane.addInput(config, 'charSize', { min: 1, max: 100 });
     pane.addInput(config, 'lighten', { min: 0, max: 1 });
     pane.addInput(config, 'randomness', { min: 0, max: 1 });
-  });
+  }
+);
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
+  // animate: false,
+  userConfig,
+  plugins: [tweakpanePlugin],
+};
+
+export const init: InitFn<CanvasState, UserConfig> = async ({
+  userConfig: config,
+  width,
+  height,
+}) => {
+  if (!config) {
+    throw new Error('no config??');
+  }
 
   const cols = Math.floor(width / config.charSize);
   const rows = Math.floor(height / config.charSize);
@@ -98,11 +101,11 @@ export const init: InitFn<CanvasState, SketchConfig> = async ({
   return { simplex: new SimplexNoise('seed') };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = async ({
+export const frame: FrameFn<CanvasState, UserConfig> = async ({
   ctx,
   width,
   height,
-  config,
+  userConfig: config,
   state,
 }) => {
   if (!config || !ctx) throw new Error('???');

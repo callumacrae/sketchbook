@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import Matter from 'matter-js';
 
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   InitProps,
   FrameFn,
@@ -22,12 +22,12 @@ interface CanvasState {
   frame: any;
 }
 
-const sketchConfig = {
+const userConfig = {
   cameraYOffset: 20,
 };
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
   // width: 720,
   // height: 720,
@@ -37,12 +37,12 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
     fps: 60,
     directory: 'rolling-sphere',
   },
-  sketchConfig,
+  userConfig,
 };
 
 function initCamera(
   scene: THREE.Scene,
-  { config, width, height }: InitProps<CanvasState, SketchConfig>
+  { userConfig: config, width, height }: InitProps<CanvasState, UserConfig>
 ) {
   if (!config) throw new Error('???');
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
@@ -52,10 +52,8 @@ function initCamera(
   return camera;
 }
 
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
-  if (!props.renderer || !props.config) throw new Error('???');
-  // props.initControls(({ pane, config }) => {
-  // });
+export const init: InitFn<CanvasState, UserConfig> = (props) => {
+  if (!props.renderer || !props.userConfig) throw new Error('???');
 
   props.renderer.shadowMap.enabled = true;
 
@@ -173,8 +171,8 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { scene, camera, engine, frame };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-  const { renderer, config, state } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+  const { renderer, userConfig: config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
   // TODO why can't i use delta??

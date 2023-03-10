@@ -1,4 +1,4 @@
-import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
+import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
   name: 'Golden hour',
@@ -10,17 +10,17 @@ interface CanvasState {
   bg: HTMLImageElement;
 }
 
-const sketchConfig = {};
+const userConfig = {};
 
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   width: 1080,
   height: 1080,
-  sketchConfig,
+  userConfig,
 };
 
-export const init: InitFn<CanvasState, SketchConfig> = async () => {
+export const init: InitFn<CanvasState, UserConfig> = async () => {
   const bgImg = new Image();
   await new Promise<void>((resolve) => {
     bgImg.addEventListener('load', () => {
@@ -32,7 +32,7 @@ export const init: InitFn<CanvasState, SketchConfig> = async () => {
   return { bg: bgImg };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = ({
+export const frame: FrameFn<CanvasState, UserConfig> = ({
   ctx,
   width,
   height,

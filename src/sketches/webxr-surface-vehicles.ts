@@ -5,14 +5,15 @@ import Vector from '@/utils/vector';
 import Vehicle from '@/utils/vehicle/vehicle';
 import VehicleGroup from '@/utils/vehicle/vehicle-group';
 import SurfaceHandler from '@/utils/web-xr/surface-detection';
+import * as random from '@/utils/random';
 import OverlayPlugin from '@/utils/plugins/webxr-overlay';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   InitProps,
   FrameFn,
 } from '@/utils/renderers/vanilla';
-import * as random from '@/utils/random';
 
 export const meta = {
   name: 'WebXR surface with vehicles',
@@ -55,7 +56,7 @@ export interface CanvasState {
   boidsGroup: THREE.Group;
 }
 
-const sketchConfig = {
+const userConfig = {
   boids: {
     count: 10,
     minVelocity: 0.03,
@@ -77,85 +78,10 @@ const sketchConfig = {
     avoidWallsWeight: 5,
   },
 };
-export type SketchConfig = typeof sketchConfig;
+export type UserConfig = typeof userConfig;
 
-const overlayPlugin = new OverlayPlugin();
-
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
-  type: 'threejs',
-  xr: {
-    enabled: true,
-    permissionsButton(renderer: THREE.WebGLRenderer) {
-      return ARButton.createButton(renderer, {
-        requiredFeatures: ['hit-test', 'depth-sensing'],
-        optionalFeatures: ['dom-overlay'],
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        depthSensing: {
-          usagePreference: ['cpu-optimized'],
-          dataFormatPreference: ['luminance-alpha'],
-        },
-        domOverlay: { root: overlayPlugin.getRoot() },
-      });
-    },
-  },
-  sketchConfig,
-  plugins: [overlayPlugin],
-};
-
-const boidGeometry = new THREE.BufferGeometry();
-const boidGeometryVertices = new Float32Array([
-  0, 0, 0, -0.5, 0, 1.2, 0.5, 0, 1.2,
-]);
-boidGeometry.setAttribute(
-  'position',
-  new THREE.BufferAttribute(boidGeometryVertices, 3)
-);
-boidGeometry.scale(0.01, 0.01, 0.01);
-const boidMaterial = new THREE.MeshBasicMaterial({
-  color: 0x333333,
-});
-function newBoid() {
-  return new ThreeSurfaceVehicle({
-    position: Vector.fromAngle(
-      random.range(0, Math.PI * 2),
-      random.range(0, 0.2)
-    ),
-    // position: new Vector(0, 0),
-    velocity: Vector.fromAngle(
-      random.range(0, Math.PI * 2),
-      random.range(
-        sketchConfig.boids.minVelocity,
-        sketchConfig.boids.maxVelocity
-      )
-    ),
-    // velocity: new Vector(-sketchConfig.boids.maxVelocity, -0.03),
-    mesh: new THREE.Mesh(boidGeometry, boidMaterial),
-  });
-}
-
-function initCamera(
-  scene: THREE.Scene,
-  { width, height }: InitProps<CanvasState, SketchConfig>
-) {
-  const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
-  camera.position.z = 5;
-  scene.add(camera);
-
-  return { camera };
-}
-
-function initLighting(scene: THREE.Scene) {
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-  directionalLight.position.set(0, 0, 10);
-  scene.add(directionalLight);
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-  scene.add(ambientLight);
-}
-
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
-  props.initControls(({ pane, config }) => {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
     const boidsFolder = pane.addFolder({ title: 'Boids' });
     boidsFolder.addInput(config.boids, 'count', { min: 1, max: 1000, step: 1 });
     boidsFolder.addInput(config.boids, 'minVelocity', {
@@ -211,8 +137,82 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
       min: 0,
       max: 10,
     });
-  });
+  }
+);
 
+const overlayPlugin = new OverlayPlugin();
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
+  type: 'threejs',
+  xr: {
+    enabled: true,
+    permissionsButton(renderer: THREE.WebGLRenderer) {
+      return ARButton.createButton(renderer, {
+        requiredFeatures: ['hit-test', 'depth-sensing'],
+        optionalFeatures: ['dom-overlay'],
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        depthSensing: {
+          usagePreference: ['cpu-optimized'],
+          dataFormatPreference: ['luminance-alpha'],
+        },
+        domOverlay: { root: overlayPlugin.getRoot() },
+      });
+    },
+  },
+  userConfig,
+  plugins: [tweakpanePlugin, overlayPlugin],
+};
+
+const boidGeometry = new THREE.BufferGeometry();
+const boidGeometryVertices = new Float32Array([
+  0, 0, 0, -0.5, 0, 1.2, 0.5, 0, 1.2,
+]);
+boidGeometry.setAttribute(
+  'position',
+  new THREE.BufferAttribute(boidGeometryVertices, 3)
+);
+boidGeometry.scale(0.01, 0.01, 0.01);
+const boidMaterial = new THREE.MeshBasicMaterial({
+  color: 0x333333,
+});
+function newBoid() {
+  return new ThreeSurfaceVehicle({
+    position: Vector.fromAngle(
+      random.range(0, Math.PI * 2),
+      random.range(0, 0.2)
+    ),
+    // position: new Vector(0, 0),
+    velocity: Vector.fromAngle(
+      random.range(0, Math.PI * 2),
+      random.range(userConfig.boids.minVelocity, userConfig.boids.maxVelocity)
+    ),
+    // velocity: new Vector(-userConfig.boids.maxVelocity, -0.03),
+    mesh: new THREE.Mesh(boidGeometry, boidMaterial),
+  });
+}
+
+function initCamera(
+  scene: THREE.Scene,
+  { width, height }: InitProps<CanvasState, UserConfig>
+) {
+  const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
+  camera.position.z = 5;
+  scene.add(camera);
+
+  return { camera };
+}
+
+function initLighting(scene: THREE.Scene) {
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+  directionalLight.position.set(0, 0, 10);
+  scene.add(directionalLight);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambientLight);
+}
+
+export const init: InitFn<CanvasState, UserConfig> = (props) => {
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
@@ -251,8 +251,15 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { scene, camera, reticle: reticleGroup, surfaces, boids, boidsGroup };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
-  const { renderer, config, state, xrFrame, delta, hasChanged } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = async (props) => {
+  const {
+    renderer,
+    userConfig: config,
+    state,
+    xrFrame,
+    delta,
+    hasChanged,
+  } = props;
   if (!renderer || !config || !xrFrame) throw new Error('???');
 
   if (hasChanged) {

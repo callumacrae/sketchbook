@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton';
 
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   InitProps,
   FrameFn,
@@ -21,10 +22,12 @@ export interface CanvasState {
   hitTestSource?: XRHitTestSource;
 }
 
-const sketchConfig = {};
-export type SketchConfig = typeof sketchConfig;
+const userConfig = {};
+export type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>();
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
   xr: {
     enabled: true,
@@ -39,12 +42,13 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
       });
     },
   },
-  sketchConfig,
+  userConfig,
+  plugins: [tweakpanePlugin],
 };
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height }: InitProps<CanvasState, SketchConfig>
+  { width, height }: InitProps<CanvasState, UserConfig>
 ) {
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
   camera.position.z = 5;
@@ -62,11 +66,8 @@ function initLighting(scene: THREE.Scene) {
   scene.add(ambientLight);
 }
 
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, UserConfig> = (props) => {
   if (!props.renderer) throw new Error('???');
-
-  // props.initControls(({ pane, config }) => {
-  // });
 
   const scene = new THREE.Scene();
 
@@ -105,8 +106,8 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { scene, camera, reticle };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
-  const { renderer, config, state, xrFrame } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = async (props) => {
+  const { renderer, userConfig: config, state, xrFrame } = props;
   if (!renderer || !config || !xrFrame) throw new Error('???');
 
   const referenceSpace = renderer.xr.getReferenceSpace();

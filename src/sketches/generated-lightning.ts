@@ -2,7 +2,8 @@ import bloomCanvas from '@/utils/canvas/unreal-bloom';
 import * as random from '@/utils/random';
 import Vector from '@/utils/vector';
 import generateLightning from '@/utils/shapes/lightning';
-import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
+import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import type { LightningNode } from '@/utils/shapes/lightning';
 
 export const meta = {
@@ -23,7 +24,7 @@ interface CanvasState {
   } | null;
 }
 
-const sketchConfig = {
+const userConfig = {
   maxWidth: 8,
   animation: {
     fadeTime: 100,
@@ -50,18 +51,10 @@ const sketchConfig = {
     radius: 1.2,
   },
 };
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
-  width: 400,
-  height: 400,
-  sketchConfig,
-};
-
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
-  if (!props.ctx) throw new Error('???');
-
-  props.initControls(({ pane, config }) => {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
     pane.addInput(config, 'maxWidth', { min: 1, max: 20 });
 
     const animFolder = pane.addFolder({ title: 'Animation' });
@@ -102,7 +95,18 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
     bloomFolder.addInput(config.bloom, 'passes', { min: 0, max: 15 });
     bloomFolder.addInput(config.bloom, 'strength', { min: 0, max: 15 });
     bloomFolder.addInput(config.bloom, 'radius', { min: 0, max: 5 });
-  });
+  }
+);
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
+  width: 400,
+  height: 400,
+  userConfig,
+  plugins: [tweakpanePlugin],
+};
+
+export const init: InitFn<CanvasState, UserConfig> = (props) => {
+  if (!props.ctx) throw new Error('???');
 
   props.addEvent('mousedown', ({ ctx, state, event, dpr }) => {
     if (!ctx) throw new Error('???');
@@ -145,8 +149,8 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-  const { ctx, config, state, width, height, hasChanged } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+  const { ctx, userConfig: config, state, width, height, hasChanged } = props;
   if (!ctx || !config) throw new Error('???');
 
   const framesToFade = config.animation.fadeTime / props.delta;

@@ -3,8 +3,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import SimplexNoise from 'simplex-noise';
 
 import { extendMaterial } from '@/utils/three-extend-material';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   InitProps,
   FrameFn,
@@ -28,7 +29,7 @@ interface CanvasState {
   mirrors: ReturnType<typeof initMirrors>;
 }
 
-const sketchConfig = {
+const userConfig = {
   noiseXInFactor: 0.07,
   noiseYInFactor: 0.07,
   noiseAngleTimeInFactor: 0.05,
@@ -37,13 +38,28 @@ const sketchConfig = {
   lightMoveSpeed: 0.5,
   lightMulti: true,
 };
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
 // Unfortunately has to be done outside of the config for now
 const mirrorsX = 5;
 const mirrorsY = 5;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
+    const mirrorFolder = pane.addFolder({ title: 'Mirrors' });
+    mirrorFolder.addInput(config, 'noiseXInFactor', { min: 0, max: 1 });
+    mirrorFolder.addInput(config, 'noiseYInFactor', { min: 0, max: 1 });
+    mirrorFolder.addInput(config, 'noiseAngleTimeInFactor', { min: 0, max: 1 });
+    mirrorFolder.addInput(config, 'noiseTiltTimeInFactor', { min: 0, max: 1 });
+
+    const lightFolder = pane.addFolder({ title: 'Light' });
+    lightFolder.addInput(config, 'lightMoveSpeed', { min: 0, max: 2 });
+    lightFolder.addInput(config, 'lightMoveRadius', { min: 0, max: 20 });
+    lightFolder.addInput(config, 'lightMulti');
+  }
+);
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
   // capture: {
   //   enabled: false,
@@ -53,12 +69,13 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   // },
   // width: 1000,
   // height: 1000,
-  sketchConfig,
+  userConfig,
+  plugins: [tweakpanePlugin],
 };
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height }: InitProps<CanvasState, SketchConfig>
+  { width, height }: InitProps<CanvasState, UserConfig>
 ) {
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
   camera.position.z = 17;
@@ -85,8 +102,8 @@ function initLighting(scene: THREE.Scene) {
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
   scene.add(ambientLight);
 
-  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-    const { timestamp, config } = props;
+  const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+    const { timestamp, userConfig: config } = props;
     if (!config) throw new Error('???');
 
     if (props.hasChanged) {
@@ -293,8 +310,8 @@ function initMirrors(scene: THREE.Scene) {
 
   scene.add(mirrorsGroup);
 
-  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-    const { timestamp, state, config } = props;
+  const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+    const { timestamp, state, userConfig: config } = props;
     if (!config) throw new Error('???');
 
     const t = timestamp / 1e3;
@@ -337,21 +354,8 @@ function initMirrors(scene: THREE.Scene) {
   return { frame };
 }
 
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, UserConfig> = (props) => {
   if (!props.renderer) throw new Error('???');
-
-  props.initControls(({ pane, config }) => {
-    const mirrorFolder = pane.addFolder({ title: 'Mirrors' });
-    mirrorFolder.addInput(config, 'noiseXInFactor', { min: 0, max: 1 });
-    mirrorFolder.addInput(config, 'noiseYInFactor', { min: 0, max: 1 });
-    mirrorFolder.addInput(config, 'noiseAngleTimeInFactor', { min: 0, max: 1 });
-    mirrorFolder.addInput(config, 'noiseTiltTimeInFactor', { min: 0, max: 1 });
-
-    const lightFolder = pane.addFolder({ title: 'Light' });
-    lightFolder.addInput(config, 'lightMoveSpeed', { min: 0, max: 2 });
-    lightFolder.addInput(config, 'lightMoveRadius', { min: 0, max: 20 });
-    lightFolder.addInput(config, 'lightMulti');
-  });
 
   props.renderer.shadowMap.enabled = true;
 
@@ -379,8 +383,8 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-  const { renderer, config, state } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+  const { renderer, userConfig: config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
   state.lighting.frame(props);

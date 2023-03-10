@@ -1,12 +1,13 @@
 import * as twgl from 'twgl.js';
 
-import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import { doWorkOffscreen } from '@/utils/canvas/utils';
 import * as random from '@/utils/random';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
   LightningWorkerMessageIn,
   LightningWorkerMessageOut,
 } from '@/utils/workers/generate-lightning';
+import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
   name: 'Storm chars 2',
@@ -37,7 +38,7 @@ interface CanvasState {
   resetAfter?: number;
 }
 
-const sketchConfig = {
+const userConfig = {
   maxWidth: 5,
   preload: 3,
   visualisation: {
@@ -69,20 +70,61 @@ const sketchConfig = {
     radius: 0.75,
   },
 };
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
+    const visFolder = pane.addFolder({ title: 'Visualisation' });
+    visFolder.addInput(config.visualisation, 'charSize', { min: 1, max: 100 });
+    visFolder.addInput(config.visualisation, 'lighten', { min: 0, max: 1 });
+    visFolder.addInput(config.visualisation, 'randomness', { min: 0, max: 1 });
+
+    const animFolder = pane.addFolder({ title: 'Animation' });
+    animFolder.addInput(config.animation, 'fadeTime', { min: 0, max: 1000 });
+    animFolder.addInput(config.animation, 'frequencyFactor', {
+      min: -1,
+      max: 2,
+    });
+
+    const branchFolder = pane.addFolder({ title: 'Lightning branching' });
+    branchFolder.addInput(config.branch, 'factor', { min: 0, max: 0.2 });
+    branchFolder.addInput(config.branch, 'factorWithDepth', {
+      min: -0.2,
+      max: 0.2,
+    });
+    branchFolder.addInput(config.branch, 'angle', { min: 0, max: Math.PI / 2 });
+    branchFolder.addInput(config.branch, 'biasExponent', { min: 0.1, max: 10 });
+
+    const wobbleFolder = pane.addFolder({ title: 'Lightning wobble' });
+    wobbleFolder.addInput(config.wobble, 'segmentLength', { min: 0, max: 100 });
+    wobbleFolder.addInput(config.wobble, 'biasToPerfect', { min: 0, max: 1 });
+    wobbleFolder.addInput(config.wobble, 'biasToPerfectVariance', {
+      min: 0,
+      max: 0.5,
+    });
+    wobbleFolder.addInput(config.wobble, 'randomFactor', { min: 0, max: 15 });
+
+    const bloomFolder = pane.addFolder({ title: 'Lightning Bloom' });
+    bloomFolder.addInput(config.bloom, 'enabled');
+    bloomFolder.addInput(config.bloom, 'passes', { min: 0, max: 15 });
+    bloomFolder.addInput(config.bloom, 'strength', { min: 0, max: 15 });
+    bloomFolder.addInput(config.bloom, 'radius', { min: 0, max: 5 });
+  }
+);
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'webgl',
   showLoading: true,
-  sketchConfig,
+  userConfig,
+  plugins: [tweakpanePlugin],
 };
 
 async function initCharsCanvas({
-  config,
-  isPreview,
+  userConfig: config,
+  sketchConfig,
 }: {
-  config: SketchConfig;
-  isPreview: boolean;
+  userConfig: UserConfig;
+  sketchConfig: SketchConfig<CanvasState, UserConfig>;
   [key: string]: any;
 }) {
   const font = new FontFace(
@@ -92,7 +134,7 @@ async function initCharsCanvas({
   await font.load();
   document.fonts.add(font);
 
-  const shrinkFactor = isPreview ? 0.5 : 1;
+  const shrinkFactor = sketchConfig.isPreview ? 0.5 : 1;
   const { chars, charSize } = config.visualisation;
   const width = charSize * shrinkFactor * chars.length;
   const height = charSize * shrinkFactor;
@@ -114,12 +156,13 @@ async function initCharsCanvas({
 function requestLightning(props: {
   width: number;
   height: number;
-  config: SketchConfig;
+  userConfig: UserConfig;
+  sketchConfig: SketchConfig<CanvasState, UserConfig>;
   state: CanvasState;
-  isPreview: boolean;
   [key: string]: any;
 }) {
-  const { width, height, config, state, isPreview } = props;
+  const { width, height, userConfig: config, state } = props;
+  const isPreview = props.sketchConfig.isPreview;
 
   state.lightningRequested = true;
 
@@ -223,8 +266,15 @@ void main() {
 }
 `;
 
-export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
-  const { testSupport, initControls, gl, timestamp, config, isPreview } = props;
+export const init: InitFn<CanvasState, UserConfig> = async (props) => {
+  const {
+    testSupport,
+    gl,
+    timestamp,
+    userConfig: config,
+    sketchConfig,
+  } = props;
+  const isPreview = sketchConfig.isPreview;
   if (!config || !gl) throw new Error('???');
 
   testSupport(() => {
@@ -232,44 +282,6 @@ export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
       return 'This sketch requires OffscreenCanvas';
     }
     return true;
-  });
-
-  initControls(({ pane, config }) => {
-    const visFolder = pane.addFolder({ title: 'Visualisation' });
-    visFolder.addInput(config.visualisation, 'charSize', { min: 1, max: 100 });
-    visFolder.addInput(config.visualisation, 'lighten', { min: 0, max: 1 });
-    visFolder.addInput(config.visualisation, 'randomness', { min: 0, max: 1 });
-
-    const animFolder = pane.addFolder({ title: 'Animation' });
-    animFolder.addInput(config.animation, 'fadeTime', { min: 0, max: 1000 });
-    animFolder.addInput(config.animation, 'frequencyFactor', {
-      min: -1,
-      max: 2,
-    });
-
-    const branchFolder = pane.addFolder({ title: 'Lightning branching' });
-    branchFolder.addInput(config.branch, 'factor', { min: 0, max: 0.2 });
-    branchFolder.addInput(config.branch, 'factorWithDepth', {
-      min: -0.2,
-      max: 0.2,
-    });
-    branchFolder.addInput(config.branch, 'angle', { min: 0, max: Math.PI / 2 });
-    branchFolder.addInput(config.branch, 'biasExponent', { min: 0.1, max: 10 });
-
-    const wobbleFolder = pane.addFolder({ title: 'Lightning wobble' });
-    wobbleFolder.addInput(config.wobble, 'segmentLength', { min: 0, max: 100 });
-    wobbleFolder.addInput(config.wobble, 'biasToPerfect', { min: 0, max: 1 });
-    wobbleFolder.addInput(config.wobble, 'biasToPerfectVariance', {
-      min: 0,
-      max: 0.5,
-    });
-    wobbleFolder.addInput(config.wobble, 'randomFactor', { min: 0, max: 15 });
-
-    const bloomFolder = pane.addFolder({ title: 'Lightning Bloom' });
-    bloomFolder.addInput(config.bloom, 'enabled');
-    bloomFolder.addInput(config.bloom, 'passes', { min: 0, max: 15 });
-    bloomFolder.addInput(config.bloom, 'strength', { min: 0, max: 15 });
-    bloomFolder.addInput(config.bloom, 'radius', { min: 0, max: 5 });
   });
 
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -374,7 +386,7 @@ export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
           reject(new Error('Failed to generate lightning'));
         }
       },
-      props.isPreview ? 2000 : 1000
+      isPreview ? 2000 : 1000
     );
   });
 
@@ -383,20 +395,21 @@ export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   return state;
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
+export const frame: FrameFn<CanvasState, UserConfig> = async (props) => {
   const {
     gl,
     width,
     height,
     timestamp,
     delta,
-    config,
+    userConfig: config,
     state,
     hasChanged,
-    isPreview,
+    sketchConfig,
   } = props;
   if (!gl) throw new Error('???');
   const { programInfo, bufferInfo } = state;
+  const isPreview = sketchConfig.isPreview;
 
   const shrinkFactor = isPreview ? 0.5 : 1;
   const { charSize } = config.visualisation;

@@ -1,6 +1,7 @@
 import SimplexNoise from 'simplex-noise';
-import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 import Vector from '@/utils/vector';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
+import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
   name: 'Line shapes',
@@ -12,7 +13,7 @@ interface CanvasState {
   simplex: SimplexNoise;
 }
 
-const sketchConfig = {
+const userConfig = {
   circleRadius: 0.4,
   distFactSmallA: 500,
   distFactSmallB: 50,
@@ -28,16 +29,10 @@ const sketchConfig = {
   noiseOut: 90,
 };
 
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
-  animate: false,
-  resizeDelay: 250,
-  sketchConfig,
-};
-
-export const init: InitFn<CanvasState, SketchConfig> = ({ initControls }) => {
-  initControls(({ pane, config }) => {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
     pane.addInput(config, 'circleRadius', { min: 0.1, max: 0.9 });
     pane.addInput(config, 'distFactSmallA', { min: 50, max: 1000, step: 1 });
     pane.addInput(config, 'distFactSmallB', { min: 5, max: 1000, step: 1 });
@@ -51,19 +46,28 @@ export const init: InitFn<CanvasState, SketchConfig> = ({ initControls }) => {
     pane.addInput(config, 'noiseXIn', { min: 1, max: 5000, step: 1 });
     pane.addInput(config, 'noiseYIn', { min: 1, max: 5000, step: 1 });
     pane.addInput(config, 'noiseOut', { min: 1, max: 500, step: 1 });
-  });
+  }
+);
 
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
+  animate: false,
+  resizeDelay: 250,
+  userConfig,
+  plugins: [tweakpanePlugin],
+};
+
+export const init: InitFn<CanvasState, UserConfig> = () => {
   return { simplex: new SimplexNoise('seed') };
 };
 
 type VectorAry = [number, number];
 
-export const frame: FrameFn<CanvasState, SketchConfig> = ({
+export const frame: FrameFn<CanvasState, UserConfig> = ({
   ctx,
   width,
   height,
   state,
-  config,
+  userConfig: config,
 }) => {
   if (!ctx || !config) return;
 

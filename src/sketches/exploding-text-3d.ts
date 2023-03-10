@@ -5,7 +5,7 @@ import { extendMaterial } from '@/utils/three-extend-material';
 import { easePolyInOut } from 'd3-ease';
 
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   InitProps,
   FrameFn,
@@ -28,10 +28,10 @@ interface CanvasState {
   letters: Awaited<ReturnType<typeof initLetters>>;
 }
 
-const sketchConfig = {};
-type SketchConfig = typeof sketchConfig;
+const userConfig = {};
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
   capture: {
     enabled: false,
@@ -39,12 +39,12 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
     fps: 30,
     directory: 'exploding-text-3d',
   },
-  sketchConfig,
+  userConfig,
 };
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height }: InitProps<CanvasState, SketchConfig>
+  { width, height }: InitProps<CanvasState, UserConfig>
 ) {
   const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 1000);
   camera.position.z = 300;
@@ -76,7 +76,7 @@ function initLighting(scene: THREE.Scene) {
   const easeFnZ = easePolyInOut.exponent(7);
   const easeFnX = easePolyInOut.exponent(3);
 
-  const frame: FrameFn<CanvasState, SketchConfig> = ({ timestamp }) => {
+  const frame: FrameFn<CanvasState, UserConfig> = ({ timestamp }) => {
     const tz = (timestamp / 1500 + 0.5) % 1;
     const z = (-tz + easeFnZ(tz)) * 300 + pos.z;
     pointLight.position.setZ(z);
@@ -157,7 +157,7 @@ function initGeometry(geometry: THREE.BufferGeometry) {
 
 async function initLetters(
   scene: THREE.Scene,
-  _props: InitProps<CanvasState, SketchConfig>
+  _props: InitProps<CanvasState, UserConfig>
 ) {
   const loader = new GLTFLoader();
 
@@ -262,19 +262,17 @@ async function initLetters(
     { explicit: true, template: helloMesh.material }
   );
 
-  const frame: FrameFn<CanvasState, SketchConfig> = ({ timestamp }) => {
+  const frame: FrameFn<CanvasState, UserConfig> = ({ timestamp }) => {
     helloMesh.material.uniforms.uTime.value = timestamp / 1500 + 0.5;
   };
 
   return { frame };
 }
 
-export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
+export const init: InitFn<CanvasState, UserConfig> = async (props) => {
   if (!props.renderer) throw new Error('???');
 
   props.renderer.shadowMap.enabled = true;
-
-  // props.initControls(({ pane, config }) => {});
 
   const scene = new THREE.Scene();
 
@@ -289,8 +287,8 @@ export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   return { scene, camera, lighting, letters };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-  const { renderer, config, state } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+  const { renderer, userConfig: config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
   state.lighting.frame(props);

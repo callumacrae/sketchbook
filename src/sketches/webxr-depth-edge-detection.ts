@@ -3,8 +3,9 @@ import { ARButton } from 'three/examples/jsm/webxr/ARButton';
 
 import SurfaceHandler from '@/utils/web-xr/surface-detection';
 import OverlayPlugin from '@/utils/plugins/webxr-overlay';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   InitProps,
   FrameFn,
@@ -25,12 +26,13 @@ export interface CanvasState {
   surfaces: SurfaceHandler;
 }
 
-const sketchConfig = {};
-export type SketchConfig = typeof sketchConfig;
+const userConfig = {};
+export type UserConfig = typeof userConfig;
 
+const tweakpanePlugin = new TweakpanePlugin();
 const overlayPlugin = new OverlayPlugin();
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
   xr: {
     enabled: true,
@@ -48,13 +50,13 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
       });
     },
   },
-  sketchConfig,
-  plugins: [overlayPlugin],
+  userConfig,
+  plugins: [tweakpanePlugin, overlayPlugin],
 };
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height }: InitProps<CanvasState, SketchConfig>
+  { width, height }: InitProps<CanvasState, UserConfig>
 ) {
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
   camera.position.z = 5;
@@ -72,11 +74,7 @@ function initLighting(scene: THREE.Scene) {
   scene.add(ambientLight);
 }
 
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
-  props.initControls();
-  // props.initControls(({ pane, config }) => {
-  // });
-
+export const init: InitFn<CanvasState, UserConfig> = (props) => {
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
@@ -106,8 +104,8 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { scene, camera, reticle: reticleGroup, surfaces };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = async (props) => {
-  const { renderer, config, state, xrFrame } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = async (props) => {
+  const { renderer, userConfig: config, state, xrFrame } = props;
   if (!renderer || !config || !xrFrame) throw new Error('???');
 
   const referenceSpace = renderer.xr.getReferenceSpace();

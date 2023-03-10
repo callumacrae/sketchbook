@@ -1,4 +1,5 @@
-import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
+import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
   name: 'Hello World',
@@ -10,20 +11,23 @@ export interface CanvasState {
   num: number;
 }
 
-const sketchConfig = {
+const userConfig = {
   var: 1,
 };
-export type SketchConfig = typeof sketchConfig;
+export type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
-  sketchConfig,
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>();
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
+  userConfig,
+  plugins: [tweakpanePlugin],
 };
 
-export const init: InitFn<CanvasState, SketchConfig> = () => {
+export const init: InitFn<CanvasState, UserConfig> = () => {
   return { num: 0.25 + Math.random() * 0.5 };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = ({
+export const frame: FrameFn<CanvasState, UserConfig> = ({
   ctx,
   state,
   width,

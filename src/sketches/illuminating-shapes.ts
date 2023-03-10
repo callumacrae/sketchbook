@@ -5,8 +5,9 @@ import SimplexNoise from 'simplex-noise';
 
 import * as random from '@/utils/random';
 import { extendMaterial } from '@/utils/three-extend-material';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   InitProps,
   FrameFn,
@@ -31,7 +32,7 @@ interface CanvasState {
   highlighter: ReturnType<typeof initHighlighter>;
 }
 
-const sketchConfig = {
+const userConfig = {
   rotationSpeed: 1,
   shapeOffset: 4,
   shapeSize: 1.8,
@@ -41,9 +42,20 @@ const sketchConfig = {
   highlighterNoiseOutFactor: 0.8,
   highlighterColor: { r: 1, g: 1, b: 1 },
 };
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
+    pane.addInput(config, 'rotationSpeed', { min: 0, max: 20 });
+    pane.addInput(config, 'shapeActiveColor', { color: { type: 'float' } });
+    pane.addInput(config, 'shapeInactiveColor', { color: { type: 'float' } });
+    pane.addInput(config, 'highlighterNoiseInFactor', { min: 0, max: 0.5 });
+    pane.addInput(config, 'highlighterNoiseOutFactor', { min: 0, max: 2 });
+    pane.addInput(config, 'highlighterColor', { color: { type: 'float' } });
+  }
+);
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
   showLoading: true,
   capture: {
@@ -54,12 +66,13 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
   },
   // width: 720,
   // height: 720,
-  sketchConfig,
+  userConfig,
+  plugins: [tweakpanePlugin],
 };
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height, renderer }: InitProps<CanvasState, SketchConfig>
+  { width, height, renderer }: InitProps<CanvasState, UserConfig>
 ) {
   if (!renderer) throw new Error('???');
 
@@ -71,9 +84,9 @@ function initCamera(
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.autoRotate = true;
 
-  const frame = (props: FrameProps<CanvasState, SketchConfig>) => {
-    if (props.hasChanged && props.config) {
-      controls.autoRotateSpeed = props.config.rotationSpeed;
+  const frame = (props: FrameProps<CanvasState, UserConfig>) => {
+    if (props.hasChanged && props.userConfig) {
+      controls.autoRotateSpeed = props.userConfig.rotationSpeed;
     }
     controls.update();
   };
@@ -218,7 +231,7 @@ function generateShape() {
 
 function initShapes(
   scene: THREE.Scene,
-  { config }: InitProps<CanvasState, SketchConfig>
+  { userConfig: config }: InitProps<CanvasState, UserConfig>
 ) {
   if (!config) throw new Error('???');
 
@@ -260,17 +273,17 @@ function initShapes(
   const shapesObject = new THREE.Mesh(shapesGeometry, shapeMaterial);
   scene.add(shapesObject);
 
-  const frame = (props: FrameProps<CanvasState, SketchConfig>) => {
-    if (!props.config) throw new Error('???');
+  const frame = (props: FrameProps<CanvasState, UserConfig>) => {
+    if (!props.userConfig) throw new Error('???');
 
     if (props.hasChanged) {
-      const activeColor = props.config.shapeActiveColor;
+      const activeColor = props.userConfig.shapeActiveColor;
       shapeMaterial.uniforms.uActiveColor.value = new THREE.Color(
         activeColor.r,
         activeColor.g,
         activeColor.b
       );
-      const inactiveColor = props.config.shapeInactiveColor;
+      const inactiveColor = props.userConfig.shapeInactiveColor;
       shapeMaterial.uniforms.uInactiveColor.value = new THREE.Color(
         inactiveColor.r,
         inactiveColor.g,
@@ -290,7 +303,7 @@ function initShapes(
 
 function initHighlighter(
   scene: THREE.Scene,
-  _props: InitProps<CanvasState, SketchConfig>
+  _props: InitProps<CanvasState, UserConfig>
 ) {
   const geometry = new THREE.PlaneGeometry(0.4, 1000);
   const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -298,8 +311,8 @@ function initHighlighter(
   highlighter.name = 'highlighter';
   scene.add(highlighter);
 
-  const frame = (props: FrameProps<CanvasState, SketchConfig>) => {
-    const { config, timestamp, state } = props;
+  const frame = (props: FrameProps<CanvasState, UserConfig>) => {
+    const { userConfig: config, timestamp, state } = props;
 
     const camera = scene.getObjectByProperty('isCamera', true);
     if (!camera || !config) throw new Error('???');
@@ -319,17 +332,8 @@ function initHighlighter(
   return { frame };
 }
 
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, UserConfig> = (props) => {
   if (!props.renderer) throw new Error('???');
-
-  props.initControls(({ pane, config }) => {
-    pane.addInput(config, 'rotationSpeed', { min: 0, max: 20 });
-    pane.addInput(config, 'shapeActiveColor', { color: { type: 'float' } });
-    pane.addInput(config, 'shapeInactiveColor', { color: { type: 'float' } });
-    pane.addInput(config, 'highlighterNoiseInFactor', { min: 0, max: 0.5 });
-    pane.addInput(config, 'highlighterNoiseOutFactor', { min: 0, max: 2 });
-    pane.addInput(config, 'highlighterColor', { color: { type: 'float' } });
-  });
 
   random.setSeed('abc');
 
@@ -346,8 +350,8 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
   return { simplex, scene, camera, shapes, highlighter };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-  const { renderer, config, state } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+  const { renderer, userConfig: config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
   state.camera.frame(props);

@@ -8,8 +8,9 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 
 import { extendMaterial } from '@/utils/three-extend-material';
 import * as random from '@/utils/random';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   InitProps,
   FrameFn,
@@ -34,7 +35,7 @@ interface CanvasState {
   bloom: Awaited<ReturnType<typeof initBloom>>;
 }
 
-const sketchConfig = {
+const userConfig = {
   light: {
     color: 0xe2af6c,
     brightness: 0.8,
@@ -66,15 +67,15 @@ const sketchConfig = {
     radius: 1,
   },
 };
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
 const presets = {
-  default: { ...sketchConfig.rain, ...sketchConfig.wind },
+  default: { ...userConfig.rain, ...userConfig.wind },
   'light rain': {
-    ...sketchConfig.rain,
+    ...userConfig.rain,
     maxSpeed: 4,
     drops: 4000,
-    ...sketchConfig.wind,
+    ...userConfig.wind,
     windStrength: 1.5,
     strengthVariation1: 0.3,
     strengthVariation2In: 0.2,
@@ -83,11 +84,11 @@ const presets = {
     gustStrength: 1.52,
   },
   'snow?': {
-    ...sketchConfig.rain,
+    ...userConfig.rain,
     maxSpeed: 0.6,
     drops: 12000,
     width: 0.0025,
-    ...sketchConfig.wind,
+    ...userConfig.wind,
     windStrength: 1.8,
     strengthVariation1: 0.55,
     strengthVariation2In: 0.25,
@@ -96,15 +97,78 @@ const presets = {
   },
 };
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config, actualPane }) => {
+    const controlsInitedAt = Date.now();
+
+    pane
+      .addInput({ 'Load preset': 'default' }, 'Load preset', {
+        options: Object.fromEntries(Object.keys(presets).map((p) => [p, p])),
+      })
+      .on('change', ({ value }) => {
+        if (!(value in presets)) return;
+        // Checking time so that we don't load preset on localStorage preset load
+        if (Date.now() < controlsInitedAt + 1000) return;
+        actualPane.importPreset(
+          JSON.parse(JSON.stringify(presets[value as keyof typeof presets]))
+        );
+      });
+    const lightFolder = pane.addFolder({ title: 'Lights' });
+    lightFolder.addInput(config.light, 'color', { view: 'color' });
+    lightFolder.addInput(config.light, 'brightness', { min: 0, max: 1 });
+    lightFolder.addInput(config.light, 'decay', { min: 0, max: 10 });
+
+    const rainFolder = pane.addFolder({ title: 'Rain' });
+    rainFolder.addInput(config.rain, 'maxSpeed', { min: 0.1, max: 20 });
+    rainFolder.addInput(config.rain, 'drops', { min: 100, max: 30000 });
+    rainFolder.addInput(config.rain, 'width', { min: 0.0005, max: 0.01 });
+    rainFolder.addInput(config.rain, 'lightFactor', { min: 0.1, max: 1 });
+
+    const windFolder = pane.addFolder({ title: 'Wind' });
+    windFolder.addInput(config.wind, 'direction', { min: 0, max: Math.PI * 2 });
+    windFolder.addInput(config.wind, 'windStrength', { min: 0, max: 7 });
+    windFolder.addInput(config.wind, 'strengthVariation1', { min: 0, max: 1 });
+    windFolder.addInput(config.wind, 'strengthVariation2In', {
+      min: 0,
+      max: 0.5,
+    });
+    windFolder.addInput(config.wind, 'strengthVariation2Out', {
+      min: 0,
+      max: 2,
+    });
+    windFolder.addInput(config.wind, 'gustFrequency', { min: 0, max: 10 });
+    windFolder.addInput(config.wind, 'gustStrength', { min: 0, max: 10 });
+
+    const rendererFolder = pane.addFolder({ title: 'Renderer' });
+    rendererFolder.addInput(config, 'toneMapping', {
+      options: {
+        none: THREE.NoToneMapping,
+        linear: THREE.LinearToneMapping,
+        reinhard: THREE.ReinhardToneMapping,
+        cineon: THREE.CineonToneMapping,
+        'aces filmic': THREE.ACESFilmicToneMapping,
+      },
+    });
+    rendererFolder.addInput(config, 'toneMappingExposure', { min: 0, max: 2 });
+
+    const bloomFolder = pane.addFolder({ title: 'Bloom' });
+    bloomFolder.addInput(config.bloom, 'enabled');
+    bloomFolder.addInput(config.bloom, 'threshold', { min: 0, max: 1 });
+    bloomFolder.addInput(config.bloom, 'strength', { min: 0, max: 3 });
+    bloomFolder.addInput(config.bloom, 'radius', { min: 0, max: 1 });
+  }
+);
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
   postprocessing: true,
-  sketchConfig,
+  userConfig,
+  plugins: [tweakpanePlugin],
 };
 
 function initCamera(
   scene: THREE.Scene,
-  { renderer, width, height }: InitProps<CanvasState, SketchConfig>
+  { renderer, width, height }: InitProps<CanvasState, UserConfig>
 ) {
   if (!renderer) throw new Error('???');
 
@@ -125,7 +189,7 @@ const lightMaterial = new THREE.MeshStandardMaterial();
 
 async function initLighting(
   scene: THREE.Scene,
-  { config }: InitProps<CanvasState, SketchConfig>
+  { userConfig: config }: InitProps<CanvasState, UserConfig>
 ) {
   const loader = new GLTFLoader();
   const lampModel = await loader.loadAsync(
@@ -154,7 +218,7 @@ async function initLighting(
   rightLamp.position.set(0, 4.925, 0.82);
   scene.add(rightLamp);
 
-  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+  const frame: FrameFn<CanvasState, UserConfig> = (props) => {
     if (props.hasChanged && config) {
       lightMaterial.emissive = new THREE.Color(config.light.color);
       lightMaterial.emissiveIntensity = config.light.brightness;
@@ -326,37 +390,37 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
     },
 
     uMaxSpeed: {
-      value: sketchConfig.rain.maxSpeed,
+      value: userConfig.rain.maxSpeed,
       shared: true,
     },
 
     uLightFactor: {
-      value: sketchConfig.rain.lightFactor,
+      value: userConfig.rain.lightFactor,
       shared: true,
     },
 
     uWindDirection: {
-      value: sketchConfig.wind.direction,
+      value: userConfig.wind.direction,
       share: true,
     },
 
     uWindStrength: {
-      value: sketchConfig.wind.windStrength,
+      value: userConfig.wind.windStrength,
       share: true,
     },
 
     uWindStrengthVariation1: {
-      value: sketchConfig.wind.strengthVariation1,
+      value: userConfig.wind.strengthVariation1,
       share: true,
     },
 
     uGustFrequency: {
-      value: sketchConfig.wind.gustFrequency,
+      value: userConfig.wind.gustFrequency,
       share: true,
     },
 
     uGustStrength: {
-      value: sketchConfig.wind.gustStrength,
+      value: userConfig.wind.gustStrength,
       share: true,
     },
 
@@ -369,7 +433,7 @@ const rainMaterial = extendMaterial(THREE.MeshLambertMaterial, {
 
 function initRain(
   scene: THREE.Scene,
-  { config }: InitProps<CanvasState, SketchConfig>
+  { userConfig: config }: InitProps<CanvasState, UserConfig>
 ) {
   if (!config) throw new Error('???');
 
@@ -397,22 +461,24 @@ function initRain(
 
   const simplex = new SimplexNoise();
 
-  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-    if (!props.config) throw new Error('???');
+  const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+    if (!props.userConfig) throw new Error('???');
 
     if (props.hasChanged) {
-      const scale = props.config.rain.width / oldRainGeometryScale;
+      const scale = props.userConfig.rain.width / oldRainGeometryScale;
       rainGeometry.scale(scale, 1, scale);
-      oldRainGeometryScale = props.config.rain.width;
-      rainMaterial.uniforms.uMaxSpeed.value = props.config.rain.maxSpeed;
-      rainMaterial.uniforms.uLightFactor.value = props.config.rain.lightFactor;
-      rainMaterial.uniforms.uWindDirection.value = props.config.wind.direction;
+      oldRainGeometryScale = props.userConfig.rain.width;
+      rainMaterial.uniforms.uMaxSpeed.value = props.userConfig.rain.maxSpeed;
+      rainMaterial.uniforms.uLightFactor.value =
+        props.userConfig.rain.lightFactor;
+      rainMaterial.uniforms.uWindDirection.value =
+        props.userConfig.wind.direction;
       rainMaterial.uniforms.uWindStrengthVariation1.value =
-        props.config.wind.strengthVariation1;
+        props.userConfig.wind.strengthVariation1;
       rainMaterial.uniforms.uGustFrequency.value =
-        props.config.wind.gustFrequency;
+        props.userConfig.wind.gustFrequency;
       rainMaterial.uniforms.uGustStrength.value =
-        props.config.wind.gustStrength;
+        props.userConfig.wind.gustStrength;
 
       const pointLightPositions: THREE.Vector3[] = [];
       scene.traverseVisible((obj) => {
@@ -424,9 +490,9 @@ function initRain(
       });
       rainMaterial.uniforms.uPointLightPositions.value = pointLightPositions;
 
-      if (props.config.rain.drops < rainObject.count) {
-        rainObject.count = props.config.rain.drops;
-      } else if (props.config.rain.drops > rainObject.count) {
+      if (props.userConfig.rain.drops < rainObject.count) {
+        rainObject.count = props.userConfig.rain.drops;
+      } else if (props.userConfig.rain.drops > rainObject.count) {
         scene.remove(rainObject);
         rainObject = new THREE.InstancedMesh(
           rainGeometry,
@@ -438,15 +504,16 @@ function initRain(
     }
 
     const strengthVariation2Noise = simplex.noise2D(
-      (props.timestamp / 1e3) * props.config.wind.strengthVariation2In,
+      (props.timestamp / 1e3) * props.userConfig.wind.strengthVariation2In,
       0
     );
     // range is [1 - varOut / 2, 1 + varOut / 2]
     const strengthVariation2 =
-      props.config.wind.strengthVariation2Out * (strengthVariation2Noise / 2) +
+      props.userConfig.wind.strengthVariation2Out *
+        (strengthVariation2Noise / 2) +
       1;
     rainMaterial.uniforms.uWindStrength.value =
-      props.config.wind.windStrength * strengthVariation2;
+      props.userConfig.wind.windStrength * strengthVariation2;
 
     rainMaterial.uniforms.uTime.value = props.timestamp / 1e3;
   };
@@ -456,7 +523,12 @@ function initRain(
 
 function initBloom(
   scene: THREE.Scene,
-  { config, renderer, width, height }: InitProps<CanvasState, SketchConfig>
+  {
+    userConfig: config,
+    renderer,
+    width,
+    height,
+  }: InitProps<CanvasState, UserConfig>
 ) {
   if (!renderer || !config) throw new Error('???');
 
@@ -477,82 +549,23 @@ function initBloom(
   composer.addPass(renderPass);
   composer.addPass(bloomPass);
 
-  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-    if (props.hasChanged && props.config) {
+  const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+    if (props.hasChanged && props.userConfig) {
       renderer.toneMapping = config.toneMapping;
       renderer.toneMappingExposure = config.toneMappingExposure;
 
       bloomPass.resolution.set(props.width, props.height);
-      bloomPass.enabled = props.config.bloom.enabled;
-      bloomPass.threshold = props.config.bloom.threshold;
-      bloomPass.strength = props.config.bloom.strength;
-      bloomPass.radius = props.config.bloom.radius;
+      bloomPass.enabled = props.userConfig.bloom.enabled;
+      bloomPass.threshold = props.userConfig.bloom.threshold;
+      bloomPass.strength = props.userConfig.bloom.strength;
+      bloomPass.radius = props.userConfig.bloom.radius;
     }
   };
 
   return { composer, frame };
 }
 
-export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
-  const controlsInitedAt = Date.now();
-  props.initControls(({ pane, config, actualPane }) => {
-    pane
-      .addInput({ 'Load preset': 'default' }, 'Load preset', {
-        options: Object.fromEntries(Object.keys(presets).map((p) => [p, p])),
-      })
-      .on('change', ({ value }) => {
-        if (!(value in presets)) return;
-        // Checking time so that we don't load preset on localStorage preset load
-        if (Date.now() < controlsInitedAt + 1000) return;
-        actualPane.importPreset(
-          JSON.parse(JSON.stringify(presets[value as keyof typeof presets]))
-        );
-      });
-    const lightFolder = pane.addFolder({ title: 'Lights' });
-    lightFolder.addInput(config.light, 'color', { view: 'color' });
-    lightFolder.addInput(config.light, 'brightness', { min: 0, max: 1 });
-    lightFolder.addInput(config.light, 'decay', { min: 0, max: 10 });
-
-    const rainFolder = pane.addFolder({ title: 'Rain' });
-    rainFolder.addInput(config.rain, 'maxSpeed', { min: 0.1, max: 20 });
-    rainFolder.addInput(config.rain, 'drops', { min: 100, max: 30000 });
-    rainFolder.addInput(config.rain, 'width', { min: 0.0005, max: 0.01 });
-    rainFolder.addInput(config.rain, 'lightFactor', { min: 0.1, max: 1 });
-
-    const windFolder = pane.addFolder({ title: 'Wind' });
-    windFolder.addInput(config.wind, 'direction', { min: 0, max: Math.PI * 2 });
-    windFolder.addInput(config.wind, 'windStrength', { min: 0, max: 7 });
-    windFolder.addInput(config.wind, 'strengthVariation1', { min: 0, max: 1 });
-    windFolder.addInput(config.wind, 'strengthVariation2In', {
-      min: 0,
-      max: 0.5,
-    });
-    windFolder.addInput(config.wind, 'strengthVariation2Out', {
-      min: 0,
-      max: 2,
-    });
-    windFolder.addInput(config.wind, 'gustFrequency', { min: 0, max: 10 });
-    windFolder.addInput(config.wind, 'gustStrength', { min: 0, max: 10 });
-
-    const rendererFolder = pane.addFolder({ title: 'Renderer' });
-    rendererFolder.addInput(config, 'toneMapping', {
-      options: {
-        none: THREE.NoToneMapping,
-        linear: THREE.LinearToneMapping,
-        reinhard: THREE.ReinhardToneMapping,
-        cineon: THREE.CineonToneMapping,
-        'aces filmic': THREE.ACESFilmicToneMapping,
-      },
-    });
-    rendererFolder.addInput(config, 'toneMappingExposure', { min: 0, max: 2 });
-
-    const bloomFolder = pane.addFolder({ title: 'Bloom' });
-    bloomFolder.addInput(config.bloom, 'enabled');
-    bloomFolder.addInput(config.bloom, 'threshold', { min: 0, max: 1 });
-    bloomFolder.addInput(config.bloom, 'strength', { min: 0, max: 3 });
-    bloomFolder.addInput(config.bloom, 'radius', { min: 0, max: 1 });
-  });
-
+export const init: InitFn<CanvasState, UserConfig> = async (props) => {
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
@@ -563,8 +576,8 @@ export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   return { composer: bloom.composer, scene, camera, lighting, rain, bloom };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-  const { renderer, config, state } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+  const { renderer, userConfig: config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
   state.lighting.frame(props);

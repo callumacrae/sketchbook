@@ -4,7 +4,8 @@ import type { Component } from 'vue';
 
 import parseSketchMeta from '../sketch-parsing';
 import { toCanvasComponent } from './vue';
-import type { Config, InitFn, FrameFn } from './vanilla';
+import TweakpanePlugin from '../plugins/tweakpane';
+import type { SketchConfig, InitFn, FrameFn } from './vanilla';
 
 const uniforms = {
   iTime: { value: 0 },
@@ -30,17 +31,54 @@ export function shaderToyComponent(
   filePath: string,
   SketchLinks: Component
 ) {
-  const sketchConfig: Record<string, any> = {};
-  type SketchConfig = typeof sketchConfig;
+  const userConfig: Record<string, any> = {};
+  type UserConfig = typeof userConfig;
 
-  const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+  const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+    ({ pane, config }) => {
+      const folders: Record<string, FolderApi> = {};
+
+      for (const key of Object.keys(config)) {
+        const options: InputParams = {};
+
+        const { match, folder } = originalConfig[key];
+
+        if (folder && !folders[folder]) {
+          folders[folder] = pane.addFolder({ title: folder });
+        }
+
+        if (typeof config[key] === 'number' && match[3]?.includes('-')) {
+          const [min, max] = match[3].split(/\s*-\s*/).map(Number);
+          options.min = min;
+          options.max = max;
+        } else if (match[3]?.includes(',') || match[3]?.includes(' or ')) {
+          const inputOptions = match[3].split(/\s*,\s*|\s+or\s+/);
+          options.options = Object.fromEntries(
+            inputOptions.map((n) => {
+              if (n.includes(':')) {
+                const [key, value] = n.split(/\s*:\s*/g);
+                return [key, parseValue(value)];
+              }
+
+              return [n, parseValue(n)];
+            })
+          );
+        }
+
+        (folder ? folders[folder] : pane).addInput(config, key, options);
+      }
+    }
+  );
+
+  const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
     type: 'threejs',
     capture: {
       enabled: false,
       duration: 15000,
       fps: 24,
     },
-    sketchConfig,
+    userConfig,
+    plugins: [tweakpanePlugin],
   };
 
   const meta = parseSketchMeta(glsl, filePath);
@@ -48,7 +86,7 @@ export function shaderToyComponent(
     try {
       // yolo
       const extraConfig = eval(`(${meta.config})`);
-      Object.assign(sketchbookConfig, extraConfig);
+      Object.assign(sketchConfig, extraConfig);
     } catch (err) {
       console.error('config for this sketch seems to be broken', err);
     }
@@ -81,7 +119,7 @@ export function shaderToyComponent(
         continue;
       }
 
-      sketchConfig[defineMatch[1]] = parseValue(defineMatch[2]);
+      userConfig[defineMatch[1]] = parseValue(defineMatch[2]);
     }
   }
 
@@ -97,42 +135,8 @@ export function shaderToyComponent(
     }
   `;
 
-  const init: InitFn<CanvasState, SketchConfig> = (props) => {
+  const init: InitFn<CanvasState, UserConfig> = (props) => {
     if (!props.renderer) throw new Error('???');
-
-    props.initControls(({ pane, config }) => {
-      const folders: Record<string, FolderApi> = {};
-
-      for (const key of Object.keys(config)) {
-        const options: InputParams = {};
-
-        const { match, folder } = originalConfig[key];
-
-        if (folder && !folders[folder]) {
-          folders[folder] = pane.addFolder({ title: folder });
-        }
-
-        if (typeof config[key] === 'number' && match[3]?.includes('-')) {
-          const [min, max] = match[3].split(/\s*-\s*/).map(Number);
-          options.min = min;
-          options.max = max;
-        } else if (match[3]?.includes(',') || match[3]?.includes(' or ')) {
-          const inputOptions = match[3].split(/\s*,\s*|\s+or\s+/);
-          options.options = Object.fromEntries(
-            inputOptions.map((n) => {
-              if (n.includes(':')) {
-                const [key, value] = n.split(/\s*:\s*/g);
-                return [key, parseValue(value)];
-              }
-
-              return [n, parseValue(n)];
-            })
-          );
-        }
-
-        (folder ? folders[folder] : pane).addInput(config, key, options);
-      }
-    });
 
     const scene = new THREE.Scene();
 
@@ -176,11 +180,17 @@ export function shaderToyComponent(
     return { scene, camera, material, uniforms };
   };
 
-  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-    const { renderer, config, state, timestamp, hasChanged } = props;
+  const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+    const {
+      renderer,
+      userConfig: config,
+      state,
+      timestamp,
+      hasChanged,
+    } = props;
     if (!renderer || !config) throw new Error('???');
 
-    const newGlsl: string = props.isPreview
+    const newGlsl: string = props.sketchConfig.isPreview
       ? ''
       : (window as any).__sketch_glsl;
     if (hasChanged || newGlsl) {
@@ -217,10 +227,8 @@ export function shaderToyComponent(
     renderer.render(state.scene, state.camera);
   };
 
-  return toCanvasComponent<CanvasState, SketchConfig>(
-    init,
-    frame,
-    sketchbookConfig,
-    { meta, component: SketchLinks }
-  );
+  return toCanvasComponent<CanvasState, UserConfig>(init, frame, sketchConfig, {
+    meta,
+    component: SketchLinks,
+  });
 }

@@ -13,7 +13,7 @@ export default function sketchbookPlugin(): VitePlugin {
         if (
           code.includes('toCanvasComponent') ||
           !code.includes('CanvasState') ||
-          !code.includes('sketchbookConfig')
+          !code.includes('sketchConfig')
         )
           return null;
 
@@ -31,7 +31,7 @@ export default function sketchbookPlugin(): VitePlugin {
             const component = toCanvasComponent<CanvasState, SketchConfig>(
               init,
               frame,
-              sketchbookConfig,
+              sketchConfig,
               {
                 component: SketchLinks,
                 meta: { github: '${githubLink}', ...(meta ?? _meta) },

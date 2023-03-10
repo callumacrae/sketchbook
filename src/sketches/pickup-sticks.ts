@@ -1,13 +1,13 @@
+import Vector from '@/utils/vector';
+import Line from '@/utils/line';
+import * as random from '@/utils/random';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   FrameFn,
   FrameProps,
 } from '@/utils/renderers/vanilla';
-
-import Vector from '@/utils/vector';
-import Line from '@/utils/line';
-import * as random from '@/utils/random';
 
 export const meta = {
   name: 'Pick-up sticks',
@@ -27,7 +27,7 @@ interface CanvasState {
   needsRerender: boolean;
 }
 
-const sketchConfig = {
+const userConfig = {
   minSticks: 500,
   maxSticks: 10000,
   sticksPerFrame: 4,
@@ -41,18 +41,10 @@ const sketchConfig = {
   stickColor: '#bd6a6a',
   bgColor: '#fffcda',
 };
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
-  // width: 600,
-  // height: 600,
-  // useDpr: true,
-  pageBg: '#aaa',
-  sketchConfig,
-};
-
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
-  props.initControls(({ pane, config }) => {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
     pane.addInput(config, 'minSticks', { min: 1, max: 10000, step: 1 });
     pane.addInput(config, 'maxSticks', { min: 1, max: 50000, step: 1 });
     pane.addInput(config, 'sticksPerFrame', { min: 1, max: 100, step: 1 });
@@ -79,16 +71,27 @@ export const init: InitFn<CanvasState, SketchConfig> = (props) => {
     pane.addInput(config, 'stickWidth', { min: 0.5, max: 10 });
     pane.addInput(config, 'stickColor');
     pane.addInput(config, 'bgColor');
-  });
+  }
+);
 
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
+  // width: 600,
+  // height: 600,
+  // useDpr: true,
+  pageBg: '#aaa',
+  userConfig,
+  plugins: [tweakpanePlugin],
+};
+
+export const init: InitFn<CanvasState, UserConfig> = () => {
   return { circles: [], sticks: [], needsRerender: true };
 };
 
 function generateStick(
-  props: FrameProps<CanvasState, SketchConfig>,
+  props: FrameProps<CanvasState, UserConfig>,
   attempt: number
 ) {
-  const { config, state, width, height, dpr } = props;
+  const { userConfig: config, state, width, height, dpr } = props;
   if (!config) throw new Error('???');
 
   const size = Math.min(width, height);
@@ -144,8 +147,8 @@ function generateStick(
   return true;
 }
 
-export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-  const { ctx, config, width, height, dpr, state } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+  const { ctx, userConfig: config, width, height, dpr, state } = props;
 
   const size = Math.min(width, height);
 
@@ -153,7 +156,7 @@ export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
 
   if (props.hasChanged) {
     const circles: Circle[] = [];
-    if (props.config?.circlePattern === 'bigCenter') {
+    if (props.userConfig?.circlePattern === 'bigCenter') {
       circles.push(
         { center: new Vector(0.5, 0.5), radius: 0.2 },
         { center: new Vector(0.25, 0.25), radius: 0.1 },
@@ -161,7 +164,7 @@ export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
         { center: new Vector(0.75, 0.75), radius: 0.1 },
         { center: new Vector(0.75, 0.25), radius: 0.1 }
       );
-    } else if (props.config?.circlePattern === 'grid') {
+    } else if (props.userConfig?.circlePattern === 'grid') {
       const circlesX = 3;
       const circlesY = 3;
       const outerSpacing = 0.3;
@@ -176,7 +179,7 @@ export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
           });
         }
       }
-    } else if (props.config?.circlePattern === 'random') {
+    } else if (props.userConfig?.circlePattern === 'random') {
       while (circles.length < 10) {
         const center = new Vector(random.range(0, 1), random.range(0, 1));
         const radius = random.range(0.05, 0.3);

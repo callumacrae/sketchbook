@@ -2,7 +2,7 @@ import Vector from '@/utils/vector';
 import generatePath from '@/utils/shapes/wobbly-path';
 import * as random from '@/utils/random';
 import { doWorkOffscreen } from '@/utils/canvas/utils';
-import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
+import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
   name: 'Normal lines',
@@ -19,7 +19,7 @@ export interface CanvasState {
 
 const opacity = 0.6;
 const isMobile = window.innerWidth < 500;
-const sketchConfig = {
+const userConfig = {
   NUMBER_OF_LINES: isMobile ? 1000 : 2000,
   GROUP_BY: 100,
   startLength: () => random.range(0.12, 0.35),
@@ -39,19 +39,19 @@ const sketchConfig = {
     randomFactor: 1,
   },
 };
-export type SketchConfig = typeof sketchConfig;
+export type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
-  sketchConfig,
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
+  userConfig,
 };
 
 function initLines(props: {
-  config: SketchConfig;
+  userConfig: UserConfig;
   width: number;
   height: number;
   [extra: string]: any;
 }) {
-  const { config, width, height } = props;
+  const { userConfig: config, width, height } = props;
 
   const uvFactor = Math.min(width, height);
 
@@ -95,12 +95,20 @@ function initLines(props: {
   return { lines, bitmaps };
 }
 
-export const init: InitFn<CanvasState, SketchConfig> = (props) => {
+export const init: InitFn<CanvasState, UserConfig> = (props) => {
   return initLines(props);
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-  const { config, ctx, state, width, height, timestamp, hasChanged } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+  const {
+    userConfig: config,
+    ctx,
+    state,
+    width,
+    height,
+    timestamp,
+    hasChanged,
+  } = props;
   if (!ctx) throw new Error('???');
 
   if (hasChanged) {

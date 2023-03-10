@@ -1,9 +1,9 @@
 import type { SketchPlugin } from './interface';
 
-export default class OverlayPlugin<CanvasState, SketchConfig>
-  implements SketchPlugin<CanvasState, SketchConfig>
+export default class OverlayPlugin<CanvasState, UserConfig>
+  implements SketchPlugin<CanvasState, UserConfig>
 {
-  readonly type = 'overlay';
+  readonly name = 'overlay';
 
   private element: HTMLDivElement | undefined;
   private warningElement: HTMLParagraphElement | undefined;

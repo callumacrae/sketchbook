@@ -5,11 +5,12 @@ import { MeshLineGeometry, MeshLineMaterial } from 'meshline';
 import * as random from '@/utils/random';
 import * as math from '@/utils/maths';
 import getMorseCoder from '@/utils/morse-code';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 
 import figurePoints from './brain-storm-path.json';
 
 import type {
-  Config,
+  SketchConfig,
   InitFn,
   FrameFn,
   InitProps,
@@ -30,7 +31,7 @@ interface CanvasState {
   sphere: Awaited<ReturnType<typeof initSphere>>;
 }
 
-const sketchConfig = {
+const userConfig = {
   startDelay: 1000,
   figure: {
     lineWidth: 1.5,
@@ -44,9 +45,27 @@ const sketchConfig = {
     yMovement: { min: 0.0001, max: 0.002 },
   },
 };
-type SketchConfig = typeof sketchConfig;
+type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
+    const figureFolder = pane.addFolder({ title: 'Figure' });
+    figureFolder.addInput(config.figure, 'lineWidth', { min: 0, max: 5 });
+
+    const sphereFolder = pane.addFolder({ title: 'Sphere' });
+    sphereFolder.addInput(config.sphere, 'radius', { min: 150, max: 250 });
+    sphereFolder.addInput(config.sphere, 'textSize', { min: 5, max: 50 });
+    sphereFolder.addInput(config.sphere, 'bands', { min: 5, max: 51 });
+    sphereFolder.addInput(config.sphere, 'letterSpacing', { min: 1, max: 100 });
+    sphereFolder.addInput(config.sphere, 'letterSpacingVar', {
+      min: 0,
+      max: 1,
+    });
+    sphereFolder.addInput(config.sphere, 'yMovement', { min: 0, max: 0.01 });
+  }
+);
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'threejs',
   capture: {
     enabled: false,
@@ -54,18 +73,19 @@ export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
     fps: 24,
     directory: 'brain-storm',
   },
-  sketchConfig,
+  userConfig,
+  plugins: [tweakpanePlugin],
 };
 
 const morseCoder = getMorseCoder('... --- ...');
 const getIsInverse = (t: number) =>
-  t < sketchConfig.startDelay
+  t < userConfig.startDelay
     ? false
-    : morseCoder.at((t - sketchConfig.startDelay) * 2.25);
+    : morseCoder.at((t - userConfig.startDelay) * 2.25);
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height }: InitProps<CanvasState, SketchConfig>
+  { width, height }: InitProps<CanvasState, UserConfig>
 ) {
   const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 1000);
   camera.position.z = 450;
@@ -81,7 +101,7 @@ function initLighting(scene: THREE.Scene) {
 
 function initFigure(
   scene: THREE.Scene,
-  { config, width, height }: InitProps<CanvasState, SketchConfig>
+  { userConfig: config, width, height }: InitProps<CanvasState, UserConfig>
 ) {
   if (!config) throw new Error('????');
 
@@ -138,7 +158,7 @@ function initFigure(
 
   scene.add(figureGroup);
 
-  const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
+  const frame: FrameFn<CanvasState, UserConfig> = (props) => {
     if (props.hasChanged) {
       outlineMaterial.lineWidth = config.figure.lineWidth;
     }
@@ -153,7 +173,7 @@ function initFigure(
 
 async function initSphere(
   scene: THREE.Scene,
-  { config }: InitProps<CanvasState, SketchConfig>
+  { userConfig: config }: InitProps<CanvasState, UserConfig>
 ) {
   const loader = new FontLoader();
   const font = await new Promise<Font>((resolve) => {
@@ -243,11 +263,11 @@ async function initSphere(
 
   let sphereGroup = drawSphere();
 
-  const frame: FrameFn<CanvasState, SketchConfig> = ({
+  const frame: FrameFn<CanvasState, UserConfig> = ({
     hasChanged,
     timestamp,
     delta,
-    config,
+    userConfig: config,
   }) => {
     if (!config) throw new Error('???');
 
@@ -294,23 +314,7 @@ async function initSphere(
   return { frame };
 }
 
-export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
-  props.initControls(({ pane, config }) => {
-    const figureFolder = pane.addFolder({ title: 'Figure' });
-    figureFolder.addInput(config.figure, 'lineWidth', { min: 0, max: 5 });
-
-    const sphereFolder = pane.addFolder({ title: 'Sphere' });
-    sphereFolder.addInput(config.sphere, 'radius', { min: 150, max: 250 });
-    sphereFolder.addInput(config.sphere, 'textSize', { min: 5, max: 50 });
-    sphereFolder.addInput(config.sphere, 'bands', { min: 5, max: 51 });
-    sphereFolder.addInput(config.sphere, 'letterSpacing', { min: 1, max: 100 });
-    sphereFolder.addInput(config.sphere, 'letterSpacingVar', {
-      min: 0,
-      max: 1,
-    });
-    sphereFolder.addInput(config.sphere, 'yMovement', { min: 0, max: 0.01 });
-  });
-
+export const init: InitFn<CanvasState, UserConfig> = async (props) => {
   const scene = new THREE.Scene();
   const camera = initCamera(scene, props);
   initLighting(scene);
@@ -325,8 +329,8 @@ export const init: InitFn<CanvasState, SketchConfig> = async (props) => {
   };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = (props) => {
-  const { renderer, config, state } = props;
+export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
+  const { renderer, userConfig: config, state } = props;
   if (!renderer || !config) throw new Error('???');
 
   state.figure.frame(props);

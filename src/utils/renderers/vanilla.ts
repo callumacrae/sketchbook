@@ -1,20 +1,10 @@
-import { Pane, TabPageApi } from 'tweakpane';
-import * as EssentialsPlugin from '@tweakpane/plugin-essentials';
 import * as THREE from 'three';
 import writeScreen from '../canvas/written-screen';
-import type { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/fps-graph/api/fps-graph';
 import type { SketchPlugin } from '../plugins/interface';
-import type OverlayPlugin from '../plugins/webxr-overlay';
 
 type Type = 'context2d' | 'webgl' | 'threejs';
 
-function isOverlayPlugin<T, S>(
-  plugin: SketchPlugin<T, S>
-): plugin is OverlayPlugin<T, S> {
-  return plugin.type === 'overlay';
-}
-
-export interface Config<CanvasState = undefined, SketchConfig = undefined> {
+export interface SketchConfig<CanvasState = undefined, UserConfig = undefined> {
   type: Type;
   xr?:
     | { enabled: false; [key: string]: any }
@@ -37,17 +27,11 @@ export interface Config<CanvasState = undefined, SketchConfig = undefined> {
   pageBg?: string;
   resizeDelay: number;
   maxDelta: number;
-  sketchConfig: SketchConfig;
-  plugins: SketchPlugin<CanvasState, SketchConfig>[];
+  userConfig: UserConfig;
+  plugins: SketchPlugin<CanvasState, UserConfig>[];
 }
 
-export interface InitControlsProps<SketchConfig> {
-  pane: TabPageApi;
-  config: SketchConfig;
-  actualPane: Pane;
-}
-
-export interface InitProps<CanvasState, SketchConfig = undefined> {
+export interface InitProps<CanvasState, UserConfig = undefined> {
   ctx: CanvasRenderingContext2D | null;
   gl: WebGLRenderingContext | null;
   renderer: THREE.WebGLRenderer | null;
@@ -55,23 +39,18 @@ export interface InitProps<CanvasState, SketchConfig = undefined> {
   height: number;
   dpr: number;
   timestamp: number;
-  config: SketchConfig;
-  isPreview: boolean;
-  initControls(cb?: (props: InitControlsProps<SketchConfig>) => void): void;
+  userConfig: UserConfig;
+  sketchConfig: SketchConfig<CanvasState, UserConfig>;
   addEvent<K extends keyof HTMLElementEventMap>(
     type: K,
     cb: (
-      props: EventProps<CanvasState, SketchConfig, HTMLElementEventMap[K]>
+      props: EventProps<CanvasState, UserConfig, HTMLElementEventMap[K]>
     ) => boolean | void
   ): void;
   testSupport(cb: () => true | string): void;
 }
-export interface InitPropsWebgl<CanvasState, SketchConfig = undefined>
-  extends InitProps<CanvasState, SketchConfig> {
-  gl: WebGLRenderingContext;
-}
 
-export interface FrameProps<CanvasState, SketchConfig = undefined> {
+export interface FrameProps<CanvasState, UserConfig = undefined> {
   ctx: CanvasRenderingContext2D | null;
   gl: WebGLRenderingContext | null;
   renderer: THREE.WebGLRenderer | null;
@@ -81,15 +60,15 @@ export interface FrameProps<CanvasState, SketchConfig = undefined> {
   state: CanvasState;
   timestamp: number;
   delta: number;
-  config: SketchConfig;
-  isPreview: boolean;
+  userConfig: UserConfig;
+  sketchConfig: SketchConfig<CanvasState, UserConfig>;
   hasChanged: boolean;
   xrFrame?: XRFrame;
 }
 
 export interface EventProps<
   CanvasState,
-  SketchConfig = undefined,
+  UserConfig = undefined,
   TEvent = Event
 > {
   event: TEvent;
@@ -101,27 +80,27 @@ export interface EventProps<
   dpr: number;
   state: CanvasState;
   timestamp: number;
-  config: SketchConfig;
-  isPreview: boolean;
+  userConfig: UserConfig;
+  sketchConfig: SketchConfig<CanvasState, UserConfig>;
 }
 
-export type InitFn<CanvasState, SketchConfig> = (
-  props: InitProps<CanvasState, SketchConfig>
+export type InitFn<CanvasState, UserConfig> = (
+  props: InitProps<CanvasState, UserConfig>
 ) => CanvasState | Promise<CanvasState>;
-export type FrameFn<CanvasState, SketchConfig = undefined> = (
-  props: FrameProps<CanvasState, SketchConfig>
+export type FrameFn<CanvasState, UserConfig = undefined> = (
+  props: FrameProps<CanvasState, UserConfig>
 ) => Promise<CanvasState | void> | CanvasState | void;
 
 export async function toVanillaCanvas<
   CanvasState = undefined,
-  SketchConfig = undefined
+  UserConfig = undefined
 >(
   canvasEl: HTMLCanvasElement | null,
-  init: InitFn<CanvasState, SketchConfig>,
-  frame: FrameFn<CanvasState, SketchConfig>,
-  sketchbookConfigIn: Partial<Config<CanvasState, SketchConfig>> = {}
+  init: InitFn<CanvasState, UserConfig>,
+  frame: FrameFn<CanvasState, UserConfig>,
+  sketchConfigIn: Partial<SketchConfig<CanvasState, UserConfig>> = {}
 ) {
-  const sketchbookConfig: Config<CanvasState, SketchConfig> = Object.assign(
+  const sketchConfig: SketchConfig<CanvasState, UserConfig> = Object.assign(
     {
       type: 'context2d',
       isPreview: false,
@@ -129,10 +108,10 @@ export async function toVanillaCanvas<
       animate: true,
       resizeDelay: 50,
       maxDelta: (1000 / 60) * 4,
-      sketchConfig: {} as SketchConfig,
+      userConfig: {} as UserConfig,
       plugins: [],
     },
-    sketchbookConfigIn
+    sketchConfigIn
   );
 
   const data = {
@@ -144,7 +123,7 @@ export async function toVanillaCanvas<
     // Used to adjust timestamp after clamping delta to maxDelta
     timestampOffset: 0,
     hasChanged: true,
-    sketchbookConfig: sketchbookConfig,
+    sketchConfig,
     canvas: null as HTMLCanvasElement | null,
     ctx: null as CanvasRenderingContext2D | null,
     gl: null as WebGLRenderingContext | null,
@@ -154,8 +133,6 @@ export async function toVanillaCanvas<
     animationFrame: undefined as
       | ReturnType<typeof requestAnimationFrame>
       | undefined,
-    pane: undefined as Pane | undefined,
-    fpsGraph: undefined as FpsGraphBladeApi | undefined,
     canvasState: undefined as CanvasState | undefined,
   };
 
@@ -163,34 +140,19 @@ export async function toVanillaCanvas<
     throw new Error('No canvas');
   }
 
-  const config = sketchbookConfig.sketchConfig;
-  // Store as a string as it has to be copied every time it's used anyway
-  const flattenedConfig: Record<string, any> = {};
-  const flattenConfig = (config: Record<string, any>) => {
-    for (const [key, value] of Object.entries(config)) {
-      if (typeof value === 'object') {
-        flattenConfig(value);
-      } else {
-        flattenedConfig[key] = value;
-      }
-    }
-  };
-  if (config) {
-    flattenConfig(config);
-  }
-  const initialConfig = JSON.stringify(flattenedConfig);
+  const userConfig = sketchConfig.userConfig;
 
-  if (sketchbookConfig.pageBg && !sketchbookConfig.isPreview) {
-    document.body.style.background = sketchbookConfig.pageBg;
+  if (sketchConfig.pageBg && !sketchConfig.isPreview) {
+    document.body.style.background = sketchConfig.pageBg;
   }
 
-  if (sketchbookConfig.type === 'context2d') {
+  if (sketchConfig.type === 'context2d') {
     data.ctx = canvasEl.getContext('2d');
 
     if (!data.ctx) {
       throw new Error('No canvas context');
     }
-  } else if (sketchbookConfig.type === 'webgl') {
+  } else if (sketchConfig.type === 'webgl') {
     data.gl = canvasEl.getContext('webgl');
 
     if (!data.gl) {
@@ -199,24 +161,24 @@ export async function toVanillaCanvas<
   } else {
     data.renderer = new THREE.WebGLRenderer({
       canvas: canvasEl,
-      antialias: !sketchbookConfig.postprocessing,
-      stencil: !sketchbookConfig.postprocessing,
-      depth: !sketchbookConfig.postprocessing,
-      alpha: !!sketchbookConfig.xr?.enabled,
+      antialias: !sketchConfig.postprocessing,
+      stencil: !sketchConfig.postprocessing,
+      depth: !sketchConfig.postprocessing,
+      alpha: !!sketchConfig.xr?.enabled,
     });
     data.renderer.info.autoReset = false;
 
-    if (sketchbookConfig.xr?.enabled) {
+    if (sketchConfig.xr?.enabled) {
       data.renderer.xr.enabled = true;
 
-      const xrButton = sketchbookConfig.xr.permissionsButton(data.renderer);
+      const xrButton = sketchConfig.xr.permissionsButton(data.renderer);
       document.body.appendChild(xrButton);
     }
   }
 
   setSize();
 
-  const initProps: InitProps<CanvasState, SketchConfig> = {
+  const initProps: InitProps<CanvasState, UserConfig> = {
     ctx: data.ctx,
     gl: data.gl,
     renderer: data.renderer,
@@ -224,81 +186,8 @@ export async function toVanillaCanvas<
     height: data.height,
     dpr: data.dpr,
     timestamp: 0,
-    config,
-    isPreview: sketchbookConfig.isPreview,
-    initControls: (cb) => {
-      if (!config || sketchbookConfig.isPreview) {
-        return;
-      }
-
-      let container: HTMLElement | undefined = undefined;
-      for (const plugin of sketchbookConfig.plugins) {
-        if (isOverlayPlugin(plugin)) {
-          const overlayRoot = plugin.getRoot();
-          container = document.createElement('div');
-          container.className = 'tp-dfwv';
-          overlayRoot.appendChild(container);
-        }
-      }
-
-      const isWindowBig = Math.min(window.innerWidth, window.innerHeight) > 600;
-      const storedPref = localStorage.getItem(`closed-${location.pathname}`);
-      const pane = new Pane({
-        title: 'Controls',
-        container,
-        expanded:
-          !window.frameElement &&
-          (isWindowBig || storedPref !== null) &&
-          storedPref !== 'true',
-      });
-      pane.registerPlugin(EssentialsPlugin);
-      data.pane = pane;
-
-      pane.on('fold', ({ expanded }) => {
-        localStorage.setItem(`closed-${location.pathname}`, String(!expanded));
-      });
-      const presetName = `preset-${location.pathname}`;
-      pane.on('change', () => {
-        localStorage.setItem(presetName, JSON.stringify(pane.exportPreset()));
-        data.hasChanged = true;
-      });
-
-      const tab = pane.addTab({
-        pages: [{ title: 'Sketch config' }, { title: 'Performance' }],
-      });
-
-      data.fpsGraph = tab.pages[1].addBlade({
-        view: 'fpsgraph',
-        label: 'FPS',
-        lineCount: 2,
-      }) as FpsGraphBladeApi;
-
-      if (data.renderer) {
-        tab.pages[1].addMonitor(data.renderer.info.render, 'triangles');
-        tab.pages[1].addMonitor(data.renderer.info.render, 'calls');
-        tab.pages[1].addMonitor(data.renderer.info.memory, 'textures');
-        tab.pages[1].addMonitor(data.renderer.info.memory, 'geometries');
-      }
-
-      if (cb) {
-        cb({ pane: tab.pages[0], config, actualPane: pane });
-      } else {
-        tab.pages[1].selected = true;
-      }
-
-      tab.pages[0].addButton({ title: 'Reset' }).on('click', () => {
-        pane.importPreset(JSON.parse(initialConfig));
-      });
-
-      const preset = localStorage.getItem(presetName);
-      if (preset && !sketchbookConfig.capture?.enabled) {
-        try {
-          pane.importPreset(JSON.parse(preset));
-        } catch (err) {
-          console.error('Failed to set from preset', err);
-        }
-      }
-    },
+    userConfig,
+    sketchConfig,
     addEvent: (type, cb) => {
       const canvas =
         data.ctx?.canvas || data.gl?.canvas || data.renderer?.domElement;
@@ -317,8 +206,8 @@ export async function toVanillaCanvas<
           dpr: data.dpr,
           state: data.canvasState as CanvasState,
           timestamp: data.lastTimestamp,
-          config: data.sketchbookConfig.sketchConfig,
-          isPreview: sketchbookConfig.isPreview,
+          userConfig: data.sketchConfig.userConfig,
+          sketchConfig: data.sketchConfig,
         });
 
         if (hasChanged) {
@@ -365,7 +254,7 @@ export async function toVanillaCanvas<
     },
   };
 
-  if (sketchbookConfig.showLoading && !sketchbookConfig.capture?.enabled) {
+  if (sketchConfig.showLoading && !sketchConfig.capture?.enabled) {
     const drawLoadingToCanvas = (ctx: CanvasRenderingContext2D) => {
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -386,9 +275,21 @@ export async function toVanillaCanvas<
     });
   }
 
+  for (const plugin of sketchConfig.plugins) {
+    if (plugin.onBeforeInit) {
+      plugin.onBeforeInit(initProps);
+    }
+  }
+
   const state = await init(initProps);
   if (state) {
     data.canvasState = state;
+  }
+
+  for (const plugin of sketchConfig.plugins) {
+    if (plugin.onInit) {
+      plugin.onInit(initProps, state);
+    }
   }
 
   // https://macr.ae/article/canvas-to-gif
@@ -398,20 +299,19 @@ export async function toVanillaCanvas<
     frameCount: 0,
     framesNameLength: 0,
     frameNumber: 0,
-    directory:
-      sketchbookConfig.capture?.directory || location.pathname.slice(1),
+    directory: sketchConfig.capture?.directory || location.pathname.slice(1),
   };
-  if (sketchbookConfig.capture) {
-    captureData.frameDuration = 1e3 / (sketchbookConfig.capture.fps || 24);
+  if (sketchConfig.capture) {
+    captureData.frameDuration = 1e3 / (sketchConfig.capture.fps || 24);
     captureData.frameCount = Math.round(
-      sketchbookConfig.capture.duration / captureData.frameDuration
+      sketchConfig.capture.duration / captureData.frameDuration
     );
     captureData.framesNameLength = Math.ceil(
       Math.log10(captureData.frameCount)
     );
   }
 
-  if (sketchbookConfig.xr?.enabled && data.renderer) {
+  if (sketchConfig.xr?.enabled && data.renderer) {
     data.renderer.setAnimationLoop((timestamp, xrFrame) => {
       if (data.renderer?.xr.isPresenting) {
         callFrame(timestamp, xrFrame);
@@ -424,31 +324,36 @@ export async function toVanillaCanvas<
   window.addEventListener('resize', handleResize);
 
   async function callFrame(unadjustedTimestamp: number, xrFrame?: XRFrame) {
-    if (data.fpsGraph) {
-      data.fpsGraph.begin();
-    }
-
     let timestamp = unadjustedTimestamp + data.timestampOffset;
 
     data.lastTimestamp = timestamp;
 
-    if (!sketchbookConfig.capture?.enabled && !sketchbookConfig.xr?.enabled) {
+    if (!sketchConfig.capture?.enabled && !sketchConfig.xr?.enabled) {
       data.animationFrame = requestAnimationFrame(callFrame);
     }
 
-    const hasChanged = data.hasChanged || sketchbookConfig.animate;
+    let pluginHasChanged = false;
+    for (const plugin of sketchConfig.plugins) {
+      if (plugin.hasChanged) {
+        pluginHasChanged = true;
+        plugin.hasChanged = false;
+      }
+    }
+
+    const hasChanged =
+      pluginHasChanged || data.hasChanged || sketchConfig.animate;
 
     if (hasChanged) {
       let delta = timestamp - data.previousFrameTime;
 
-      if (delta > sketchbookConfig.maxDelta) {
-        const adjustment = delta - sketchbookConfig.maxDelta;
+      if (delta > sketchConfig.maxDelta) {
+        const adjustment = delta - sketchConfig.maxDelta;
         data.timestampOffset -= adjustment;
         timestamp -= adjustment;
-        delta = sketchbookConfig.maxDelta;
+        delta = sketchConfig.maxDelta;
       }
 
-      const frameProps: FrameProps<CanvasState, SketchConfig> = {
+      const frameProps: FrameProps<CanvasState, UserConfig> = {
         ctx: data.ctx,
         gl: data.gl,
         renderer: data.renderer,
@@ -459,10 +364,10 @@ export async function toVanillaCanvas<
         // TODO: can we use delta to avoid big jumps in time?
         timestamp,
         delta: timestamp - data.previousFrameTime,
-        config: data.sketchbookConfig.sketchConfig,
-        isPreview: sketchbookConfig.isPreview,
-        // hasChanged can be used to see if the config has changed
-        hasChanged: data.hasChanged,
+        userConfig: data.sketchConfig.userConfig,
+        sketchConfig: data.sketchConfig,
+        // hasChanged can be used to see if the userConfig has changed
+        hasChanged: pluginHasChanged || data.hasChanged,
         xrFrame,
       };
 
@@ -471,7 +376,7 @@ export async function toVanillaCanvas<
         data.renderer.info.reset();
       }
 
-      for (const plugin of sketchbookConfig.plugins) {
+      for (const plugin of sketchConfig.plugins) {
         if (plugin.onBeforeFrame) {
           plugin.onBeforeFrame(frameProps);
         }
@@ -482,7 +387,7 @@ export async function toVanillaCanvas<
         data.canvasState = newState;
       }
 
-      for (const plugin of sketchbookConfig.plugins) {
+      for (const plugin of sketchConfig.plugins) {
         if (plugin.onFrame) {
           plugin.onFrame(frameProps, newState);
         }
@@ -492,14 +397,14 @@ export async function toVanillaCanvas<
       data.previousFrameTime = timestamp;
     }
 
-    if (sketchbookConfig.capture?.enabled && canvasEl) {
+    if (sketchConfig.capture?.enabled && canvasEl) {
       const frameName = captureData.frameNumber
         .toString()
         .padStart(captureData.framesNameLength, '0');
       console.info(`Capturing frame ${frameName}`);
       captureData.frames[frameName] = canvasEl.toDataURL('image/png');
 
-      if (timestamp > sketchbookConfig.capture.duration) {
+      if (timestamp > sketchConfig.capture.duration) {
         console.log(
           `Sending ${Object.keys(captureData.frames).length} frames to server`
         );
@@ -516,17 +421,13 @@ export async function toVanillaCanvas<
         callFrame(timestamp);
       }
     }
-
-    if (data.fpsGraph) {
-      data.fpsGraph.end();
-    }
   }
 
   function handleResize() {
     if (data.resizeTimeout) {
       clearTimeout(data.resizeTimeout);
     }
-    const resizeDelay = data.sketchbookConfig.resizeDelay;
+    const resizeDelay = data.sketchConfig.resizeDelay;
     data.resizeTimeout = setTimeout(() => setSize(), resizeDelay);
   }
 
@@ -535,17 +436,19 @@ export async function toVanillaCanvas<
       throw new Error('No canvas');
     }
 
-    const config = data.sketchbookConfig;
+    const sketchConfig = data.sketchConfig;
 
     const wrapperRect = canvasEl.parentElement?.getBoundingClientRect();
 
-    const dpr = config.capture?.enabled ? 1 : window.devicePixelRatio;
-    const canvasDpr = config.type !== 'threejs' ? dpr : 1;
-    const threeDpr = config.type === 'threejs' ? dpr : 1;
+    const dpr = sketchConfig.capture?.enabled ? 1 : window.devicePixelRatio;
+    const canvasDpr = sketchConfig.type !== 'threejs' ? dpr : 1;
+    const threeDpr = sketchConfig.type === 'threejs' ? dpr : 1;
     data.width =
-      (config?.width ?? wrapperRect?.width ?? window.innerWidth) * canvasDpr;
+      (sketchConfig?.width ?? wrapperRect?.width ?? window.innerWidth) *
+      canvasDpr;
     data.height =
-      (config?.height ?? wrapperRect?.height ?? window.innerHeight) * canvasDpr;
+      (sketchConfig?.height ?? wrapperRect?.height ?? window.innerHeight) *
+      canvasDpr;
     data.dpr = dpr;
     canvasEl.width = data.width;
     canvasEl.height = data.height;
@@ -554,7 +457,7 @@ export async function toVanillaCanvas<
 
     canvasEl.classList.toggle(
       'custom-size',
-      !!(config?.width && config?.height)
+      !!(sketchConfig?.width && sketchConfig?.height)
     );
 
     data.hasChanged = true;
@@ -585,8 +488,8 @@ export async function toVanillaCanvas<
   return {
     callFrame,
     data,
-    updateConfig(newConfig: Partial<typeof sketchbookConfig>) {
-      Object.assign(sketchbookConfig, newConfig);
+    updateConfig(newConfig: Partial<typeof sketchConfig>) {
+      Object.assign(sketchConfig, newConfig);
     },
     teardown() {
       window.removeEventListener('resize', handleResize);
@@ -595,16 +498,12 @@ export async function toVanillaCanvas<
         cancelAnimationFrame(data.animationFrame);
       }
 
-      if (data.pane) {
-        data.pane.dispose();
-      }
-
       if (data.renderer) {
         data.renderer.dispose();
         data.renderer = null;
       }
 
-      for (const plugin of sketchbookConfig.plugins) {
+      for (const plugin of sketchConfig.plugins) {
         if (plugin.onDispose) {
           plugin.onDispose();
         }

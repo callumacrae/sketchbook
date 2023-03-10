@@ -1,6 +1,7 @@
 import { makeFrame } from '@/utils/shapes/hand-drawn-frame';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type { Point } from '@/utils/shapes/hand-drawn-frame';
-import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
+import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
   name: 'Hand drawn frame',
@@ -12,43 +13,43 @@ export interface CanvasState {
   points: Point[];
 }
 
-const sketchConfig = {
+const userConfig = {
   width: 500,
   height: 200,
   strokeWidth: 5,
   resolution: 16,
   wiggle: 2,
 };
-export type SketchConfig = typeof sketchConfig;
+export type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
-  sketchConfig,
-};
-
-export const init: InitFn<CanvasState, SketchConfig> = ({
-  initControls,
-  addEvent,
-}) => {
-  initControls(({ pane, config }) => {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ pane, config }) => {
     pane.addInput(config, 'width', { min: 100, max: 1000, step: 1 });
     pane.addInput(config, 'height', { min: 100, max: 1000, step: 1 });
     pane.addInput(config, 'strokeWidth', { min: 1, max: 20 });
     pane.addInput(config, 'resolution', { min: 1, max: 50, step: 1 });
     pane.addInput(config, 'wiggle', { min: 0, max: 20 });
-  });
+  }
+);
 
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
+  userConfig,
+  plugins: [tweakpanePlugin],
+};
+
+export const init: InitFn<CanvasState, UserConfig> = ({ addEvent }) => {
   addEvent('click', () => true);
 
   return { points: [] };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = ({
+export const frame: FrameFn<CanvasState, UserConfig> = ({
   ctx,
   state,
   width,
   height,
   hasChanged,
-  config,
+  userConfig: config,
 }) => {
   if (!ctx) throw new Error('???');
 

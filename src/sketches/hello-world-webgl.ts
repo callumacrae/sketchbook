@@ -1,6 +1,7 @@
 import * as twgl from 'twgl.js';
 
-import type { Config, InitFn, FrameFn } from '@/utils/renderers/vanilla';
+import TweakpanePlugin from '@/utils/plugins/tweakpane';
+import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
   name: 'Hello world (webgl)',
@@ -15,14 +16,17 @@ export interface CanvasState {
   bufferInfo: twgl.BufferInfo;
 }
 
-const sketchConfig = {
+const userConfig = {
   var: 1,
 };
-export type SketchConfig = typeof sketchConfig;
+export type UserConfig = typeof userConfig;
 
-export const sketchbookConfig: Partial<Config<CanvasState, SketchConfig>> = {
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>();
+
+export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'webgl',
-  sketchConfig,
+  userConfig,
+  plugins: [tweakpanePlugin],
 };
 
 const vertexShader = glsl`
@@ -53,7 +57,7 @@ void main() {
 }
 `;
 
-export const init: InitFn<CanvasState, SketchConfig> = ({ gl }) => {
+export const init: InitFn<CanvasState, UserConfig> = ({ gl }) => {
   if (!gl) throw new Error('???');
 
   const programInfo = twgl.createProgramInfo(gl, [
@@ -69,7 +73,7 @@ export const init: InitFn<CanvasState, SketchConfig> = ({ gl }) => {
   return { programInfo, bufferInfo };
 };
 
-export const frame: FrameFn<CanvasState, SketchConfig> = ({
+export const frame: FrameFn<CanvasState, UserConfig> = ({
   gl,
   state,
   width,

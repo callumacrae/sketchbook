@@ -1,13 +1,21 @@
-import type { FrameProps } from '../renderers/vanilla';
+import type { FrameProps, InitProps } from '../renderers/vanilla';
 
-export interface SketchPlugin<CanvasState, SketchConfig> {
-  readonly type: string;
+export interface SketchPlugin<CanvasState, UserConfig> {
+  readonly name: string;
 
-  onBeforeFrame?(frameProps: FrameProps<CanvasState, SketchConfig>): void;
+  hasChanged?: boolean;
+
+  onBeforeInit?(initProps: InitProps<CanvasState, UserConfig>): void;
+  onInit?(
+    initProps: InitProps<CanvasState, UserConfig>,
+    state: CanvasState | void
+  ): void;
+
+  onBeforeFrame?(frameProps: FrameProps<CanvasState, UserConfig>): void;
   onFrame?(
-    frameProps: FrameProps<CanvasState, SketchConfig>,
+    frameProps: FrameProps<CanvasState, UserConfig>,
     newState: CanvasState | void
   ): void;
-  // TODO: implement this
+
   onDispose?(): void;
 }
