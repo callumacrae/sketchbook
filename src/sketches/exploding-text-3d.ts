@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { extendMaterial } from '@/utils/three-extend-material';
 import { easePolyInOut } from 'd3-ease';
 
+import ThreePlugin from '@/utils/plugins/three';
 import type {
   SketchConfig,
   InitFn,
@@ -31,8 +32,10 @@ interface CanvasState {
 const userConfig = {};
 type UserConfig = typeof userConfig;
 
+const threePlugin = new ThreePlugin(THREE);
+
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-  type: 'threejs',
+  type: 'custom',
   capture: {
     enabled: false,
     duration: 3000,
@@ -40,6 +43,7 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
     directory: 'exploding-text-3d',
   },
   userConfig,
+  plugins: [threePlugin],
 };
 
 function initCamera(
@@ -270,14 +274,15 @@ async function initLetters(
 }
 
 export const init: InitFn<CanvasState, UserConfig> = async (props) => {
-  if (!props.renderer) throw new Error('???');
+  const { renderer } = threePlugin;
+  if (!renderer) throw new Error('???');
 
-  props.renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = true;
 
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
-  const controls = new OrbitControls(camera, props.renderer.domElement);
+  const controls = new OrbitControls(camera, renderer.domElement);
   controls.maxPolarAngle = Math.PI / 2.05;
 
   const lighting = initLighting(scene);
@@ -288,7 +293,8 @@ export const init: InitFn<CanvasState, UserConfig> = async (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-  const { renderer, userConfig: config, state } = props;
+  const { userConfig: config, state } = props;
+  const { renderer } = threePlugin;
   if (!renderer || !config) throw new Error('???');
 
   state.lighting.frame(props);

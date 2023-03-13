@@ -5,6 +5,7 @@ import { MeshLineGeometry, MeshLineMaterial } from 'meshline';
 import * as random from '@/utils/random';
 import * as math from '@/utils/maths';
 import getMorseCoder from '@/utils/morse-code';
+import ThreePlugin from '@/utils/plugins/three';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
 
 import figurePoints from './brain-storm-path.json';
@@ -65,8 +66,11 @@ const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
   }
 );
 
+const threePlugin = new ThreePlugin(THREE);
+
+// TODO: get rid of Partial<>
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-  type: 'threejs',
+  type: 'custom',
   capture: {
     enabled: false,
     duration: 15000,
@@ -74,7 +78,7 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
     directory: 'brain-storm',
   },
   userConfig,
-  plugins: [tweakpanePlugin],
+  plugins: [threePlugin, tweakpanePlugin],
 };
 
 const morseCoder = getMorseCoder('... --- ...');
@@ -330,7 +334,8 @@ export const init: InitFn<CanvasState, UserConfig> = async (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-  const { renderer, userConfig: config, state } = props;
+  const { userConfig: config, state } = props;
+  const { renderer } = threePlugin;
   if (!renderer || !config) throw new Error('???');
 
   state.figure.frame(props);

@@ -1,8 +1,12 @@
-import * as THREE from 'three';
 import writeScreen from '../canvas/written-screen';
 import type { SketchPlugin } from '../plugins/interface';
 
-type Type = 'context2d' | 'webgl' | 'threejs';
+type Type = 'context2d' | 'webgl' | 'custom';
+
+// TODO MOVE INTO PLUGINS:
+// - capture
+// - browser support?
+// - add events?
 
 export interface SketchConfig<CanvasState = undefined, UserConfig = undefined> {
   type: Type;
@@ -28,7 +32,6 @@ export interface SketchConfig<CanvasState = undefined, UserConfig = undefined> {
 export interface InitProps<CanvasState, UserConfig = undefined> {
   ctx: CanvasRenderingContext2D | null;
   gl: WebGLRenderingContext | null;
-  renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
   dpr: number;
@@ -49,7 +52,6 @@ export type CallFrameFn = (unadjustedTimestamp: number) => Promise<void>;
 export interface FrameProps<CanvasState, UserConfig = undefined> {
   ctx: CanvasRenderingContext2D | null;
   gl: WebGLRenderingContext | null;
-  renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
   dpr: number;
@@ -69,7 +71,6 @@ export interface EventProps<
   event: TEvent;
   ctx: CanvasRenderingContext2D | null;
   gl: WebGLRenderingContext | null;
-  renderer: THREE.WebGLRenderer | null;
   width: number;
   height: number;
   dpr: number;
@@ -122,7 +123,7 @@ export async function toVanillaCanvas<
     canvas: null as HTMLCanvasElement | null,
     ctx: null as CanvasRenderingContext2D | null,
     gl: null as WebGLRenderingContext | null,
-    renderer: null as THREE.WebGLRenderer | null,
+    customRenderer: null as SketchPlugin<CanvasState, UserConfig> | null,
     resizeTimeout: undefined as ReturnType<typeof setTimeout> | undefined,
     previousFrameTime: 0,
     animationFrame: undefined as
@@ -133,6 +134,22 @@ export async function toVanillaCanvas<
 
   if (!canvasEl) {
     throw new Error('No canvas');
+  }
+
+  for (const plugin of sketchConfig.plugins) {
+    if (plugin.setupPlugin) {
+      plugin.setupPlugin({
+        getCanvas: () => canvasEl,
+        getSketchConfig: () => sketchConfig,
+        getCanvasState: () => data.canvasState,
+        getPlugins: () => sketchConfig.plugins,
+        getSize: () => ({
+          width: data.width,
+          height: data.height,
+          dpr: data.dpr,
+        }),
+      });
+    }
   }
 
   const userConfig = sketchConfig.userConfig;
@@ -153,20 +170,28 @@ export async function toVanillaCanvas<
     if (!data.gl) {
       throw new Error('No canvas context');
     }
-  } else {
-    data.renderer = new THREE.WebGLRenderer({
-      canvas: canvasEl,
-      antialias: !sketchConfig.postprocessing,
-      stencil: !sketchConfig.postprocessing,
-      depth: !sketchConfig.postprocessing,
-    });
-    data.renderer.info.autoReset = false;
-
+  } else if (sketchConfig.type === 'custom') {
     for (const plugin of sketchConfig.plugins) {
-      if (plugin.onThreeRenderer) {
-        plugin.onThreeRenderer(data.renderer);
+      if (plugin.customRenderer) {
+        const isCustomRenderer = plugin.customRenderer(canvasEl);
+        if (!isCustomRenderer) continue;
+
+        data.customRenderer = plugin;
+
+        for (const plugin of sketchConfig.plugins) {
+          if (plugin.onCustomRenderer) {
+            plugin.onCustomRenderer(plugin);
+          }
+        }
+        break;
       }
     }
+
+    if (!data.customRenderer) {
+      throw new Error('Type set to "custom" but no custom renderer found');
+    }
+  } else {
+    throw new Error('Sketch type unknown');
   }
 
   setSize();
@@ -174,7 +199,6 @@ export async function toVanillaCanvas<
   const initProps: InitProps<CanvasState, UserConfig> = {
     ctx: data.ctx,
     gl: data.gl,
-    renderer: data.renderer,
     width: data.width,
     height: data.height,
     dpr: data.dpr,
@@ -182,18 +206,13 @@ export async function toVanillaCanvas<
     userConfig,
     sketchConfig,
     addEvent: (type, cb) => {
-      const canvas =
-        data.ctx?.canvas || data.gl?.canvas || data.renderer?.domElement;
-      if (!canvas) throw new Error('???');
-
-      (canvas as HTMLCanvasElement).addEventListener(type, (event) => {
+      canvasEl.addEventListener(type, (event) => {
         event.preventDefault();
 
         const hasChanged = cb({
           event,
           ctx: data.ctx,
           gl: data.gl,
-          renderer: data.renderer,
           width: data.width,
           height: data.height,
           dpr: data.dpr,
@@ -339,12 +358,10 @@ export async function toVanillaCanvas<
       const frameProps: FrameProps<CanvasState, UserConfig> = {
         ctx: data.ctx,
         gl: data.gl,
-        renderer: data.renderer,
         width: data.width,
         height: data.height,
         dpr: data.dpr,
         state: data.canvasState as CanvasState,
-        // TODO: can we use delta to avoid big jumps in time?
         timestamp,
         delta: timestamp - data.previousFrameTime,
         userConfig: data.sketchConfig.userConfig,
@@ -352,11 +369,6 @@ export async function toVanillaCanvas<
         // hasChanged can be used to see if the userConfig has changed
         hasChanged: pluginHasChanged || data.hasChanged,
       };
-
-      if (data.renderer) {
-        // Auto reset doesn't work when postprocessing is used
-        data.renderer.info.reset();
-      }
 
       for (const plugin of sketchConfig.plugins) {
         if (plugin.onBeforeFrame) {
@@ -438,8 +450,8 @@ export async function toVanillaCanvas<
     const wrapperRect = canvasEl.parentElement?.getBoundingClientRect();
 
     const dpr = sketchConfig.capture?.enabled ? 1 : window.devicePixelRatio;
-    const canvasDpr = sketchConfig.type !== 'threejs' ? dpr : 1;
-    const threeDpr = sketchConfig.type === 'threejs' ? dpr : 1;
+    // TODO: move into plugin somehow
+    const canvasDpr = sketchConfig.type !== 'custom' ? dpr : 1;
     data.width =
       (sketchConfig?.width ?? wrapperRect?.width ?? window.innerWidth) *
       canvasDpr;
@@ -461,24 +473,12 @@ export async function toVanillaCanvas<
 
     if (data.gl) {
       data.gl.viewport(0, 0, data.width, data.height);
-    } else if (data.renderer) {
-      data.renderer.setSize(data.width, data.height);
-      data.renderer.setPixelRatio(threeDpr);
     }
-    if (
-      typeof data.canvasState === 'object' &&
-      data.canvasState &&
-      'composer' in data.canvasState
-    ) {
-      const composer: any = data.canvasState.composer;
-      composer.setSize(data.width, data.height);
-      composer.setPixelRatio(threeDpr);
-    }
-    const canvasState = data.canvasState as any;
-    const camera = canvasState?.camera?.camera || canvasState?.camera;
-    if (camera instanceof THREE.PerspectiveCamera) {
-      camera.aspect = data.width / data.height;
-      camera.updateProjectionMatrix();
+
+    for (const plugin of sketchConfig.plugins) {
+      if (plugin.onSetSize) {
+        plugin.onSetSize(data.width, data.height, dpr);
+      }
     }
   }
 
@@ -493,11 +493,6 @@ export async function toVanillaCanvas<
 
       if (data.animationFrame) {
         cancelAnimationFrame(data.animationFrame);
-      }
-
-      if (data.renderer) {
-        data.renderer.dispose();
-        data.renderer = null;
       }
 
       for (const plugin of sketchConfig.plugins) {

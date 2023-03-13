@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import SimplexNoise from 'simplex-noise';
 
 import { extendMaterial } from '@/utils/three-extend-material';
+import ThreePlugin from '@/utils/plugins/three';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
   SketchConfig,
@@ -59,8 +60,10 @@ const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
   }
 );
 
+const threePlugin = new ThreePlugin(THREE);
+
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-  type: 'threejs',
+  type: 'custom',
   // capture: {
   //   enabled: false,
   //   duration: 15000,
@@ -70,7 +73,7 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   // width: 1000,
   // height: 1000,
   userConfig,
-  plugins: [tweakpanePlugin],
+  plugins: [threePlugin, tweakpanePlugin],
 };
 
 function initCamera(
@@ -355,14 +358,15 @@ function initMirrors(scene: THREE.Scene) {
 }
 
 export const init: InitFn<CanvasState, UserConfig> = (props) => {
-  if (!props.renderer) throw new Error('???');
+  const { renderer } = threePlugin;
+  if (!renderer) throw new Error('???');
 
-  props.renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = true;
 
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
-  const controls = new OrbitControls(camera.camera, props.renderer.domElement);
+  const controls = new OrbitControls(camera.camera, renderer.domElement);
   controls.minPolarAngle = 0.1;
   controls.maxPolarAngle = Math.PI - 0.1;
   controls.minAzimuthAngle = Math.PI / -2 + 0.1;
@@ -384,7 +388,8 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-  const { renderer, userConfig: config, state } = props;
+  const { userConfig: config, state } = props;
+  const { renderer } = threePlugin;
   if (!renderer || !config) throw new Error('???');
 
   state.lighting.frame(props);

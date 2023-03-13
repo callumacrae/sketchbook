@@ -5,6 +5,7 @@ import SimplexNoise from 'simplex-noise';
 
 import * as random from '@/utils/random';
 import { extendMaterial } from '@/utils/three-extend-material';
+import ThreePlugin from '@/utils/plugins/three';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
   SketchConfig,
@@ -54,9 +55,10 @@ const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
     pane.addInput(config, 'highlighterColor', { color: { type: 'float' } });
   }
 );
+const threePlugin = new ThreePlugin(THREE);
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-  type: 'threejs',
+  type: 'custom',
   showLoading: true,
   capture: {
     enabled: false,
@@ -67,13 +69,14 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   // width: 720,
   // height: 720,
   userConfig,
-  plugins: [tweakpanePlugin],
+  plugins: [threePlugin, tweakpanePlugin],
 };
 
 function initCamera(
   scene: THREE.Scene,
-  { width, height, renderer }: InitProps<CanvasState, UserConfig>
+  { width, height }: InitProps<CanvasState, UserConfig>
 ) {
+  const { renderer } = threePlugin;
   if (!renderer) throw new Error('???');
 
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 200);
@@ -333,7 +336,8 @@ function initHighlighter(
 }
 
 export const init: InitFn<CanvasState, UserConfig> = (props) => {
-  if (!props.renderer) throw new Error('???');
+  const { renderer } = threePlugin;
+  if (!renderer) throw new Error('???');
 
   random.setSeed('abc');
 
@@ -351,7 +355,8 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-  const { renderer, userConfig: config, state } = props;
+  const { userConfig: config, state } = props;
+  const { renderer } = threePlugin;
   if (!renderer || !config) throw new Error('???');
 
   state.camera.frame(props);

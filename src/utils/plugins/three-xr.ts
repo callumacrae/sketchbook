@@ -19,14 +19,17 @@ export default class ThreeXRPlugin<CanvasState, UserConfig>
     this.sessionInit = sessionInit;
   }
 
-  onThreeRenderer(renderer: THREE.WebGLRenderer) {
-    this.renderer = renderer;
+  onCustomRenderer(plugin: SketchPlugin<CanvasState, UserConfig>) {
+    if (plugin.name === 'three') {
+      const { renderer } = plugin as any;
+      this.renderer = renderer;
 
-    renderer.setClearAlpha(0);
-    renderer.xr.enabled = true;
+      renderer.setClearAlpha(0);
+      renderer.xr.enabled = true;
 
-    const xrButton = ARButton.createButton(renderer, this.sessionInit);
-    document.body.appendChild(xrButton);
+      const xrButton = ARButton.createButton(renderer, this.sessionInit);
+      document.body.appendChild(xrButton);
+    }
   }
 
   customAnimationLoop(callFrame: CallFrameFn) {

@@ -1,35 +1,27 @@
-import * as THREE from 'three';
+import type { SketchPlugin } from '../plugins/interface';
 
 const glsl = String.raw;
 
-export default function writeScreen(
+export default function writeScreen<CanvasState, UserConfig>(
   data: {
     ctx: CanvasRenderingContext2D | null;
     gl: WebGLRenderingContext | null;
-    renderer: THREE.WebGLRenderer | null;
     width: number;
     height: number;
+    sketchConfig: {
+      plugins: SketchPlugin<CanvasState, UserConfig>[];
+    };
   },
   cb: (ctx: CanvasRenderingContext2D) => void
 ) {
-  if (data.renderer) {
-    const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
-    scene.add(camera);
+  for (const plugin of data.sketchConfig.plugins) {
+    if (plugin.onWriteScreen) {
+      const hasWritten = plugin.onWriteScreen(cb);
+      if (hasWritten) return;
+    }
+  }
 
-    const ctx = document.createElement('canvas').getContext('2d');
-    if (!ctx) throw new Error('???');
-    ctx.canvas.width = data.width;
-    ctx.canvas.height = data.height;
-    cb(ctx);
-
-    const plane = new THREE.PlaneGeometry(2, 2);
-    const texture = new THREE.CanvasTexture(ctx.canvas);
-    const material = new THREE.MeshBasicMaterial({ map: texture });
-    scene.add(new THREE.Mesh(plane, material));
-
-    data.renderer.render(scene, camera);
-  } else if (data.ctx) {
+  if (data.ctx) {
     cb(data.ctx);
   } else if (data.gl) {
     const gl = data.gl;

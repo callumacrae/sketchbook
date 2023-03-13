@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+import ThreePlugin from '@/utils/plugins/three';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import ThreeXRPlugin from '@/utils/plugins/three-xr';
 import type {
@@ -34,11 +35,12 @@ const threeXRPlugin = new ThreeXRPlugin({
   //   dataFormatPreference: ['luminance-alpha'],
   // },
 });
+const threePlugin = new ThreePlugin(THREE);
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-  type: 'threejs',
+  type: 'custom',
   userConfig,
-  plugins: [tweakpanePlugin, threeXRPlugin],
+  plugins: [threePlugin, tweakpanePlugin, threeXRPlugin],
 };
 
 function initCamera(
@@ -62,7 +64,8 @@ function initLighting(scene: THREE.Scene) {
 }
 
 export const init: InitFn<CanvasState, UserConfig> = (props) => {
-  if (!props.renderer) throw new Error('???');
+  const { renderer } = threePlugin;
+  if (!renderer) throw new Error('???');
 
   const scene = new THREE.Scene();
 
@@ -94,7 +97,7 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
     scene.add(mesh);
   }
 
-  const controller = props.renderer.xr.getController(0);
+  const controller = renderer.xr.getController(0);
   controller.addEventListener('select', onSelect);
   scene.add(controller);
 
@@ -102,7 +105,8 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = async (props) => {
-  const { renderer, userConfig: config, state } = props;
+  const { userConfig: config, state } = props;
+  const { renderer } = threePlugin;
   const { xrFrame } = threeXRPlugin;
 
   if (!renderer || !config || !xrFrame) throw new Error('???');

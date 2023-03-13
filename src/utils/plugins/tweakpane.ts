@@ -4,7 +4,9 @@ import type { FpsGraphBladeApi } from '@tweakpane/plugin-essentials/dist/types/f
 
 import type { InitProps } from '../renderers/vanilla';
 import type { SketchPlugin } from './interface';
+import type ThreePlugin from './three';
 import type OverlayPlugin from './webxr-overlay';
+import type { WebGLRenderer } from 'three';
 
 export interface InitControlsProps<UserConfig> {
   pane: TabPageApi;
@@ -20,6 +22,12 @@ function isOverlayPlugin<T, S>(
   plugin: SketchPlugin<T, S>
 ): plugin is OverlayPlugin<T, S> {
   return plugin.name === 'overlay';
+}
+
+function isThreePlugin<T, S>(
+  plugin: SketchPlugin<T, S>
+): plugin is ThreePlugin<T, S> {
+  return plugin.name === 'three';
 }
 
 export default class TweakpanePlugin<CanvasState, UserConfig>
@@ -38,7 +46,15 @@ export default class TweakpanePlugin<CanvasState, UserConfig>
   }
 
   onBeforeInit(props: InitProps<CanvasState, UserConfig>) {
-    const { userConfig, sketchConfig, renderer } = props;
+    const { userConfig, sketchConfig } = props;
+
+    let renderer: WebGLRenderer | undefined = undefined;
+    for (const plugin of sketchConfig.plugins) {
+      if (isThreePlugin(plugin) && plugin.renderer) {
+        renderer = plugin.renderer;
+        break;
+      }
+    }
 
     if (sketchConfig.isPreview) return;
 

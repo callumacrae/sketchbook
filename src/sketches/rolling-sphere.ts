@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import Matter from 'matter-js';
 
+import ThreePlugin from '@/utils/plugins/three';
 import type {
   SketchConfig,
   InitFn,
@@ -27,8 +28,10 @@ const userConfig = {
 };
 type UserConfig = typeof userConfig;
 
+const threePlugin = new ThreePlugin(THREE);
+
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-  type: 'threejs',
+  type: 'custom',
   // width: 720,
   // height: 720,
   capture: {
@@ -38,6 +41,7 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
     directory: 'rolling-sphere',
   },
   userConfig,
+  plugins: [threePlugin],
 };
 
 function initCamera(
@@ -53,9 +57,10 @@ function initCamera(
 }
 
 export const init: InitFn<CanvasState, UserConfig> = (props) => {
-  if (!props.renderer || !props.userConfig) throw new Error('???');
+  const { renderer } = threePlugin;
+  if (!renderer || !props.userConfig) throw new Error('???');
 
-  props.renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = true;
 
   const scene = new THREE.Scene();
 
@@ -150,17 +155,18 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
   camera.lookAt(ballObject.position);
 
   const frame = (props: any) => {
-    if (!props.config) throw new Error('???');
+    const config = props.userConfig;
+    if (!config) throw new Error('???');
     ballObject.position.set(ballBody.position.x, ballBody.position.y, 0);
     ballObject.rotation.set(0, 0, ballBody.angle);
 
     // Thanks @nexii for this change!
     camera.position.y =
       camera.position.y * 0.95 +
-      (ballBody.position.y + props.config.cameraYOffset) * 0.05;
-    pointLight.position.y = camera.position.y - props.config.cameraYOffset + 30;
+      (ballBody.position.y + config.cameraYOffset) * 0.05;
+    pointLight.position.y = camera.position.y - config.cameraYOffset + 30;
     pointLightWithoutShadow.position.y =
-      camera.position.y - props.config.cameraYOffset + 30;
+      camera.position.y - config.cameraYOffset + 30;
     backWallObject.position.y = ballBody.position.y;
 
     for (const wall of walls) {
@@ -172,7 +178,8 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-  const { renderer, userConfig: config, state } = props;
+  const { userConfig: config, state } = props;
+  const { renderer } = threePlugin;
   if (!renderer || !config) throw new Error('???');
 
   // TODO why can't i use delta??

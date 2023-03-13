@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 
 import { extendMaterial } from '@/utils/three-extend-material';
 import * as random from '@/utils/random';
+import ThreePlugin from '@/utils/plugins/three';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type {
   SketchConfig,
@@ -158,18 +159,20 @@ const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
     bloomFolder.addInput(config.bloom, 'radius', { min: 0, max: 1 });
   }
 );
+const threePlugin = new ThreePlugin(THREE);
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-  type: 'threejs',
+  type: 'custom',
   postprocessing: true,
   userConfig,
-  plugins: [tweakpanePlugin],
+  plugins: [threePlugin, tweakpanePlugin],
 };
 
 function initCamera(
   scene: THREE.Scene,
-  { renderer, width, height }: InitProps<CanvasState, UserConfig>
+  { width, height }: InitProps<CanvasState, UserConfig>
 ) {
+  const { renderer } = threePlugin;
   if (!renderer) throw new Error('???');
 
   const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 100);
@@ -523,13 +526,9 @@ function initRain(
 
 function initBloom(
   scene: THREE.Scene,
-  {
-    userConfig: config,
-    renderer,
-    width,
-    height,
-  }: InitProps<CanvasState, UserConfig>
+  { userConfig: config, width, height }: InitProps<CanvasState, UserConfig>
 ) {
+  const { renderer } = threePlugin;
   if (!renderer || !config) throw new Error('???');
 
   renderer.physicallyCorrectLights = true;
@@ -577,7 +576,8 @@ export const init: InitFn<CanvasState, UserConfig> = async (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-  const { renderer, userConfig: config, state } = props;
+  const { userConfig: config, state } = props;
+  const { renderer } = threePlugin;
   if (!renderer || !config) throw new Error('???');
 
   state.lighting.frame(props);

@@ -4,6 +4,7 @@ import type { Component } from 'vue';
 
 import parseSketchMeta from '../sketch-parsing';
 import { toCanvasComponent } from './vue';
+import ThreePlugin from '../plugins/three';
 import TweakpanePlugin from '../plugins/tweakpane';
 import type { SketchConfig, InitFn, FrameFn } from './vanilla';
 
@@ -69,16 +70,17 @@ export function shaderToyComponent(
       }
     }
   );
+  const threePlugin = new ThreePlugin(THREE);
 
   const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-    type: 'threejs',
+    type: 'custom',
     capture: {
       enabled: false,
       duration: 15000,
       fps: 24,
     },
     userConfig,
-    plugins: [tweakpanePlugin],
+    plugins: [threePlugin, tweakpanePlugin],
   };
 
   const meta = parseSketchMeta(glsl, filePath);
@@ -136,8 +138,6 @@ export function shaderToyComponent(
   `;
 
   const init: InitFn<CanvasState, UserConfig> = (props) => {
-    if (!props.renderer) throw new Error('???');
-
     const scene = new THREE.Scene();
 
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
@@ -181,13 +181,8 @@ export function shaderToyComponent(
   };
 
   const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-    const {
-      renderer,
-      userConfig: config,
-      state,
-      timestamp,
-      hasChanged,
-    } = props;
+    const { userConfig: config, state, timestamp, hasChanged } = props;
+    const { renderer } = threePlugin;
     if (!renderer || !config) throw new Error('???');
 
     const newGlsl: string = props.sketchConfig.isPreview

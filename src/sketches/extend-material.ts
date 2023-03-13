@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+import ThreePlugin from '@/utils/plugins/three';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import { extendMaterial } from '@/utils/three-extend-material';
 
@@ -35,11 +36,12 @@ const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
     pane.addInput(config, 'speedY', { min: -0.2, max: 0.2 });
   }
 );
+const threePlugin = new ThreePlugin(THREE);
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-  type: 'threejs',
+  type: 'custom',
   userConfig,
-  plugins: [tweakpanePlugin],
+  plugins: [threePlugin, tweakpanePlugin],
 };
 
 function initCamera(
@@ -147,7 +149,8 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-  const { renderer, userConfig: config, state } = props;
+  const { userConfig: config, state } = props;
+  const { renderer } = threePlugin;
   if (!renderer || !config) throw new Error('???');
 
   state.normalCube.frame(props);

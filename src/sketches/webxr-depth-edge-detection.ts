@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import SurfaceHandler from '@/utils/web-xr/surface-detection';
+import ThreePlugin from '@/utils/plugins/three';
 import OverlayPlugin from '@/utils/plugins/webxr-overlay';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import ThreeXRPlugin from '@/utils/plugins/three-xr';
@@ -31,6 +32,7 @@ export type UserConfig = typeof userConfig;
 
 const tweakpanePlugin = new TweakpanePlugin();
 const overlayPlugin = new OverlayPlugin();
+const threePlugin = new ThreePlugin(THREE);
 const threeXRPlugin = new ThreeXRPlugin({
   requiredFeatures: ['hit-test', 'depth-sensing'],
   optionalFeatures: ['dom-overlay'],
@@ -44,9 +46,9 @@ const threeXRPlugin = new ThreeXRPlugin({
 });
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-  type: 'threejs',
+  type: 'custom',
   userConfig,
-  plugins: [tweakpanePlugin, threeXRPlugin, overlayPlugin],
+  plugins: [threePlugin, tweakpanePlugin, threeXRPlugin, overlayPlugin],
 };
 
 function initCamera(
@@ -70,6 +72,9 @@ function initLighting(scene: THREE.Scene) {
 }
 
 export const init: InitFn<CanvasState, UserConfig> = (props) => {
+  const { renderer } = threePlugin;
+  if (!renderer) throw new Error('???');
+
   const scene = new THREE.Scene();
 
   const camera = initCamera(scene, props);
@@ -89,8 +94,8 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
   const surfaces = new SurfaceHandler();
   surfaces.setDebug(true);
   scene.add(surfaces.debugGroup);
-  if (!props.renderer) throw new Error('???');
-  const controller = props.renderer.xr.getController(0);
+
+  const controller = renderer.xr.getController(0);
   controller.addEventListener('select', () => {
     surfaces.clear();
   });
@@ -100,7 +105,8 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = async (props) => {
-  const { renderer, userConfig: config, state } = props;
+  const { userConfig: config, state } = props;
+  const { renderer } = threePlugin;
   const { xrFrame } = threeXRPlugin;
   if (!renderer || !config || !xrFrame) throw new Error('???');
 
