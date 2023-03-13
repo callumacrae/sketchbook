@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import SurfaceHandler from '@/utils/web-xr/surface-detection';
 import OverlayPlugin from '@/utils/plugins/webxr-overlay';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
-import ThreeXRPlugin from '@/utils/plugins/three-xr-plugin';
+import ThreeXRPlugin from '@/utils/plugins/three-xr';
 import type {
   SketchConfig,
   InitFn,

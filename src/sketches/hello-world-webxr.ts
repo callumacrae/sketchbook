@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
-import ThreeXRPlugin from '@/utils/plugins/three-xr-plugin';
+import ThreeXRPlugin from '@/utils/plugins/three-xr';
 import type {
   SketchConfig,
   InitFn,
