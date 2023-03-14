@@ -50,11 +50,15 @@ export default class ThreePlugin<CanvasState, UserConfig>
     return true;
   }
 
+  onBeforeSetSize() {
+    return { dpr: 1 };
+  }
+
   onSetSize(width: number, height: number, dpr: number) {
     if (!this.renderer || !this.sketch) return;
 
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(dpr);
+    this.renderer.setPixelRatio(window.devicePixelRatio);
 
     const state = this.sketch.getCanvasState() as any;
     if (!state) return;

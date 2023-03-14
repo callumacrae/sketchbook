@@ -60,12 +60,6 @@ const threePlugin = new ThreePlugin(THREE);
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'custom',
   showLoading: true,
-  capture: {
-    enabled: false,
-    duration: 15000,
-    fps: 24,
-    directory: 'line-shape-grid',
-  },
   // width: 720,
   // height: 720,
   userConfig,

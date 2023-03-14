@@ -74,11 +74,6 @@ export function shaderToyComponent(
 
   const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
     type: 'custom',
-    capture: {
-      enabled: false,
-      duration: 15000,
-      fps: 24,
-    },
     userConfig,
     plugins: [threePlugin, tweakpanePlugin],
   };
@@ -214,8 +209,8 @@ export function shaderToyComponent(
 
     state.uniforms.iTime.value = timestamp / 1000;
     state.uniforms.iResolution.value.set(
-      props.width * props.dpr,
-      props.height * props.dpr,
+      props.width * window.devicePixelRatio,
+      props.height * window.devicePixelRatio,
       1
     );
 

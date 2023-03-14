@@ -34,12 +34,6 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'custom',
   // width: 720,
   // height: 720,
-  capture: {
-    enabled: false,
-    duration: 6000,
-    fps: 60,
-    directory: 'rolling-sphere',
-  },
   userConfig,
   plugins: [threePlugin],
 };

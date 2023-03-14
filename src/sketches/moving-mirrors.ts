@@ -64,12 +64,6 @@ const threePlugin = new ThreePlugin(THREE);
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'custom',
-  // capture: {
-  //   enabled: false,
-  //   duration: 15000,
-  //   fps: 24,
-  //   directory: 'moving-mirrors-b-w',
-  // },
   // width: 1000,
   // height: 1000,
   userConfig,

@@ -36,12 +36,6 @@ const threePlugin = new ThreePlugin(THREE);
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'custom',
-  capture: {
-    enabled: false,
-    duration: 3000,
-    fps: 30,
-    directory: 'exploding-text-3d',
-  },
   userConfig,
   plugins: [threePlugin],
 };

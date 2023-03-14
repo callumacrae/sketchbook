@@ -4,7 +4,6 @@ import type { SketchPlugin } from '../plugins/interface';
 type Type = 'context2d' | 'webgl' | 'custom';
 
 // TODO MOVE INTO PLUGINS:
-// - capture
 // - browser support?
 // - add events?
 
@@ -13,12 +12,6 @@ export interface SketchConfig<CanvasState = undefined, UserConfig = undefined> {
   isPreview: boolean;
   showLoading: boolean;
   animate: boolean;
-  capture?: {
-    enabled: boolean;
-    duration: number;
-    fps?: number;
-    directory?: string;
-  };
   width?: number;
   height?: number;
   postprocessing?: boolean;
@@ -266,7 +259,7 @@ export async function toVanillaCanvas<
     },
   };
 
-  if (sketchConfig.showLoading && !sketchConfig.capture?.enabled) {
+  if (sketchConfig.showLoading) {
     const drawLoadingToCanvas = (ctx: CanvasRenderingContext2D) => {
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -304,25 +297,6 @@ export async function toVanillaCanvas<
     }
   }
 
-  // https://macr.ae/article/canvas-to-gif
-  const captureData = {
-    frames: {} as Record<string, string>,
-    frameDuration: 0,
-    frameCount: 0,
-    framesNameLength: 0,
-    frameNumber: 0,
-    directory: sketchConfig.capture?.directory || location.pathname.slice(1),
-  };
-  if (sketchConfig.capture) {
-    captureData.frameDuration = 1e3 / (sketchConfig.capture.fps || 24);
-    captureData.frameCount = Math.round(
-      sketchConfig.capture.duration / captureData.frameDuration
-    );
-    captureData.framesNameLength = Math.ceil(
-      Math.log10(captureData.frameCount)
-    );
-  }
-
   let customAnimationLoop = false;
 
   const callFrame: CallFrameFn = async (unadjustedTimestamp: number) => {
@@ -330,7 +304,7 @@ export async function toVanillaCanvas<
 
     data.lastTimestamp = timestamp;
 
-    if (!sketchConfig.capture?.enabled && !customAnimationLoop) {
+    if (!customAnimationLoop) {
       data.animationFrame = requestAnimationFrame(callFrame);
     }
 
@@ -390,31 +364,6 @@ export async function toVanillaCanvas<
       data.hasChanged = false;
       data.previousFrameTime = timestamp;
     }
-
-    if (sketchConfig.capture?.enabled && canvasEl) {
-      const frameName = captureData.frameNumber
-        .toString()
-        .padStart(captureData.framesNameLength, '0');
-      console.info(`Capturing frame ${frameName}`);
-      captureData.frames[frameName] = canvasEl.toDataURL('image/png');
-
-      if (timestamp > sketchConfig.capture.duration) {
-        console.log(
-          `Sending ${Object.keys(captureData.frames).length} frames to server`
-        );
-        fetch('http://localhost:3000/save-images', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(captureData),
-        });
-      } else {
-        captureData.frameNumber++;
-        const timestamp = captureData.frameNumber * captureData.frameDuration;
-        callFrame(timestamp);
-      }
-    }
   };
 
   for (const plugin of sketchConfig.plugins) {
@@ -449,24 +398,38 @@ export async function toVanillaCanvas<
 
     const wrapperRect = canvasEl.parentElement?.getBoundingClientRect();
 
-    const dpr = sketchConfig.capture?.enabled ? 1 : window.devicePixelRatio;
-    // TODO: move into plugin somehow
-    const canvasDpr = sketchConfig.type !== 'custom' ? dpr : 1;
-    data.width =
-      (sketchConfig?.width ?? wrapperRect?.width ?? window.innerWidth) *
-      canvasDpr;
-    data.height =
-      (sketchConfig?.height ?? wrapperRect?.height ?? window.innerHeight) *
-      canvasDpr;
+    let width = sketchConfig.width ?? wrapperRect?.width ?? window.innerWidth;
+    let height =
+      sketchConfig.height ?? wrapperRect?.height ?? window.innerHeight;
+    let dpr = window.devicePixelRatio;
+
+    for (const plugin of sketchConfig.plugins) {
+      if (plugin.onBeforeSetSize) {
+        const override = plugin.onBeforeSetSize();
+        if (typeof override?.width === 'number') {
+          width = override.width;
+        }
+        if (typeof override?.height === 'number') {
+          height = override.height;
+        }
+        if (typeof override?.dpr === 'number') {
+          dpr = override.dpr;
+        }
+      }
+    }
+
+    data.width = width * dpr;
+    data.height = height * dpr;
     data.dpr = dpr;
+
     canvasEl.width = data.width;
     canvasEl.height = data.height;
-    canvasEl.style.width = `${data.width / canvasDpr}px`;
-    canvasEl.style.height = `${data.height / canvasDpr}px`;
+    canvasEl.style.width = `${data.width / dpr}px`;
+    canvasEl.style.height = `${data.height / dpr}px`;
 
     canvasEl.classList.toggle(
       'custom-size',
-      !!(sketchConfig?.width && sketchConfig?.height)
+      !!(sketchConfig.width && sketchConfig.height)
     );
 
     data.hasChanged = true;

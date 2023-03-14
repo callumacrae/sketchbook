@@ -71,12 +71,6 @@ const threePlugin = new ThreePlugin(THREE);
 // TODO: get rid of Partial<>
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'custom',
-  capture: {
-    enabled: false,
-    duration: 15000,
-    fps: 24,
-    directory: 'brain-storm',
-  },
   userConfig,
   plugins: [threePlugin, tweakpanePlugin],
 };

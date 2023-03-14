@@ -23,6 +23,8 @@ export interface SketchPlugin<CanvasState, UserConfig> {
   customRenderer?(canvasEl: HTMLCanvasElement): boolean;
   onCustomRenderer?(plugin: SketchPlugin<CanvasState, UserConfig>): void;
   customAnimationLoop?(callFrame: CallFrameFn): boolean;
+
+  onBeforeSetSize?(): { width?: number; height?: number; dpr?: number } | void;
   onSetSize?(width: number, height: number, dpr: number): void;
 
   onWriteScreen?(cb: (ctx: CanvasRenderingContext2D) => void): boolean;
