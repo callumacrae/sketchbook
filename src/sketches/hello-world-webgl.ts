@@ -40,20 +40,20 @@ void main() {
 const fragmentShader = glsl`
 precision mediump float;
 
-uniform vec2 resolution;
-uniform float time;
+uniform vec2 uResolution;
+uniform float uTimestamp;
 
 void main() {
-  vec2 uv = gl_FragCoord.xy / resolution;
+  vec2 uv = gl_FragCoord.xy / uResolution;
 
   float color = 0.0;
   // lifted from glslsandbox.com
-  color += sin( uv.x * cos( time / 3.0 ) * 60.0 ) + cos( uv.y * cos( time / 2.80 ) * 10.0 );
-  color += sin( uv.y * sin( time / 2.0 ) * 40.0 ) + cos( uv.x * sin( time / 1.70 ) * 40.0 );
-  color += sin( uv.x * sin( time / 1.0 ) * 10.0 ) + sin( uv.y * sin( time / 3.50 ) * 80.0 );
-  color *= sin( time / 10.0 ) * 0.5;
+  color += sin( uv.x * cos( uTimestamp / 3.0 ) * 60.0 ) + cos( uv.y * cos( uTimestamp / 2.80 ) * 10.0 );
+  color += sin( uv.y * sin( uTimestamp / 2.0 ) * 40.0 ) + cos( uv.x * sin( uTimestamp / 1.70 ) * 40.0 );
+  color += sin( uv.x * sin( uTimestamp / 1.0 ) * 10.0 ) + sin( uv.y * sin( uTimestamp / 3.50 ) * 80.0 );
+  color *= sin( uTimestamp / 10.0 ) * 0.5;
 
-  gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color ), 1.0 );
+  gl_FragColor = vec4( vec3( color * 0.5, sin( color + uTimestamp / 2.5 ) * 0.75, color ), 1.0 );
 }
 `;
 
@@ -79,13 +79,22 @@ export const frame: FrameFn<CanvasState, UserConfig> = ({
   width,
   height,
   timestamp,
+  hasChanged,
 }) => {
   if (!gl) throw new Error('???');
+
+  if (hasChanged) {
+    state.programInfo = twgl.createProgramInfo(gl, [
+      vertexShader,
+      fragmentShader,
+    ]);
+  }
+
   const { programInfo, bufferInfo } = state;
 
   const uniforms = {
-    time: timestamp * 0.001,
-    resolution: [width, height],
+    uTimestamp: timestamp * 0.001,
+    uResolution: [width, height],
   };
 
   gl.useProgram(programInfo.program);
