@@ -1,7 +1,7 @@
 import writeScreen from '../canvas/written-screen';
 import type { SketchPlugin } from '../plugins/interface';
 
-type Type = 'context2d' | 'webgl' | 'custom';
+type Type = 'context2d' | 'webgl' | 'webgl2' | 'custom';
 
 // TODO MOVE INTO PLUGINS:
 // - browser support?
@@ -25,6 +25,7 @@ export interface SketchConfig<CanvasState = undefined, UserConfig = undefined> {
 export interface InitProps<CanvasState, UserConfig = undefined> {
   ctx: CanvasRenderingContext2D | null;
   gl: WebGLRenderingContext | null;
+  gl2: WebGL2RenderingContext | null;
   width: number;
   height: number;
   dpr: number;
@@ -45,6 +46,7 @@ export type CallFrameFn = (unadjustedTimestamp: number) => Promise<void>;
 export interface FrameProps<CanvasState, UserConfig = undefined> {
   ctx: CanvasRenderingContext2D | null;
   gl: WebGLRenderingContext | null;
+  gl2: WebGL2RenderingContext | null;
   width: number;
   height: number;
   dpr: number;
@@ -64,6 +66,7 @@ export interface EventProps<
   event: TEvent;
   ctx: CanvasRenderingContext2D | null;
   gl: WebGLRenderingContext | null;
+  gl2: WebGL2RenderingContext | null;
   width: number;
   height: number;
   dpr: number;
@@ -116,6 +119,7 @@ export async function toVanillaCanvas<
     canvas: null as HTMLCanvasElement | null,
     ctx: null as CanvasRenderingContext2D | null,
     gl: null as WebGLRenderingContext | null,
+    gl2: null as WebGL2RenderingContext | null,
     customRenderer: null as SketchPlugin<CanvasState, UserConfig> | null,
     resizeTimeout: undefined as ReturnType<typeof setTimeout> | undefined,
     previousFrameTime: 0,
@@ -163,6 +167,12 @@ export async function toVanillaCanvas<
     if (!data.gl) {
       throw new Error('No canvas context');
     }
+  } else if (sketchConfig.type === 'webgl2') {
+    data.gl2 = canvasEl.getContext('webgl2');
+
+    if (!data.gl2) {
+      throw new Error('No canvas context');
+    }
   } else if (sketchConfig.type === 'custom') {
     for (const plugin of sketchConfig.plugins) {
       if (plugin.customRenderer) {
@@ -192,6 +202,7 @@ export async function toVanillaCanvas<
   const initProps: InitProps<CanvasState, UserConfig> = {
     ctx: data.ctx,
     gl: data.gl,
+    gl2: data.gl2,
     width: data.width,
     height: data.height,
     dpr: data.dpr,
@@ -206,6 +217,7 @@ export async function toVanillaCanvas<
           event,
           ctx: data.ctx,
           gl: data.gl,
+          gl2: data.gl2,
           width: data.width,
           height: data.height,
           dpr: data.dpr,
@@ -332,6 +344,7 @@ export async function toVanillaCanvas<
       const frameProps: FrameProps<CanvasState, UserConfig> = {
         ctx: data.ctx,
         gl: data.gl,
+        gl2: data.gl2,
         width: data.width,
         height: data.height,
         dpr: data.dpr,
@@ -434,8 +447,9 @@ export async function toVanillaCanvas<
 
     data.hasChanged = true;
 
-    if (data.gl) {
-      data.gl.viewport(0, 0, data.width, data.height);
+    const gl = data.gl || data.gl2;
+    if (gl) {
+      gl.viewport(0, 0, data.width, data.height);
     }
 
     for (const plugin of sketchConfig.plugins) {

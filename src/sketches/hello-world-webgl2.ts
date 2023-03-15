@@ -4,8 +4,8 @@ import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
-  name: 'Hello world (webgl)',
-  date: '2023-02-13',
+  name: 'Hello world (webgl2)',
+  date: '2023-03-15',
   tags: ['WebGL', 'Hello World'],
 };
 
@@ -13,7 +13,7 @@ const glsl = String.raw;
 
 export interface CanvasState {
   programInfo: twgl.ProgramInfo;
-  bufferInfo: twgl.BufferInfo;
+  vao: twgl.VertexArrayInfo;
 }
 
 const userConfig = {
@@ -24,24 +24,28 @@ export type UserConfig = typeof userConfig;
 const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>();
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-  type: 'webgl',
+  type: 'webgl2',
   userConfig,
   plugins: [tweakpanePlugin],
 };
 
-const vertexShader = glsl`
-attribute vec4 a_position;
+const vertexShader = glsl`#version 300 es
+
+in vec4 a_position;
 
 void main() {
   gl_Position = a_position;
 }
 `;
 
-const fragmentShader = glsl`
+const fragmentShader = glsl`#version 300 es
+
 precision mediump float;
 
 uniform vec2 u_resolution;
 uniform float u_timestamp;
+
+out vec4 o_fragColor;
 
 void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution;
@@ -54,28 +58,30 @@ void main() {
   color += sin( uv.x * sin( time / 1.0 ) * 10.0 ) + sin( uv.y * sin( time / 3.50 ) * 80.0 );
   color *= sin( time / 10.0 ) * 0.5;
 
-  gl_FragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color ), 1.0 );
+  o_fragColor = vec4( vec3( color * 0.5, sin( color + time / 2.5 ) * 0.75, color ), 1.0 );
 }
 `;
 
-export const init: InitFn<CanvasState, UserConfig> = ({ gl }) => {
+export const init: InitFn<CanvasState, UserConfig> = ({ gl2: gl }) => {
   if (!gl) throw new Error('???');
-
-  const programInfo = twgl.createProgramInfo(gl, [
-    vertexShader,
-    fragmentShader,
-  ]);
 
   const arrays = {
     a_position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0],
   };
   const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
 
-  return { programInfo, bufferInfo };
+  const programInfo = twgl.createProgramInfo(gl, [
+    vertexShader,
+    fragmentShader,
+  ]);
+
+  const vao = twgl.createVertexArrayInfo(gl, programInfo, bufferInfo);
+
+  return { programInfo, vao };
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = ({
-  gl,
+  gl2: gl,
   state,
   width,
   height,
@@ -91,7 +97,7 @@ export const frame: FrameFn<CanvasState, UserConfig> = ({
     ]);
   }
 
-  const { programInfo, bufferInfo } = state;
+  const { programInfo, vao } = state;
 
   const uniforms = {
     u_timestamp: timestamp,
@@ -99,7 +105,7 @@ export const frame: FrameFn<CanvasState, UserConfig> = ({
   };
 
   gl.useProgram(programInfo.program);
-  twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
+  twgl.setBuffersAndAttributes(gl, programInfo, vao);
   twgl.setUniforms(programInfo, uniforms);
-  twgl.drawBufferInfo(gl, bufferInfo);
+  twgl.drawBufferInfo(gl, vao);
 };
