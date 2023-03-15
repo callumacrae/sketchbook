@@ -134,7 +134,8 @@ export default class TweakpanePlugin<CanvasState, UserConfig>
     });
 
     const preset = localStorage.getItem(presetName);
-    if (preset && !sketchConfig.capture?.enabled) {
+    // TODO: add capture support back
+    if (preset /* && !sketchConfig.capture?.enabled */) {
       try {
         pane.importPreset(JSON.parse(preset));
       } catch (err) {
