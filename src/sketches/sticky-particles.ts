@@ -27,7 +27,7 @@ export type UserConfig = typeof userConfig;
 const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>();
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
-  type: 'webgl',
+  type: 'webgl2',
   userConfig,
   plugins: [tweakpanePlugin],
 };
@@ -51,48 +51,51 @@ function initBackground({ width, height }: { width: number; height: number }) {
   });
 }
 
-const vertexShader = glsl`
-uniform float uTimestamp;
-uniform vec2 uResolution;
-uniform float uParticleSize;
-uniform sampler2D uBackgroundTexture;
+const vertexShader = glsl`#version 300 es
 
-attribute vec4 aPosition;
-attribute vec2 aParticlePosition;
+uniform float u_timestamp;
+uniform vec2 u_resolution;
+uniform float u_particleSize;
+uniform sampler2D u_backgroundTexture;
 
-varying float vColor;
+in vec4 a_positoin;
+in vec2 a_particlePosition;
+
+out float v_color;
 
 void main() {
-  vec4 transformed = aPosition;
+  vec4 transformed = a_positoin;
 
   // Transform to small squares
-  transformed.y /= uResolution.y / uResolution.x;
-  transformed.xy *= uParticleSize / uResolution.y;
+  transformed.y /= u_resolution.y / u_resolution.x;
+  transformed.xy *= u_particleSize / u_resolution.y;
 
   // Transform to positions
-  transformed.x += aParticlePosition.x;
-  transformed.y += aParticlePosition.y;
+  transformed.x += a_particlePosition.x;
+  transformed.y += a_particlePosition.y;
 
   gl_Position = transformed;
 
-  vColor = texture2D(uBackgroundTexture, aParticlePosition / 2.0 + 0.5).r;
+  v_color = texture(u_backgroundTexture, a_particlePosition / 2.0 + 0.5).r;
 }
 `;
 
-const fragmentShader = glsl`
+const fragmentShader = glsl`#version 300 es
+
 precision mediump float;
 
-uniform vec3 uParticleColor;
+uniform vec3 u_particleColor;
 
-varying float vColor;
+in float v_color;
+out vec4 o_fragColor;
 
 void main() {
-  gl_FragColor = vec4(uParticleColor * vColor, 1.0);
+  o_fragColor = vec4(u_particleColor * v_color, 1.0);
 }
 `;
 
 export const init: InitFn<CanvasState, UserConfig> = (props) => {
-  const { gl } = props;
+  const { gl2: gl } = props;
   if (!gl) throw new Error('???');
 
   props.testSupport(() => {
@@ -120,8 +123,8 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
   }
 
   const arrays: twgl.Arrays = {
-    aPosition: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0],
-    aParticlePosition: {
+    a_positoin: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0],
+    a_particlePosition: {
       numComponents: 2,
       data: particlePositionsArray,
       divisor: 1,
@@ -137,7 +140,7 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-  const { gl, state, width, height, userConfig, timestamp, hasChanged } = props;
+  const { gl2: gl, state, width, height, userConfig, timestamp, hasChanged } = props;
   if (!gl) throw new Error('???');
 
   if (hasChanged) {
@@ -158,11 +161,11 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   const uniforms = {
-    uTimestamp: timestamp * 0.001,
-    uResolution: [width, height],
-    uParticleSize: 5,
-    uParticleColor: [240 / 256, 235 / 256, 141 / 256],
-    uBackgroundTexture: state.backgroundTexture,
+    u_timestamp: timestamp,
+    u_resolution: [width, height],
+    u_particleSize: 5,
+    u_particleColor: [240 / 256, 235 / 256, 141 / 256],
+    u_backgroundTexture: state.backgroundTexture,
   };
 
   gl.useProgram(programInfo.program);

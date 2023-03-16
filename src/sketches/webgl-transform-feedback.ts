@@ -1,6 +1,5 @@
 import * as twgl from 'twgl.js';
 
-import * as random from '@/utils/random';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
