@@ -60,12 +60,6 @@ void main() {
 export const init: InitFn<CanvasState, UserConfig> = ({ gl2: gl }) => {
   if (!gl) throw new Error('???');
 
-  const programInfo = twgl.createProgramInfo(
-    gl,
-    [vertexShader, fragmentShader],
-    { transformFeedbackVaryings: ['v_angle'] }
-  );
-
   const renderBufferInfo = twgl.createBufferInfoFromArrays(gl, {
     a_angle: {
       data: [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2],
@@ -88,6 +82,12 @@ export const init: InitFn<CanvasState, UserConfig> = ({ gl2: gl }) => {
     },
   });
 
+  const programInfo = twgl.createProgramInfo(
+    gl,
+    [vertexShader, fragmentShader],
+    { transformFeedbackVaryings: updateBufferInfo }
+  );
+
   const transformFeedback = twgl.createTransformFeedbackInfo(
     gl,
     programInfo.program
@@ -107,7 +107,7 @@ export const frame: FrameFn<CanvasState, UserConfig> = ({
     state.programInfo = twgl.createProgramInfo(
       gl,
       [vertexShader, fragmentShader],
-      { transformFeedbackVaryings: ['v_angle'] }
+      { transformFeedbackVaryings: state.updateBufferInfo }
     );
   }
 

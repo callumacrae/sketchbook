@@ -65,10 +65,9 @@ void main() {
 export const init: InitFn<CanvasState, UserConfig> = ({ gl2: gl }) => {
   if (!gl) throw new Error('???');
 
-  const arrays = {
+  const bufferInfo = twgl.createBufferInfoFromArrays(gl, {
     a_position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0],
-  };
-  const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
+  });
 
   const programInfo = twgl.createProgramInfo(gl, [
     vertexShader,
