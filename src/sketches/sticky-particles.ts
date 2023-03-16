@@ -191,13 +191,6 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
   const { gl2: gl } = props;
   if (!gl) throw new Error('???');
 
-  props.testSupport(() => {
-    if (!('OffscreenCanvas' in window)) {
-      return 'This sketch requires OffscreenCanvas';
-    }
-    return true;
-  });
-
   if (urlText) {
     userConfig.text = urlText;
     tweakpanePlugin.refresh();

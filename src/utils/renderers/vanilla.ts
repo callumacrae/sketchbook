@@ -154,6 +154,34 @@ export async function toVanillaCanvas<
     document.body.style.background = sketchConfig.pageBg;
   }
 
+  function throwNotSupported(message: string) {
+    writeScreen(data, (ctx: CanvasRenderingContext2D) => {
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+      const sizeFactor = data.width / data.dpr < 550 ? 0.6 : 1;
+      ctx.font = `bold ${
+        80 * sizeFactor
+      }px Shantell Sans, Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
+      ctx.fillStyle = 'red';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(
+        'browser not supported :(',
+        data.width / 2,
+        data.height / 2 - 50 * sizeFactor
+      );
+
+      ctx.font = `${
+        50 * sizeFactor
+      }px Shantell Sans, Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
+      ctx.fillStyle = 'white';
+      ctx.fillText(message, data.width / 2, data.height / 2 + 50 * sizeFactor);
+    });
+  }
+
+  setSize();
+
   if (sketchConfig.type === 'context2d') {
     data.ctx = canvasEl.getContext('2d');
 
@@ -164,13 +192,17 @@ export async function toVanillaCanvas<
     data.gl = canvasEl.getContext('webgl');
 
     if (!data.gl) {
-      throw new Error('No canvas context');
+      data.ctx = canvasEl.getContext('2d');
+      throwNotSupported('WebGL required');
+      throw new Error('Sketch not supported in this browser');
     }
   } else if (sketchConfig.type === 'webgl2') {
     data.gl2 = canvasEl.getContext('webgl2');
 
     if (!data.gl2) {
-      throw new Error('No canvas context');
+      data.ctx = canvasEl.getContext('2d');
+      throwNotSupported('WebGL2 required');
+      throw new Error('Sketch not supported in this browser');
     }
   } else if (sketchConfig.type === 'custom') {
     for (const plugin of sketchConfig.plugins) {
@@ -195,8 +227,6 @@ export async function toVanillaCanvas<
   } else {
     throw new Error('Sketch type unknown');
   }
-
-  setSize();
 
   const initProps: InitProps<CanvasState, UserConfig> = {
     ctx: data.ctx,
@@ -238,34 +268,7 @@ export async function toVanillaCanvas<
         return;
       }
 
-      writeScreen(data, (ctx: CanvasRenderingContext2D) => {
-        ctx.fillStyle = 'black';
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-        const sizeFactor = data.width / data.dpr < 550 ? 0.6 : 1;
-        ctx.font = `bold ${
-          80 * sizeFactor
-        }px Shantell Sans, Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
-        ctx.fillStyle = 'red';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(
-          'browser not supported :(',
-          data.width / 2,
-          data.height / 2 - 50 * sizeFactor
-        );
-
-        ctx.font = `${
-          50 * sizeFactor
-        }px Shantell Sans, Roboto Mono, Source Code Pro, Menlo, Courier, monospace`;
-        ctx.fillStyle = 'white';
-        ctx.fillText(
-          supported,
-          data.width / 2,
-          data.height / 2 + 50 * sizeFactor
-        );
-      });
-
+      throwNotSupported(supported);
       throw new Error('Sketch not supported in this browser');
     },
   };

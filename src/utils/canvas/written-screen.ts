@@ -21,6 +21,7 @@ export default function writeScreen<CanvasState, UserConfig>(
     }
   }
 
+  console.log(data);
   if (data.ctx) {
     cb(data.ctx);
   } else if (data.gl) {
@@ -131,6 +132,6 @@ export default function writeScreen<CanvasState, UserConfig>(
     gl.deleteProgram(program);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
   } else {
-    throw new Error('loading not supported for this type yet');
+    throw new Error('writing to screen not supported for this type yet');
   }
 }
