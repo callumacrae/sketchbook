@@ -1,4 +1,6 @@
 import * as twgl from 'twgl.js';
+import SimplexNoise from 'simplex-noise';
+import { easePolyIn, easePolyInOut } from 'd3-ease';
 
 import { doWorkOffscreen } from '@/utils/canvas/utils';
 import * as random from '@/utils/random';
@@ -14,6 +16,7 @@ export const meta = {
 const glsl = String.raw;
 
 export interface CanvasState {
+  simplex: SimplexNoise;
   programInfo: twgl.ProgramInfo;
   renderBufferInfo: twgl.BufferInfo;
   updateBufferInfo: twgl.BufferInfo;
@@ -28,18 +31,18 @@ const userConfig = {
 
   particles: {
     count: 20000,
-    size: 7,
-    sizeVariance: 3,
-    acceleration: 0.001,
-    stuckSpeedFactor: 1,
-    addChance: 0.1,
+    size: 10,
+    sizeVariance: 5,
+    accelerationFactor: 1,
+    stuckSpeedFactor: 0.25,
+    addChanceFactor: 1.7,
   },
 
   colors: {
     // https://colorhunt.co/palette/08d9d6252a34ff2e63eaeaea
     background: { r: 37 / 256, g: 42 / 256, b: 52 / 256 },
     particles: { r: 8 / 256, g: 217 / 256, b: 214 / 256 },
-  }
+  },
 };
 export type UserConfig = typeof userConfig;
 
@@ -55,22 +58,26 @@ const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
       min: 0,
       max: 10,
     });
-    particleFolder.addInput(config.particles, 'acceleration', {
-      min: 0.0001,
-      max: 0.005,
+    particleFolder.addInput(config.particles, 'accelerationFactor', {
+      min: 0,
+      max: 5,
     });
     particleFolder.addInput(config.particles, 'stuckSpeedFactor', {
       min: 0,
       max: 2,
     });
-    particleFolder.addInput(config.particles, 'addChance', {
+    particleFolder.addInput(config.particles, 'addChanceFactor', {
       min: 0,
-      max: 0.1,
+      max: 5,
     });
 
     const colorsFolder = pane.addFolder({ title: 'Colors' });
-    colorsFolder.addInput(config.colors, 'background', { color: { type: 'float' } });
-    colorsFolder.addInput(config.colors, 'particles', { color: { type: 'float' } });
+    colorsFolder.addInput(config.colors, 'background', {
+      color: { type: 'float' },
+    });
+    colorsFolder.addInput(config.colors, 'particles', {
+      color: { type: 'float' },
+    });
   }
 );
 
@@ -151,17 +158,31 @@ void main() {
   }
 
   vec2 newPosition = a_particlePosition - vec2(0.0, newVelocity) * deltaAdjust;
-  if (newPosition.y < -1.0) {
+  bool offScreen = newPosition.y < -1.0 || newPosition.y > 1.0;
+
+  if (offScreen) {
     // For some reason just one of them would be 0.0 far too often
     float randChance = rand(vec2(a_particleRandSeed, fract(newPosition.y)));
     float randChance2 = rand(vec2(fract(newPosition.y), a_particleRandSeed));
 
     if (randChance + randChance2 < u_particleAddChance) {
       newPosition.x = rand(vec2(newPosition.x, a_particleRandSeed)) * 2.0 - 1.0;
-      newPosition.y = 1.0 + randChance;
+      if (u_particleAcceleration > 0.0) {
+        newPosition.y = 1.0 + randChance / 10.0;
+      } else {
+        newPosition.y = -1.0 - randChance / 10.0;
+      }
       newVelocity = 0.0;
+
+    // We store pixels between 2 and 3 (or -2 and -3) so that they don't come
+    // back on screen if acceleration changes
+    } else if (newPosition.y < -1.0 && newPosition.y > -2.0) {
+      newPosition.y -= 1.0;
+    } else if (newPosition.y > 1.0 && newPosition.y < 2.0) {
+      newPosition.y += 1.0;
     } else if (newPosition.y < -3.0) {
-      // This ensures we don't end up dealing with any massive numbers
+      newPosition.y += 1.0;
+    } else if (newPosition.y > 3.0) {
       newPosition.y -= 1.0;
     }
   }
@@ -269,6 +290,7 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
   });
 
   return {
+    simplex: new SimplexNoise(),
     programInfo,
     renderBufferInfo,
     updateBufferInfo,
@@ -278,7 +300,7 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-  const { gl2: gl, state, delta, hasChanged } = props;
+  const { gl2: gl, state, delta, timestamp, hasChanged } = props;
   if (!gl) throw new Error('???');
 
   if (hasChanged) {
@@ -298,8 +320,53 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
     });
   }
 
-  const { programInfo, renderBufferInfo, updateBufferInfo, transformFeedback } =
-    state;
+  const {
+    simplex,
+    programInfo,
+    renderBufferInfo,
+    updateBufferInfo,
+    transformFeedback,
+  } = state;
+
+  let addChance = 0;
+  {
+    const generalNoiseFactor = 0.2;
+    const slowNoise = simplex.noise2D(0, timestamp * 0.0001) / 2 + 0.5;
+    const fastNoise = simplex.noise2D(1, timestamp * 0.002) / 2 + 0.5;
+    addChance = slowNoise * fastNoise * generalNoiseFactor;
+
+    const bandedNoiseFrequency =
+      125 + 25 * simplex.noise2D(2, timestamp * 0.00001);
+    const bandedNoiseSize = 50;
+    const easeBandedNoiseNoise = easePolyIn.exponent(5);
+    const bandedNoiseNoise =
+      easeBandedNoiseNoise(simplex.noise2D(3, timestamp * 0.001) / 2 + 0.5) *
+      (0.2 + (generalNoiseFactor - addChance) * 3);
+
+    const distFromBand = Math.abs(
+      timestamp -
+        Math.round(timestamp / bandedNoiseFrequency) * bandedNoiseFrequency
+    );
+    let bandResult = 0;
+    if (distFromBand < bandedNoiseSize) {
+      bandResult = (bandedNoiseSize - distFromBand) / bandedNoiseSize;
+    }
+    const easeBandResult = easePolyIn.exponent(3);
+    addChance += easeBandResult(bandResult) * bandedNoiseNoise;
+  }
+
+  let acceleration = 0;
+  {
+    const slowNoise = simplex.noise2D(4, timestamp * 0.0001) / 2 + 0.5;
+    const easeSlowNoise = easePolyInOut.exponent(5);
+
+    const fastNoise = simplex.noise2D(5, timestamp * 0.0005) / 2 + 0.5;
+    const easeFastNoise = easePolyInOut.exponent(5);
+
+    acceleration =
+      (easeSlowNoise(slowNoise) - 0.3) * 0.001 +
+      (easeFastNoise(fastNoise) - 0.1) * 0.000;
+  }
 
   const { background: bgColor, particles: particleColor } = userConfig.colors;
   gl.clearColor(bgColor.r, bgColor.g, bgColor.b, 1);
@@ -307,11 +374,12 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
 
   const uniforms = {
     u_delta: delta,
-    u_particleAcceleration: userConfig.particles.acceleration,
+    u_particleAcceleration:
+      userConfig.particles.accelerationFactor * acceleration,
     u_particleSize: userConfig.particles.size,
     u_particleColor: [particleColor.r, particleColor.g, particleColor.b],
     u_backgroundTexture: state.backgroundTexture,
-    u_particleAddChance: userConfig.particles.addChance,
+    u_particleAddChance: addChance * userConfig.particles.addChanceFactor,
     u_particleSizeVariance: userConfig.particles.sizeVariance,
     u_particleStuckSpeedFactor: userConfig.particles.stuckSpeedFactor,
   };

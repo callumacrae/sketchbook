@@ -21,7 +21,6 @@ export default function writeScreen<CanvasState, UserConfig>(
     }
   }
 
-  console.log(data);
   if (data.ctx) {
     cb(data.ctx);
   } else if (data.gl) {
