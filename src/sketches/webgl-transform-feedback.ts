@@ -1,5 +1,6 @@
 import * as twgl from 'twgl.js';
 
+import * as random from '@/utils/random';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
@@ -29,7 +30,7 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   plugins: [tweakpanePlugin],
 };
 
-const vertexShader = glsl`#version 300 es
+export const vertexShader = glsl`#version 300 es
 
 in float a_angle;
 out float v_angle;
@@ -47,7 +48,7 @@ void main() {
 }
 `;
 
-const fragmentShader = glsl`#version 300 es
+export const fragmentShader = glsl`#version 300 es
 precision mediump float;
 
 out vec4 fragColor;

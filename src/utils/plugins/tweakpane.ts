@@ -161,4 +161,8 @@ export default class TweakpanePlugin<CanvasState, UserConfig>
       this.pane.dispose();
     }
   }
+
+  refresh() {
+    if (this.pane) this.pane.refresh();
+  }
 }

@@ -127,6 +127,7 @@ export async function toVanillaCanvas<
       | ReturnType<typeof requestAnimationFrame>
       | undefined,
     canvasState: undefined as CanvasState | undefined,
+    plugins: sketchConfig.plugins,
   };
 
   if (!canvasEl) {
@@ -148,8 +149,6 @@ export async function toVanillaCanvas<
       });
     }
   }
-
-  const userConfig = sketchConfig.userConfig;
 
   if (sketchConfig.pageBg && !sketchConfig.isPreview) {
     document.body.style.background = sketchConfig.pageBg;
@@ -207,8 +206,8 @@ export async function toVanillaCanvas<
     height: data.height,
     dpr: data.dpr,
     timestamp: 0,
-    userConfig,
-    sketchConfig,
+    userConfig: data.sketchConfig.userConfig,
+    sketchConfig: data.sketchConfig,
     addEvent: (type, cb) => {
       canvasEl.addEventListener(type, (event) => {
         event.preventDefault();
