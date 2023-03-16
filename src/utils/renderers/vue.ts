@@ -1,4 +1,5 @@
-import { defineComponent, h } from 'vue';
+import { computed, defineComponent, h } from 'vue';
+import { useHead } from '@vueuse/head';
 import type { Component } from 'vue';
 
 import { toVanillaCanvas } from './vanilla';
@@ -49,6 +50,12 @@ export function toCanvasComponent<
               ),
         ]
       );
+    },
+    setup(props) {
+      const title = computed(() => {
+        return props.preview && metaLinks?.meta?.name || null;
+      });
+      useHead({ title });
     },
     async mounted() {
       const canvas = this.$refs.canvas as HTMLCanvasElement | null;

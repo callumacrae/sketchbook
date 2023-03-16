@@ -17,6 +17,7 @@
     "@types/seedrandom": "^3.0.4",
     "@types/three": "^0.146.0",
     "@vueuse/core": "^9.13.0",
+    "@vueuse/head": "^1.1.23",
     "autoprefixer": "^10.4.13",
     "bezier-easing": "^2.1.0",
     "chroma-js": "^2.4.2",

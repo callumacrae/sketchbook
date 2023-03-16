@@ -1,3 +1,12 @@
+<script lang="ts" setup>
+import { useHead } from '@vueuse/head';
+
+const mainTitle = "Callum's Sketchbook";
+useHead({
+  titleTemplate: (title) => (title ? `${title} - ${mainTitle}` : mainTitle),
+});
+</script>
+
 <template>
   <router-view />
 </template>
