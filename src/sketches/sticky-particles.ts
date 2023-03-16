@@ -24,9 +24,15 @@ export interface CanvasState {
 let urlText = new URLSearchParams(window.location.search).get('text');
 const userConfig = {
   text: urlText || 'Hello world',
+  textSize: 30,
+
   particles: 10000,
   particleSize: 5,
-  particleAcceleration: 0.0001,
+  particleSizeVariance: 3,
+  particleAcceleration: 0.001,
+  particleStuckSpeedFactor: 0.1,
+
+  particleAddChance: 0.1,
 
   // https://colorhunt.co/palette/2d27274135438f43eef0eb8d
   bgColor: { r: 45 / 256, g: 39 / 256, b: 39 / 256 },
@@ -37,10 +43,15 @@ export type UserConfig = typeof userConfig;
 const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
   ({ config, pane }) => {
     pane.addInput(config, 'text');
+    pane.addInput(config, 'textSize', { min: 5, max: 100 });
 
     // pane.addInput(config, 'particles', { min: 1000, max: 100000 });
     pane.addInput(config, 'particleSize', { min: 1, max: 20 });
-    pane.addInput(config, 'particleAcceleration', { min: 0.00001, max: 0.001 });
+    pane.addInput(config, 'particleSizeVariance', { min: 0, max: 10 });
+    pane.addInput(config, 'particleAcceleration', { min: 0.0001, max: 0.005 });
+    pane.addInput(config, 'particleStuckSpeedFactor', { min: 0.05, max: 0.5 });
+    pane.addInput(config, 'particleAddChance', { min: 0, max: 0.1 });
+
     pane.addInput(config, 'bgColor', { color: { type: 'float' } });
     pane.addInput(config, 'particleColor', { color: { type: 'float' } });
   }
@@ -63,14 +74,16 @@ export function initBackground({
   const canvasHeight = height / 16;
 
   return doWorkOffscreen(canvasWidth, canvasHeight, (ctx) => {
+    // TODO: pass userConfig into function, don't use global
+    const { text, textSize } = userConfig;
+
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     ctx.fillStyle = 'white';
-    ctx.font = `100 ${30}px sans-serif`;
+    ctx.font = `100 ${textSize}px sans-serif`;
     ctx.textAlign = 'center';
 
-    const { text } = userConfig;
     const textHeight = ctx.measureText(text).actualBoundingBoxAscent;
     ctx.fillText(text, canvasWidth / 2, canvasHeight / 2 + textHeight / 2);
   });
@@ -84,10 +97,14 @@ uniform float u_delta;
 uniform float u_particleAcceleration;
 uniform float u_particleSize;
 uniform sampler2D u_backgroundTexture;
+uniform float u_particleAddChance;
+uniform float u_particleSizeVariance;
+uniform float u_particleStuckSpeedFactor;
 
 in vec2 a_particlePosition;
 in float a_particleVelocity;
 in float a_particleRandSeed;
+in float a_particleSizeVariance;
 
 out vec2 v_particlePosition;
 out float v_particleVelocity;
@@ -106,17 +123,32 @@ void main() {
 
   float resistance = texture(u_backgroundTexture, a_particlePosition / 2.0 + 0.5).r;
   if (resistance > 0.5) {
-    newVelocity = 0.001;
+    newVelocity = u_particleAcceleration * u_particleStuckSpeedFactor / 1.666 * u_delta;;
+  }
+
+  // This is mostly for when particles have gone off screen to avoid any
+  // huge numbers
+  if (newVelocity > 0.5) {
+    newVelocity = 0.5;
   }
 
   vec2 newPosition = a_particlePosition - vec2(0.0, newVelocity);
   if (newPosition.y < -1.0) {
-    newPosition.x = rand(vec2(newPosition.x, a_particleRandSeed)) * 2.0 - 1.0;
-    newPosition.y = 1.0;
-    newVelocity = 0.0;
+    // For some reason just one of them would be 0.0 far too often
+    float randChance = rand(vec2(a_particleRandSeed, fract(newPosition.y)));
+    float randChance2 = rand(vec2(fract(newPosition.y), a_particleRandSeed));
+
+    if (randChance + randChance2 < u_particleAddChance) {
+      newPosition.x = rand(vec2(newPosition.x, a_particleRandSeed)) * 2.0 - 1.0;
+      newPosition.y = 1.0 + randChance;
+      newVelocity = 0.0;
+    } else if (newPosition.y < -3.0) {
+      // This ensures we don't end up dealing with any massive numbers
+      newPosition.y -= 1.0;
+    }
   }
 
-  gl_PointSize = u_particleSize;
+  gl_PointSize = u_particleSize + (a_particleSizeVariance * u_particleSizeVariance);
   gl_Position = vec4(newPosition, 0.0, 1.0);
 
   v_particlePosition = newPosition;
@@ -160,12 +192,14 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
   const particlePositionsArray = new Float32Array(userConfig.particles * 2);
   const particleVelocitiesArray = new Float32Array(userConfig.particles);
   const particleRandSeedsArray = new Float32Array(userConfig.particles);
+  const particleSizeVariancesArray = new Float32Array(userConfig.particles);
 
   for (let i = 0; i < userConfig.particles; i++) {
     particlePositionsArray[i * 2] = random.range(-1, 1);
-    particlePositionsArray[i * 2 + 1] = random.range(3, 1);
+    particlePositionsArray[i * 2 + 1] = -1.1;
     particleVelocitiesArray[i] = 0;
     particleRandSeedsArray[i] = random.range(-1, 1);
+    particleSizeVariancesArray[i] = random.range(-0.5, 0.5);
   }
 
   const renderBufferInfo = twgl.createBufferInfoFromArrays(gl, {
@@ -184,6 +218,11 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
     a_particleRandSeed: {
       numComponents: 1,
       data: particleRandSeedsArray,
+      divisor: 1,
+    },
+    a_particleSizeVariance: {
+      numComponents: 1,
+      data: particleSizeVariancesArray,
       divisor: 1,
     },
   });
@@ -260,6 +299,9 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
     u_particleSize: userConfig.particleSize,
     u_particleColor: [particleColor.r, particleColor.g, particleColor.b],
     u_backgroundTexture: state.backgroundTexture,
+    u_particleAddChance: userConfig.particleAddChance,
+    u_particleSizeVariance: userConfig.particleSizeVariance,
+    u_particleStuckSpeedFactor: userConfig.particleStuckSpeedFactor,
   };
 
   gl.useProgram(programInfo.program);
