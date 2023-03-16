@@ -26,17 +26,20 @@ const userConfig = {
   text: urlText || 'Hello world',
   textSize: 30,
 
-  particles: 10000,
-  particleSize: 5,
-  particleSizeVariance: 3,
-  particleAcceleration: 0.001,
-  particleStuckSpeedFactor: 0.1,
+  particles: {
+    count: 20000,
+    size: 7,
+    sizeVariance: 3,
+    acceleration: 0.001,
+    stuckSpeedFactor: 1,
+    addChance: 0.1,
+  },
 
-  particleAddChance: 0.1,
-
-  // https://colorhunt.co/palette/2d27274135438f43eef0eb8d
-  bgColor: { r: 45 / 256, g: 39 / 256, b: 39 / 256 },
-  particleColor: { r: 240 / 256, g: 235 / 256, b: 141 / 256 },
+  colors: {
+    // https://colorhunt.co/palette/08d9d6252a34ff2e63eaeaea
+    background: { r: 37 / 256, g: 42 / 256, b: 52 / 256 },
+    particles: { r: 8 / 256, g: 217 / 256, b: 214 / 256 },
+  }
 };
 export type UserConfig = typeof userConfig;
 
@@ -45,15 +48,29 @@ const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
     pane.addInput(config, 'text');
     pane.addInput(config, 'textSize', { min: 5, max: 100 });
 
-    // pane.addInput(config, 'particles', { min: 1000, max: 100000 });
-    pane.addInput(config, 'particleSize', { min: 1, max: 20 });
-    pane.addInput(config, 'particleSizeVariance', { min: 0, max: 10 });
-    pane.addInput(config, 'particleAcceleration', { min: 0.0001, max: 0.005 });
-    pane.addInput(config, 'particleStuckSpeedFactor', { min: 0.05, max: 0.5 });
-    pane.addInput(config, 'particleAddChance', { min: 0, max: 0.1 });
+    const particleFolder = pane.addFolder({ title: 'Particles' });
+    // particleFolder.addInput(config.particles, 'count', { min: 1000, max: 100000 });
+    particleFolder.addInput(config.particles, 'size', { min: 1, max: 20 });
+    particleFolder.addInput(config.particles, 'sizeVariance', {
+      min: 0,
+      max: 10,
+    });
+    particleFolder.addInput(config.particles, 'acceleration', {
+      min: 0.0001,
+      max: 0.005,
+    });
+    particleFolder.addInput(config.particles, 'stuckSpeedFactor', {
+      min: 0,
+      max: 2,
+    });
+    particleFolder.addInput(config.particles, 'addChance', {
+      min: 0,
+      max: 0.1,
+    });
 
-    pane.addInput(config, 'bgColor', { color: { type: 'float' } });
-    pane.addInput(config, 'particleColor', { color: { type: 'float' } });
+    const colorsFolder = pane.addFolder({ title: 'Colors' });
+    colorsFolder.addInput(config.colors, 'background', { color: { type: 'float' } });
+    colorsFolder.addInput(config.colors, 'particles', { color: { type: 'float' } });
   }
 );
 
@@ -119,11 +136,12 @@ highp float rand( const in vec2 uv ) {
 /** VENDOR END **/
 
 void main() {
-  float newVelocity = a_particleVelocity + u_particleAcceleration / 16.666 * u_delta;
+  float deltaAdjust = u_delta / 16.666;
+  float newVelocity = a_particleVelocity + u_particleAcceleration * deltaAdjust;
 
   float resistance = texture(u_backgroundTexture, a_particlePosition / 2.0 + 0.5).r;
   if (resistance > 0.5) {
-    newVelocity = u_particleAcceleration * u_particleStuckSpeedFactor / 1.666 * u_delta;;
+    newVelocity = u_particleAcceleration * u_particleStuckSpeedFactor;
   }
 
   // This is mostly for when particles have gone off screen to avoid any
@@ -132,7 +150,7 @@ void main() {
     newVelocity = 0.5;
   }
 
-  vec2 newPosition = a_particlePosition - vec2(0.0, newVelocity);
+  vec2 newPosition = a_particlePosition - vec2(0.0, newVelocity) * deltaAdjust;
   if (newPosition.y < -1.0) {
     // For some reason just one of them would be 0.0 far too often
     float randChance = rand(vec2(a_particleRandSeed, fract(newPosition.y)));
@@ -189,12 +207,13 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
   twgl.addExtensionsToContext(gl);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
-  const particlePositionsArray = new Float32Array(userConfig.particles * 2);
-  const particleVelocitiesArray = new Float32Array(userConfig.particles);
-  const particleRandSeedsArray = new Float32Array(userConfig.particles);
-  const particleSizeVariancesArray = new Float32Array(userConfig.particles);
+  const particleCount = userConfig.particles.count;
+  const particlePositionsArray = new Float32Array(particleCount * 2);
+  const particleVelocitiesArray = new Float32Array(particleCount);
+  const particleRandSeedsArray = new Float32Array(particleCount);
+  const particleSizeVariancesArray = new Float32Array(particleCount);
 
-  for (let i = 0; i < userConfig.particles; i++) {
+  for (let i = 0; i < particleCount; i++) {
     particlePositionsArray[i * 2] = random.range(-1, 1);
     particlePositionsArray[i * 2 + 1] = -1.1;
     particleVelocitiesArray[i] = 0;
@@ -271,7 +290,7 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
 
   if (hasChanged) {
     // TODO: handle this
-    if (userConfig.particles !== state.renderBufferInfo.numElements) {
+    if (userConfig.particles.count !== state.renderBufferInfo.numElements) {
       window.location.reload();
     }
 
@@ -289,19 +308,19 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
   const { programInfo, renderBufferInfo, updateBufferInfo, transformFeedback } =
     state;
 
-  const { bgColor, particleColor } = userConfig;
+  const { background: bgColor, particles: particleColor } = userConfig.colors;
   gl.clearColor(bgColor.r, bgColor.g, bgColor.b, 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   const uniforms = {
     u_delta: delta,
-    u_particleAcceleration: userConfig.particleAcceleration,
-    u_particleSize: userConfig.particleSize,
+    u_particleAcceleration: userConfig.particles.acceleration,
+    u_particleSize: userConfig.particles.size,
     u_particleColor: [particleColor.r, particleColor.g, particleColor.b],
     u_backgroundTexture: state.backgroundTexture,
-    u_particleAddChance: userConfig.particleAddChance,
-    u_particleSizeVariance: userConfig.particleSizeVariance,
-    u_particleStuckSpeedFactor: userConfig.particleStuckSpeedFactor,
+    u_particleAddChance: userConfig.particles.addChance,
+    u_particleSizeVariance: userConfig.particles.sizeVariance,
+    u_particleStuckSpeedFactor: userConfig.particles.stuckSpeedFactor,
   };
 
   gl.useProgram(programInfo.program);
