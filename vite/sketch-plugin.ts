@@ -39,6 +39,8 @@ export default function sketchbookPlugin(): VitePlugin {
             );
             export default component;
 
+            let oldUserConfig = JSON.stringify(sketchConfig.userConfig);
+
             if (import.meta.hot) {
               import.meta.hot.accept((newModule) => {
                 const keys = Object.keys(newModule);
@@ -69,15 +71,14 @@ export default function sketchbookPlugin(): VitePlugin {
                           window.location.reload();
                         }
                       } else if (key === 'userConfig' && window.__sketch_canvasData) {
-                        if (
-                          JSON.stringify(oldSketchConfig.userConfig)
-                          !== JSON.stringify(newSketchConfig.userConfig)
-                        ) {
+                        const newUserConfig = JSON.stringify(newSketchConfig.userConfig);
+                        if (oldUserConfig !== newUserConfig) {
                           Object.assign(
                             window.__sketch_canvasData.sketchConfig.userConfig,
                             newSketchConfig.userConfig
                           );
                           window.__sketch_canvasData.hasChanged = true;
+                          oldUserConfig = newUserConfig;
 
                           const plugins = window.__sketch_canvasData.plugins;
 
