@@ -58,23 +58,13 @@ uniform vec2 u_resolution;
 uniform float u_particleSize;
 uniform sampler2D u_backgroundTexture;
 
-in vec4 a_positoin;
 in vec2 a_particlePosition;
 
 out float v_color;
 
 void main() {
-  vec4 transformed = a_positoin;
-
-  // Transform to small squares
-  transformed.y /= u_resolution.y / u_resolution.x;
-  transformed.xy *= u_particleSize / u_resolution.y;
-
-  // Transform to positions
-  transformed.x += a_particlePosition.x;
-  transformed.y += a_particlePosition.y;
-
-  gl_Position = transformed;
+  gl_PointSize = u_particleSize;
+  gl_Position = vec4(a_particlePosition, 0.0, 1.0);
 
   v_color = texture(u_backgroundTexture, a_particlePosition / 2.0 + 0.5).r;
 }
@@ -123,7 +113,6 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
   }
 
   const arrays: twgl.Arrays = {
-    a_positoin: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0],
     a_particlePosition: {
       numComponents: 2,
       data: particlePositionsArray,
@@ -174,8 +163,8 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
   twgl.drawBufferInfo(
     gl,
     bufferInfo,
-    gl.TRIANGLES,
-    undefined,
+    gl.POINTS,
+    2,
     0,
     userConfig.particles
   );
