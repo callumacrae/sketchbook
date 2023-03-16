@@ -21,7 +21,9 @@ export interface CanvasState {
   backgroundTexture: WebGLTexture;
 }
 
+let urlText = new URLSearchParams(window.location.search).get('text');
 const userConfig = {
+  text: urlText || 'Hello world',
   particles: 10000,
   particleSize: 5,
   particleAcceleration: 0.0001,
@@ -32,13 +34,17 @@ const userConfig = {
 };
 export type UserConfig = typeof userConfig;
 
-const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(({ config, pane }) => {
-  // pane.addInput(config, 'particles', { min: 1000, max: 100000 });
-  pane.addInput(config, 'particleSize', { min: 1, max: 20 });
-  pane.addInput(config, 'particleAcceleration', { min: 0.00001, max: 0.001 });
-  pane.addInput(config, 'bgColor', { color: { type: 'float' }});
-  pane.addInput(config, 'particleColor', { color: { type: 'float' }});
-});
+const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
+  ({ config, pane }) => {
+    pane.addInput(config, 'text');
+
+    // pane.addInput(config, 'particles', { min: 1000, max: 100000 });
+    pane.addInput(config, 'particleSize', { min: 1, max: 20 });
+    pane.addInput(config, 'particleAcceleration', { min: 0.00001, max: 0.001 });
+    pane.addInput(config, 'bgColor', { color: { type: 'float' } });
+    pane.addInput(config, 'particleColor', { color: { type: 'float' } });
+  }
+);
 
 export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   type: 'webgl2',
@@ -46,13 +52,17 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   plugins: [tweakpanePlugin],
 };
 
-function initBackground({ width, height }: { width: number; height: number }) {
+export function initBackground({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}) {
   const canvasWidth = width / 16;
   const canvasHeight = height / 16;
 
   return doWorkOffscreen(canvasWidth, canvasHeight, (ctx) => {
-    const text = 'Hello world';
-
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
@@ -60,12 +70,15 @@ function initBackground({ width, height }: { width: number; height: number }) {
     ctx.font = `100 ${30}px sans-serif`;
     ctx.textAlign = 'center';
 
+    const { text } = userConfig;
     const textHeight = ctx.measureText(text).actualBoundingBoxAscent;
     ctx.fillText(text, canvasWidth / 2, canvasHeight / 2 + textHeight / 2);
   });
 }
 
-const vertexShader = glsl`#version 300 es
+export const vertexShader = glsl`#version 300 es
+
+#define PI 3.141592653589793
 
 uniform float u_delta;
 uniform float u_particleAcceleration;
@@ -74,15 +87,32 @@ uniform sampler2D u_backgroundTexture;
 
 in vec2 a_particlePosition;
 in float a_particleVelocity;
+in float a_particleRandSeed;
+
 out vec2 v_particlePosition;
 out float v_particleVelocity;
 
-out float v_color;
+/** VENDOR START **/
+// http://byteblacksmith.com/improvements-to-the-canonical-one-liner-glsl-rand-for-opengl-es-2-0/
+highp float rand( const in vec2 uv ) {
+  const highp float a = 12.9898, b = 78.233, c = 43758.5453;
+  highp float dt = dot( uv.xy, vec2( a,b ) ), sn = mod( dt, PI );
+  return fract( sin( sn ) * c );
+}
+/** VENDOR END **/
 
 void main() {
   float newVelocity = a_particleVelocity + u_particleAcceleration / 16.666 * u_delta;
+
+  float resistance = texture(u_backgroundTexture, a_particlePosition / 2.0 + 0.5).r;
+  // newVelocity *= (1.0 - pow(resistance, 2.0));
+  if (resistance > 0.5) {
+    newVelocity = 0.001;
+  }
+
   vec2 newPosition = a_particlePosition - vec2(0.0, newVelocity);
   if (newPosition.y < -1.0) {
+    newPosition.x = rand(vec2(newPosition.x, a_particleRandSeed)) * 2.0 - 1.0;
     newPosition.y = 1.0;
     newVelocity = 0.0;
   }
@@ -90,24 +120,21 @@ void main() {
   gl_PointSize = u_particleSize;
   gl_Position = vec4(newPosition, 0.0, 1.0);
 
-  v_color = texture(u_backgroundTexture, a_particlePosition / 2.0 + 0.5).r;
-
   v_particlePosition = newPosition;
   v_particleVelocity = newVelocity;
 }
 `;
 
-const fragmentShader = glsl`#version 300 es
+export const fragmentShader = glsl`#version 300 es
 
 precision mediump float;
 
 uniform vec3 u_particleColor;
 
-in float v_color;
 out vec4 o_fragColor;
 
 void main() {
-  o_fragColor = vec4(u_particleColor * v_color, 1.0);
+  o_fragColor = vec4(u_particleColor, 1.0);
 }
 `;
 
@@ -122,16 +149,24 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
     return true;
   });
 
+  if (urlText) {
+    userConfig.text = urlText;
+    tweakpanePlugin.refresh();
+    urlText = null;
+  }
+
   twgl.addExtensionsToContext(gl);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
   const particlePositionsArray = new Float32Array(userConfig.particles * 2);
   const particleVelocitiesArray = new Float32Array(userConfig.particles);
+  const particleRandSeedsArray = new Float32Array(userConfig.particles);
 
   for (let i = 0; i < userConfig.particles; i++) {
     particlePositionsArray[i * 2] = random.range(-1, 1);
     particlePositionsArray[i * 2 + 1] = random.range(3, 1);
     particleVelocitiesArray[i] = 0;
+    particleRandSeedsArray[i] = random.range(-1, 1);
   }
 
   const renderBufferInfo = twgl.createBufferInfoFromArrays(gl, {
@@ -147,6 +182,11 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
       divisor: 1,
       drawType: gl.DYNAMIC_COPY,
     } as twgl.FullArraySpec,
+    a_particleRandSeed: {
+      numComponents: 1,
+      data: particleRandSeedsArray,
+      divisor: 1,
+    },
   });
   const updateBufferInfo = twgl.createBufferInfoFromArrays(gl, {
     v_particlePosition: {
