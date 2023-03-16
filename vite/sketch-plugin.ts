@@ -110,7 +110,7 @@ export default function sketchbookPlugin(): VitePlugin {
                   } else if (key === 'frame') {
                     hotReloadSuccess = true;
                   } else {
-                    const keyRegex = new RegExp('\\\\b' + key + '\\\\b', 'g');
+                    const keyRegex = new RegExp('\\\\b' + key + '\\\\b');
                     const isInInit = keyRegex.test(initFn);
                     if (keyRegex.test(frameFn)) {
                       hotReloadSuccess = true;
@@ -122,7 +122,7 @@ export default function sketchbookPlugin(): VitePlugin {
                         const matches = frameFn.matchAll(regex);
                         let handledInHasChanged = false;
                         for (const match of matches) {
-                          if (match[2].includes(key)) {
+                          if (keyRegex.test(match[2])) {
                             handledInHasChanged = true;
                           }
                         }

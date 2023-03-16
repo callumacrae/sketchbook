@@ -105,7 +105,6 @@ void main() {
   float newVelocity = a_particleVelocity + u_particleAcceleration / 16.666 * u_delta;
 
   float resistance = texture(u_backgroundTexture, a_particlePosition / 2.0 + 0.5).r;
-  // newVelocity *= (1.0 - pow(resistance, 2.0));
   if (resistance > 0.5) {
     newVelocity = 0.001;
   }
