@@ -96,15 +96,16 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
 export function initBackground({
   width,
   height,
+  userConfig,
 }: {
   width: number;
   height: number;
+  userConfig: UserConfig;
 }) {
   const canvasWidth = width / 16;
   const canvasHeight = height / 16;
 
   return doWorkOffscreen(canvasWidth, canvasHeight, (ctx) => {
-    // TODO: pass userConfig into function, don't use global
     const { text, textSize } = userConfig;
 
     ctx.fillStyle = 'black';
@@ -280,7 +281,7 @@ void main() {
 `;
 
 export const init: InitFn<CanvasState, UserConfig> = (props) => {
-  const { gl2: gl } = props;
+  const { gl2: gl, userConfig } = props;
   if (!gl) throw new Error('???');
 
   if (urlText) {
@@ -372,7 +373,7 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-  const { gl2: gl, state, delta, timestamp, hasChanged } = props;
+  const { gl2: gl, state, delta, timestamp, userConfig, hasChanged } = props;
   if (!gl) throw new Error('???');
 
   if (hasChanged) {
