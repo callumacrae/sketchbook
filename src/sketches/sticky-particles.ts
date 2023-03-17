@@ -1,10 +1,12 @@
 import * as twgl from 'twgl.js';
+import { easePolyIn, easePolyInOut } from 'd3-ease';
+import BezierEasing from 'bezier-easing';
+
 import NoiseMachine, {
   BandedNoiseGenerator,
+  CustomNoiseGenerator,
   SimplexNoiseGenerator,
 } from '@/utils/noise';
-import { easePolyIn, easePolyInOut } from 'd3-ease';
-
 import { doWorkOffscreen } from '@/utils/canvas/utils';
 import * as random from '@/utils/random';
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
@@ -35,11 +37,11 @@ const userConfig = {
 
   particles: {
     count: 20000,
-    size: 10,
-    sizeVariance: 5,
+    size: 6,
+    sizeVariance: 3,
     accelerationFactor: 1,
-    stuckSpeedFactor: 0.25,
-    addChanceFactor: 1.7,
+    stuckSpeedFactor: 1,
+    addChanceFactor: 10,
   },
 
   colors: {
@@ -68,11 +70,11 @@ const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
     });
     particleFolder.addInput(config.particles, 'stuckSpeedFactor', {
       min: 0,
-      max: 2,
+      max: 4,
     });
     particleFolder.addInput(config.particles, 'addChanceFactor', {
       min: 0,
-      max: 5,
+      max: 20,
     });
 
     const colorsFolder = pane.addFolder({ title: 'Colors' });
@@ -120,13 +122,13 @@ export function initBackground({
 export function initAddChanceNoiseMachine() {
   const noiseMachine = new NoiseMachine();
 
-  const generalNoiseFactor = 0.2;
+  const generalNoiseFactor = 0.05;
   const fastNoise = new SimplexNoiseGenerator({
-    inputFactor: 0.002,
+    inputFactor: 0.001,
     range: [0, 1],
   });
   const slowNoise = new SimplexNoiseGenerator({
-    inputFactor: 0.0001,
+    inputFactor: 0.00005,
     range: [0, generalNoiseFactor],
     factor: fastNoise,
   });
@@ -135,7 +137,7 @@ export function initAddChanceNoiseMachine() {
   const bandedNoiseGenerator = new BandedNoiseGenerator({
     bandFreqency: new SimplexNoiseGenerator({
       inputFactor: 0.00001,
-      range: [100, 150],
+      range: [200, 250],
     }),
     bandSize: 50,
     factor: new SimplexNoiseGenerator({
@@ -143,7 +145,9 @@ export function initAddChanceNoiseMachine() {
       range: [0, 1],
       factor(x) {
         const slowNoiseOut = slowNoise.get(x);
-        return 0.2 + (generalNoiseFactor - slowNoiseOut) * 3;
+        return (
+          0.2 + ((generalNoiseFactor - slowNoiseOut) / generalNoiseFactor) * 0.6
+        );
       },
       easing: easePolyIn.exponent(5),
     }),
@@ -151,27 +155,23 @@ export function initAddChanceNoiseMachine() {
   });
   noiseMachine.add(bandedNoiseGenerator);
 
+  const occasionalHeavyNoise = new CustomNoiseGenerator(() => {
+    return random.chance(0.007) ? 100000 : 0;
+  });
+  noiseMachine.add(occasionalHeavyNoise);
+
   return noiseMachine;
 }
 
 export function initAccelerationNoiseMachine() {
   const noiseMachine = new NoiseMachine();
 
-  const slowNoise = new SimplexNoiseGenerator({
-    inputFactor: 0.0001,
-    range: [-0.3, 0.7],
-    factor: 0.001,
-    easing: easePolyInOut.exponent(5),
+  const extremeNoise = new SimplexNoiseGenerator({
+    inputFactor: 0.0003,
+    easing: BezierEasing(.17,.13,0,1.03),
+    factor: -0.001,
   });
-  noiseMachine.add(slowNoise);
-
-  const fastNoise = new SimplexNoiseGenerator({
-    inputFactor: 0.0005,
-    range: [-0.1, 0.9],
-    factor: 0,
-    easing: easePolyInOut.exponent(5),
-  });
-  noiseMachine.add(fastNoise);
+  noiseMachine.add(extremeNoise);
 
   return noiseMachine;
 }
@@ -220,17 +220,25 @@ void main() {
     newVelocity = 0.5;
   }
 
-  vec2 newPosition = a_particlePosition - vec2(0.0, newVelocity) * deltaAdjust;
+  vec2 newPosition = a_particlePosition + vec2(0.0, newVelocity) * deltaAdjust;
   bool offScreen = newPosition.y < -1.0 || newPosition.y > 1.0;
 
   if (offScreen) {
-    // For some reason just one of them would be 0.0 far too often
-    float randChance = rand(vec2(a_particleRandSeed, fract(newPosition.y)));
-    float randChance2 = rand(vec2(fract(newPosition.y), a_particleRandSeed));
+    float randChance = 0.0;
+    bool addParticle = false;
+    if (u_particleAddChance > 1000.0) {
+      float randChance2 = rand(vec2(fract(newPosition.y), a_particleRandSeed));
+      addParticle = randChance2 < 0.03;
+    } else {
+      // For some reason just one of them would be 0.0 far too often
+      randChance = rand(vec2(a_particleRandSeed, fract(newPosition.y)));
+      float randChance2 = rand(vec2(fract(newPosition.y), a_particleRandSeed));
+      addParticle = randChance + randChance2 < u_particleAddChance * deltaAdjust;
+    }
 
-    if (randChance + randChance2 < u_particleAddChance * deltaAdjust) {
+    if (addParticle) {
       newPosition.x = rand(vec2(newPosition.x, a_particleRandSeed)) * 2.0 - 1.0;
-      if (u_particleAcceleration > 0.0) {
+      if (u_particleAcceleration < 0.0) {
         newPosition.y = 1.0 + randChance / 10.0;
       } else {
         newPosition.y = -1.0 - randChance / 10.0;
@@ -382,6 +390,9 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
     state.backgroundTexture = twgl.createTexture(gl, {
       src: initBackground(props),
     });
+
+    state.addChanceNoiseMachine = initAddChanceNoiseMachine();
+    state.accelerationNoiseMachine = initAccelerationNoiseMachine();
   }
 
   const {

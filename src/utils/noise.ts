@@ -180,3 +180,16 @@ export class SineGenerator implements NoiseGenerator {
     return value;
   }
 }
+
+type CustomNoiseGeneratorFn = (x: number) => number;
+export class CustomNoiseGenerator implements NoiseGenerator {
+  private fn: CustomNoiseGeneratorFn;
+
+  constructor(fn: CustomNoiseGeneratorFn) {
+    this.fn = fn;
+  }
+
+  get(x: number) {
+    return this.fn(x);
+  }
+}
