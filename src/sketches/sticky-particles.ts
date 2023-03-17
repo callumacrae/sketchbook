@@ -42,11 +42,11 @@ const userConfig = {
 
   particles: {
     count: 20000,
-    size: 6,
+    size: 4,
     sizeVariance: 3,
-    accelerationFactor: 1,
-    stuckSpeedFactor: 1,
-    addChanceFactor: 10,
+    accelerationFactor: 1.6,
+    stuckSpeedFactor: 0.8,
+    addChanceFactor: 30,
 
     velocityMode: VelocityMode.Acceleration as VelocityMode,
   },
@@ -81,7 +81,7 @@ const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
     });
     particleFolder.addInput(config.particles, 'addChanceFactor', {
       min: 0,
-      max: 20,
+      max: 40,
     });
     particleFolder.addInput(config.particles, 'velocityMode', {
       options: {
@@ -256,7 +256,7 @@ void main() {
   }
 
   vec2 newPosition = a_particlePosition + vec2(0.0, newVelocity) * deltaAdjust;
-  bool offScreen = newPosition.y < -1.0 || newPosition.y > 1.0;
+  bool offScreen = newPosition.y < -1.2 || newPosition.y > 1.2;
 
   if (offScreen) {
     float randChance = 0.0;
