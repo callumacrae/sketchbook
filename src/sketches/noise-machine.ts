@@ -4,7 +4,6 @@ import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import NoiseMachine, {
   BandedNoiseGenerator,
   SimplexNoiseGenerator,
-  SineGenerator,
 } from '@/utils/noise';
 import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 

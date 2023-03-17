@@ -66,7 +66,6 @@ export class SimplexNoiseGenerator implements NoiseGenerator {
     const inputFactor = resolveVal(this.options.inputFactor, x);
 
     let value = this.simplex.noise2D(x * inputFactor, this.noiseSeed) / 2 + 0.5;
-
     value = this.options.easing(value);
 
     if (Array.isArray(this.options.range)) {
@@ -77,9 +76,7 @@ export class SimplexNoiseGenerator implements NoiseGenerator {
       value = value * 2 - 1;
     }
 
-    if (this.options.factor) {
-      value *= resolveVal(this.options.factor, x);
-    }
+    value *= resolveVal(this.options.factor, x);
 
     return value;
   }
@@ -136,9 +133,7 @@ export class BandedNoiseGenerator implements NoiseGenerator {
       value = value * 2 - 1;
     }
 
-    if (this.options.factor) {
-      value *= resolveVal(this.options.factor, x);
-    }
+    value *= resolveVal(this.options.factor, x);
 
     return value;
   }
@@ -180,9 +175,7 @@ export class SineGenerator implements NoiseGenerator {
       value = value * 2 - 1;
     }
 
-    if (this.options.factor) {
-      value *= resolveVal(this.options.factor, x);
-    }
+    value *= resolveVal(this.options.factor, x);
 
     return value;
   }

@@ -1,5 +1,8 @@
 import * as twgl from 'twgl.js';
-import SimplexNoise from 'simplex-noise';
+import NoiseMachine, {
+  BandedNoiseGenerator,
+  SimplexNoiseGenerator,
+} from '@/utils/noise';
 import { easePolyIn, easePolyInOut } from 'd3-ease';
 
 import { doWorkOffscreen } from '@/utils/canvas/utils';
@@ -16,7 +19,8 @@ export const meta = {
 const glsl = String.raw;
 
 export interface CanvasState {
-  simplex: SimplexNoise;
+  addChanceNoiseMachine: NoiseMachine;
+  accelerationNoiseMachine: NoiseMachine;
   programInfo: twgl.ProgramInfo;
   renderBufferInfo: twgl.BufferInfo;
   updateBufferInfo: twgl.BufferInfo;
@@ -113,6 +117,65 @@ export function initBackground({
   });
 }
 
+export function initAddChanceNoiseMachine() {
+  const noiseMachine = new NoiseMachine();
+
+  const generalNoiseFactor = 0.2;
+  const fastNoise = new SimplexNoiseGenerator({
+    inputFactor: 0.002,
+    range: [0, 1],
+  });
+  const slowNoise = new SimplexNoiseGenerator({
+    inputFactor: 0.0001,
+    range: [0, generalNoiseFactor],
+    factor: fastNoise,
+  });
+  noiseMachine.add(slowNoise);
+
+  const bandedNoiseGenerator = new BandedNoiseGenerator({
+    bandFreqency: new SimplexNoiseGenerator({
+      inputFactor: 0.00001,
+      range: [100, 150],
+    }),
+    bandSize: 50,
+    factor: new SimplexNoiseGenerator({
+      inputFactor: 0.001,
+      range: [0, 1],
+      factor(x) {
+        const slowNoiseOut = slowNoise.get(x);
+        return 0.2 + (generalNoiseFactor - slowNoiseOut) * 3;
+      },
+      easing: easePolyIn.exponent(5),
+    }),
+    easing: easePolyInOut.exponent(3),
+  });
+  noiseMachine.add(bandedNoiseGenerator);
+
+  return noiseMachine;
+}
+
+export function initAccelerationNoiseMachine() {
+  const noiseMachine = new NoiseMachine();
+
+  const slowNoise = new SimplexNoiseGenerator({
+    inputFactor: 0.0001,
+    range: [-0.3, 0.7],
+    factor: 0.001,
+    easing: easePolyInOut.exponent(5),
+  });
+  noiseMachine.add(slowNoise);
+
+  const fastNoise = new SimplexNoiseGenerator({
+    inputFactor: 0.0005,
+    range: [-0.1, 0.9],
+    factor: 0,
+    easing: easePolyInOut.exponent(5),
+  });
+  noiseMachine.add(fastNoise);
+
+  return noiseMachine;
+}
+
 export const vertexShader = glsl`#version 300 es
 
 #define PI 3.141592653589793
@@ -165,7 +228,7 @@ void main() {
     float randChance = rand(vec2(a_particleRandSeed, fract(newPosition.y)));
     float randChance2 = rand(vec2(fract(newPosition.y), a_particleRandSeed));
 
-    if (randChance + randChance2 < u_particleAddChance) {
+    if (randChance + randChance2 < u_particleAddChance * deltaAdjust) {
       newPosition.x = rand(vec2(newPosition.x, a_particleRandSeed)) * 2.0 - 1.0;
       if (u_particleAcceleration > 0.0) {
         newPosition.y = 1.0 + randChance / 10.0;
@@ -290,7 +353,8 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
   });
 
   return {
-    simplex: new SimplexNoise(),
+    addChanceNoiseMachine: initAddChanceNoiseMachine(),
+    accelerationNoiseMachine: initAccelerationNoiseMachine(),
     programInfo,
     renderBufferInfo,
     updateBufferInfo,
@@ -321,52 +385,16 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
   }
 
   const {
-    simplex,
+    addChanceNoiseMachine,
+    accelerationNoiseMachine,
     programInfo,
     renderBufferInfo,
     updateBufferInfo,
     transformFeedback,
   } = state;
 
-  let addChance = 0;
-  {
-    const generalNoiseFactor = 0.2;
-    const slowNoise = simplex.noise2D(0, timestamp * 0.0001) / 2 + 0.5;
-    const fastNoise = simplex.noise2D(1, timestamp * 0.002) / 2 + 0.5;
-    addChance = slowNoise * fastNoise * generalNoiseFactor;
-
-    const bandedNoiseFrequency =
-      125 + 25 * simplex.noise2D(2, timestamp * 0.00001);
-    const bandedNoiseSize = 50;
-    const easeBandedNoiseNoise = easePolyIn.exponent(5);
-    const bandedNoiseNoise =
-      easeBandedNoiseNoise(simplex.noise2D(3, timestamp * 0.001) / 2 + 0.5) *
-      (0.2 + (generalNoiseFactor - addChance) * 3);
-
-    const distFromBand = Math.abs(
-      timestamp -
-        Math.round(timestamp / bandedNoiseFrequency) * bandedNoiseFrequency
-    );
-    let bandResult = 0;
-    if (distFromBand < bandedNoiseSize) {
-      bandResult = (bandedNoiseSize - distFromBand) / bandedNoiseSize;
-    }
-    const easeBandResult = easePolyIn.exponent(3);
-    addChance += easeBandResult(bandResult) * bandedNoiseNoise;
-  }
-
-  let acceleration = 0;
-  {
-    const slowNoise = simplex.noise2D(4, timestamp * 0.0001) / 2 + 0.5;
-    const easeSlowNoise = easePolyInOut.exponent(5);
-
-    const fastNoise = simplex.noise2D(5, timestamp * 0.0005) / 2 + 0.5;
-    const easeFastNoise = easePolyInOut.exponent(5);
-
-    acceleration =
-      (easeSlowNoise(slowNoise) - 0.3) * 0.001 +
-      (easeFastNoise(fastNoise) - 0.1) * 0.000;
-  }
+  const addChance = addChanceNoiseMachine.get(timestamp);
+  const acceleration = accelerationNoiseMachine.get(timestamp);
 
   const { background: bgColor, particles: particleColor } = userConfig.colors;
   gl.clearColor(bgColor.r, bgColor.g, bgColor.b, 1);
