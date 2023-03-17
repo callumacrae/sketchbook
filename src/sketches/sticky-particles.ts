@@ -30,6 +30,11 @@ export interface CanvasState {
   backgroundTexture: WebGLTexture;
 }
 
+enum VelocityMode {
+  Acceleration,
+  Static,
+}
+
 let urlText = new URLSearchParams(window.location.search).get('text');
 const userConfig = {
   text: urlText || 'Hello world',
@@ -42,6 +47,8 @@ const userConfig = {
     accelerationFactor: 1,
     stuckSpeedFactor: 1,
     addChanceFactor: 10,
+
+    velocityMode: VelocityMode.Acceleration as VelocityMode,
   },
 
   colors: {
@@ -75,6 +82,12 @@ const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
     particleFolder.addInput(config.particles, 'addChanceFactor', {
       min: 0,
       max: 20,
+    });
+    particleFolder.addInput(config.particles, 'velocityMode', {
+      options: {
+        Acceleration: VelocityMode.Acceleration,
+        Static: VelocityMode.Static,
+      },
     });
 
     const colorsFolder = pane.addFolder({ title: 'Colors' });
@@ -167,12 +180,26 @@ export function initAddChanceNoiseMachine() {
 export function initAccelerationNoiseMachine() {
   const noiseMachine = new NoiseMachine();
 
-  const extremeNoise = new SimplexNoiseGenerator({
+  // This noise decides whether the value will be above or below zero, but
+  // tries to keep it from stay at zero too long
+  const easing1 = BezierEasing(0.11, 0, 0, 1);
+  // lower number = less likely to accelerate upwards
+  const easing2 = easePolyIn.exponent(0.7);
+  // higher number = steeper gradient, less likely to sit around zero
+  const easing3 = easePolyInOut.exponent(6);
+  const noiseBase = new SimplexNoiseGenerator({
     inputFactor: 0.0003,
-    easing: BezierEasing(.17,.13,0,1.03),
-    factor: -0.001,
+    easing: (x) => easing3(easing2(easing1(x))),
+    factor: -0.0008,
   });
-  noiseMachine.add(extremeNoise);
+  noiseMachine.add(noiseBase);
+
+  // This noise adds a bit of variation to the previous slower one
+  const fastNoise = new SimplexNoiseGenerator({
+    inputFactor: 0.001,
+    factor: 0.0002,
+  });
+  noiseMachine.add(fastNoise);
 
   return noiseMachine;
 }
@@ -188,6 +215,7 @@ uniform sampler2D u_backgroundTexture;
 uniform float u_particleAddChance;
 uniform float u_particleSizeVariance;
 uniform float u_particleStuckSpeedFactor;
+uniform float u_particleVelocityMode;
 
 in vec2 a_particlePosition;
 in float a_particleVelocity;
@@ -208,7 +236,13 @@ highp float rand( const in vec2 uv ) {
 
 void main() {
   float deltaAdjust = u_delta / 16.666;
-  float newVelocity = a_particleVelocity + u_particleAcceleration * deltaAdjust;
+  float newVelocity = a_particleVelocity;
+
+  if (u_particleVelocityMode == ${VelocityMode.Acceleration.toFixed(1)}) {
+    newVelocity += u_particleAcceleration * deltaAdjust;
+  } else {
+    newVelocity = u_particleAcceleration * 70.0;
+  }
 
   float resistance = texture(u_backgroundTexture, a_particlePosition / 2.0 + 0.5).r;
   if (resistance > 0.5) {
@@ -422,6 +456,7 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
     u_particleAddChance: addChance * userConfig.particles.addChanceFactor,
     u_particleSizeVariance: userConfig.particles.sizeVariance,
     u_particleStuckSpeedFactor: userConfig.particles.stuckSpeedFactor,
+    u_particleVelocityMode: userConfig.particles.velocityMode,
   };
 
   gl.useProgram(programInfo.program);

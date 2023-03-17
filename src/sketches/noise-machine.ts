@@ -1,4 +1,5 @@
 import { easePolyIn, easePolyInOut } from 'd3-ease';
+import BezierEasing from 'bezier-easing';
 
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
 import NoiseMachine, {
@@ -32,36 +33,54 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
 export const init: InitFn<CanvasState, UserConfig> = () => {
   const noiseMachine = new NoiseMachine();
 
-  const generalNoiseFactor = 0.2;
-  const fastNoise = new SimplexNoiseGenerator({
-    inputFactor: 0.002,
-    range: [0, 1],
+  // This noise decides whether the value will be above or below zero, but
+  // tries to keep it from stay at zero too long
+  const easing1 = BezierEasing(0.11, 0, 0, 1);
+  const easing2 = easePolyIn.exponent(0.7);
+  const easing3 = easePolyInOut.exponent(6);
+  const noiseBase = new SimplexNoiseGenerator({
+    inputFactor: 0.005,
+    easing: (x) => easing3(easing2(easing1(x))),
+    factor: 0.7,
   });
-  const slowNoise = new SimplexNoiseGenerator({
-    inputFactor: 0.0001,
-    range: [0, generalNoiseFactor],
-    factor: fastNoise,
-  });
-  noiseMachine.add(slowNoise);
+  noiseMachine.add(noiseBase);
 
-  const bandedNoiseGenerator = new BandedNoiseGenerator({
-    bandFreqency: new SimplexNoiseGenerator({
-      inputFactor: 0.00001,
-      range: [100, 150],
-    }),
-    bandSize: 50,
-    factor: new SimplexNoiseGenerator({
-      inputFactor: 0.001,
-      range: [0, 1],
-      factor(x) {
-        const slowNoiseOut = slowNoise.get(x);
-        return 0.2 + (generalNoiseFactor - slowNoiseOut) * 3;
-      },
-      easing: easePolyIn.exponent(5),
-    }),
-    easing: easePolyInOut.exponent(3),
+  const fastNoise = new SimplexNoiseGenerator({
+    inputFactor: 0.01,
+    factor: 0.3,
   });
-  noiseMachine.add(bandedNoiseGenerator);
+  noiseMachine.add(fastNoise);
+
+  // const generalNoiseFactor = 0.2;
+  // const fastNoise = new SimplexNoiseGenerator({
+  //   inputFactor: 0.002,
+  //   range: [0, 1],
+  // });
+  // const slowNoise = new SimplexNoiseGenerator({
+  //   inputFactor: 0.0001,
+  //   range: [0, generalNoiseFactor],
+  //   factor: fastNoise,
+  // });
+  // noiseMachine.add(slowNoise);
+  //
+  // const bandedNoiseGenerator = new BandedNoiseGenerator({
+  //   bandFreqency: new SimplexNoiseGenerator({
+  //     inputFactor: 0.00001,
+  //     range: [100, 150],
+  //   }),
+  //   bandSize: 50,
+  //   factor: new SimplexNoiseGenerator({
+  //     inputFactor: 0.001,
+  //     range: [0, 1],
+  //     factor(x) {
+  //       const slowNoiseOut = slowNoise.get(x);
+  //       return 0.2 + (generalNoiseFactor - slowNoiseOut) * 3;
+  //     },
+  //     easing: easePolyIn.exponent(5),
+  //   }),
+  //   easing: easePolyInOut.exponent(3),
+  // });
+  // noiseMachine.add(bandedNoiseGenerator);
 
   return { noiseMachine };
 };
