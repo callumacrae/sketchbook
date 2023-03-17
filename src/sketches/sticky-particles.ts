@@ -128,8 +128,15 @@ export function initBackground({
     ctx.font = `100 ${textSize}px sans-serif`;
     ctx.textAlign = 'center';
 
-    const textHeight = ctx.measureText(text).actualBoundingBoxAscent;
-    ctx.fillText(text, canvasWidth / 2, canvasHeight / 2 + textHeight / 2);
+    const splitText = text.split(' ');
+    if (splitText.length === 2 && canvasHeight > canvasWidth) {
+      const textHeight = ctx.measureText(splitText[0]).actualBoundingBoxAscent;
+      ctx.fillText(splitText[0], canvasWidth / 2, canvasHeight / 2);
+      ctx.fillText(splitText[1], canvasWidth / 2, canvasHeight / 2 + textHeight);
+    } else {
+      const textHeight = ctx.measureText(text).actualBoundingBoxAscent;
+      ctx.fillText(text, canvasWidth / 2, canvasHeight / 2 + textHeight / 2);
+    }
   });
 }
 
@@ -335,7 +342,7 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
 
   for (let i = 0; i < particleCount; i++) {
     particlePositionsArray[i * 2] = random.range(-1, 1);
-    particlePositionsArray[i * 2 + 1] = -1.1;
+    particlePositionsArray[i * 2 + 1] = -2.5;
     particleVelocitiesArray[i] = 0;
     particleRandSeedsArray[i] = random.range(-1, 1);
     particleSizeVariancesArray[i] = random.range(-0.5, 0.5);
