@@ -56,17 +56,21 @@ export const frame: FrameFn<CanvasState, UserConfig> = ({
   const resolution = 30;
   const variance = Math.PI / 6;
 
+  ctx.fillStyle = 'black';
+
   for (let x = 0; x < width; x += resolution) {
     for (let y = 0; y < height; y += resolution) {
       const distFromCenter = Math.sqrt(
         (x - width / 2) ** 2 + (y - height / 2) ** 2
       );
       if (distFromCenter < innerRing || distFromCenter > outerRing) {
-        continue;
+        ctx.strokeStyle = ctx.fillStyle = '#d5d5d5';
+      } else {
+        ctx.strokeStyle = ctx.fillStyle = 'black';
       }
 
       // const angle = state.simplex.noise2D(x, y) * Math.PI * 2;
-      const angle = Math.atan2(y - height / 2, x - width / 2) + Math.PI / 2;
+      const angle = Math.atan2(y - height / 2, x - width / 2) - Math.PI / 2;
 
       // This ensures that the field never points out of the circle
       const angleOffset =
@@ -77,13 +81,21 @@ export const frame: FrameFn<CanvasState, UserConfig> = ({
         (state.simplex.noise3D(x / 100, y / 100, timestamp / 2000) * variance) /
         2;
 
+      const lineLength = resolution * 0.8;
+
       ctx.translate(x, y);
       ctx.rotate(angle + angleOffset + noise);
-      // ctx.translate(resolution / 2, resolution / 2);
       ctx.beginPath();
-      ctx.moveTo(-resolution / 2, 0);
-      ctx.lineTo(resolution / 2, 0);
+      ctx.moveTo(lineLength / -2, 0);
+      ctx.lineTo(lineLength / 2, 0);
       ctx.stroke();
+
+      const arrowSize = lineLength / 4;
+      ctx.moveTo(lineLength / 2, 0);
+      ctx.lineTo(lineLength / 2 - arrowSize, arrowSize / 2);
+      ctx.lineTo(lineLength / 2 - arrowSize, -arrowSize / 2);
+      ctx.fill();
+
       ctx.resetTransform();
     }
   }
