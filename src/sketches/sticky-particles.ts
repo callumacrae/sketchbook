@@ -331,7 +331,6 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
     urlText = null;
   }
 
-  twgl.addExtensionsToContext(gl);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
   const particleCount = userConfig.particles.count;

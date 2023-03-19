@@ -8,7 +8,7 @@ import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 export const meta = {
   name: 'Flow field doughnut 2D',
   date: '2023-03-18',
-  tags: ['Canvas 2D', 'Flow field'],
+  tags: ['Canvas 2D', 'Particles', 'Flow field'],
 };
 
 export interface CanvasState {
