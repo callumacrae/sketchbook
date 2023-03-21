@@ -18,6 +18,7 @@ export interface CanvasState {
   renderBufferInfo: twgl.BufferInfo;
   updateBufferInfo: twgl.BufferInfo;
   transformFeedback: ReturnType<typeof twgl.createTransformFeedbackInfo>;
+  densityTexture: WebGLTexture;
 }
 
 const userConfig = {
@@ -35,7 +36,7 @@ export type UserConfig = typeof userConfig;
 
 const tweakpanePlugin = new TweakpanePlugin<CanvasState, UserConfig>(
   ({ pane, config }) => {
-    pane.addInput(config, 'particles', { min: 1, max: 1000, step: 1 });
+    pane.addInput(config, 'particles', { min: 1, max: 10000, step: 1 });
     pane.addInput(config, 'debugArrows');
     pane.addInput(config, 'resolution', { min: 10, max: 100 });
     pane.addInput(config, 'variance', { min: 0, max: Math.PI });
@@ -53,12 +54,51 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   plugins: [tweakpanePlugin],
 };
 
+export function positionsToDensityTexture(
+  gl: WebGL2RenderingContext,
+  positions: Float32Array,
+  width: number,
+  height: number,
+  densityTexture?: WebGLTexture
+) {
+  const textureWidth = Math.floor(width / 64);
+  const textureHeight = Math.floor(height / 64);
+
+  const grid = new Uint16Array(textureWidth * textureHeight);
+
+  for (let i = 0; i < positions.length; i += 2) {
+    const x = positions[i];
+    const y = positions[i + 1];
+    const gridX = Math.floor((x + 1) * (textureWidth / 2));
+    const gridY = Math.floor((y + 1) * (textureHeight / 2));
+    const index = gridX + gridY * textureWidth;
+    grid[index] += 1;
+  }
+
+  const textureOptions: twgl.TextureOptions = {
+    src: grid,
+    width: textureWidth,
+    height: textureHeight,
+    internalFormat: gl.R16UI,
+    format: gl.RED_INTEGER,
+    type: gl.UNSIGNED_SHORT,
+  };
+
+  if (densityTexture) {
+    twgl.setTextureFromArray(gl, densityTexture, grid, textureOptions);
+    return densityTexture;
+  }
+
+  return twgl.createTexture(gl, textureOptions);
+}
+
 export const vertexShader = glsl`#version 300 es
 
 #define PI 3.141592653589793
 
 ${snoise}
 
+uniform float u_delta;
 uniform float u_timestamp;
 uniform float u_variance;
 uniform float u_noiseInPosFactor;
@@ -90,6 +130,8 @@ float angleForCoords(vec2 coords) {
 }
 
 void main() {
+  float deltaAdjust = u_delta / 16.666;
+
   vec2 aheadPosition = a_position + a_velocity * u_lookAhead;
   float aheadPositionAngle = angleForCoords(aheadPosition);
   vec2 idealVelocity = vec2(
@@ -98,7 +140,7 @@ void main() {
   ) * u_velocity;
 
   vec2 newVelocity = mix(a_velocity, idealVelocity, u_acceleration);
-  vec2 newPosition = a_position + newVelocity;
+  vec2 newPosition = a_position + newVelocity * deltaAdjust;
 
   gl_PointSize = 5.0;
   gl_Position = vec4(newPosition, 0.0, 1.0);
@@ -112,18 +154,21 @@ export const fragmentShader = glsl`#version 300 es
 
 precision mediump float;
 
+uniform mediump usampler2D u_densityTexture;
+
+in vec2 v_position;
 out vec4 o_fragColor;
 
 void main() {
-  o_fragColor = vec4(1.0);
+  uint density = texture(u_densityTexture, v_position / 2.0 + 0.5).r;
+
+  o_fragColor = vec4(float(density) / 10.0, 1.0 - float(density) / 10.0, 1.0, 1.0);
 }
 `;
 
 export const init: InitFn<CanvasState, UserConfig> = (props) => {
-  const { gl2: gl, userConfig } = props;
+  const { gl2: gl, userConfig, width, height } = props;
   if (!gl) throw new Error('???');
-
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
   const particleCount = userConfig.particles;
   const particlePositionsArray = new Float32Array(particleCount * 2);
@@ -176,20 +221,45 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
     programInfo.program
   );
 
+  const densityTexture = positionsToDensityTexture(
+    gl,
+    particlePositionsArray,
+    width,
+    height
+  );
+
   return {
     programInfo,
     renderBufferInfo,
     updateBufferInfo,
     transformFeedback,
+    densityTexture,
   };
 };
 
 export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
-  const { gl2: gl, state, width, height, hasChanged, delta, timestamp, userConfig } = props;
+  const {
+    gl2: gl,
+    state,
+    width,
+    height,
+    hasChanged,
+    delta,
+    timestamp,
+    userConfig,
+  } = props;
   if (!gl) throw new Error('???');
 
-  const { programInfo, renderBufferInfo, updateBufferInfo, transformFeedback } =
-    state;
+  const {
+    programInfo,
+    renderBufferInfo,
+    updateBufferInfo,
+    transformFeedback,
+    densityTexture,
+  } = state;
+
+  if (!renderBufferInfo.attribs || !updateBufferInfo.attribs)
+    throw new Error('???');
 
   if (hasChanged) {
     state.programInfo = twgl.createProgramInfo(
@@ -215,6 +285,7 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
     u_velocity: userConfig.velocity,
     u_acceleration: userConfig.acceleration,
     u_lookAhead: userConfig.lookAhead,
+    u_densityTexture: densityTexture,
   });
 
   twgl.bindTransformFeedbackInfo(gl, transformFeedback, updateBufferInfo);
@@ -232,8 +303,18 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
   gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
 
-  if (!renderBufferInfo.attribs || !updateBufferInfo.attribs)
-    throw new Error('???');
+  gl.bindBuffer(gl.ARRAY_BUFFER, updateBufferInfo.attribs.v_position.buffer);
+  const particlePositionsArray = new Float32Array(userConfig.particles * 2);
+  gl.getBufferSubData(gl.ARRAY_BUFFER, 0, particlePositionsArray);
+
+  state.densityTexture = positionsToDensityTexture(
+    gl,
+    particlePositionsArray,
+    width,
+    height,
+    state.densityTexture
+  );
+
   const positionBufferA = renderBufferInfo.attribs.a_position.buffer;
   const positionBufferB = updateBufferInfo.attribs.v_position.buffer;
   renderBufferInfo.attribs.a_position.buffer = positionBufferB;
