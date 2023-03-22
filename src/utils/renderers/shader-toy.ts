@@ -194,7 +194,7 @@ export function shaderToyComponent(
           // This ensures floats are passed in with a decimal point
           if (/^\d+\.\d+$/.test(originalConfig[key].match[2])) {
             const formatted =
-              config[key] % 1 ? config[key] : config[key].toFixed(1);
+              config[key] % 1 ? config[key] : Number(config[key]).toFixed(1);
             return `#define ${key} ${formatted}`;
           }
 

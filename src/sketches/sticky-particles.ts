@@ -132,7 +132,11 @@ export function initBackground({
     if (splitText.length === 2 && canvasHeight > canvasWidth) {
       const textHeight = ctx.measureText(splitText[0]).actualBoundingBoxAscent;
       ctx.fillText(splitText[0], canvasWidth / 2, canvasHeight / 2);
-      ctx.fillText(splitText[1], canvasWidth / 2, canvasHeight / 2 + textHeight);
+      ctx.fillText(
+        splitText[1],
+        canvasWidth / 2,
+        canvasHeight / 2 + textHeight
+      );
     } else {
       const textHeight = ctx.measureText(text).actualBoundingBoxAscent;
       ctx.fillText(text, canvasWidth / 2, canvasHeight / 2 + textHeight / 2);

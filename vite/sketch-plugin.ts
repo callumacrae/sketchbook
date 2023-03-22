@@ -6,14 +6,14 @@ export default function sketchbookPlugin(): VitePlugin {
 
     enforce: 'pre',
 
-    transform(code, id) {
+    transform(source, id) {
       if (!id.includes('/sketches')) return null;
 
       if (id.endsWith('.ts')) {
         if (
-          code.includes('toCanvasComponent') ||
-          !code.includes('CanvasState') ||
-          !code.includes('sketchConfig')
+          source.includes('toCanvasComponent') ||
+          !source.includes('CanvasState') ||
+          !source.includes('sketchConfig')
         )
           return null;
 
@@ -26,7 +26,7 @@ export default function sketchbookPlugin(): VitePlugin {
             import { toCanvasComponent } from '@/utils/renderers/vue';
             import SketchLinks from '@/components/SketchLinks.vue';
 
-            ${code}
+            ${source}
 
             const component = toCanvasComponent<CanvasState, SketchConfig>(
               init,
@@ -163,9 +163,9 @@ export default function sketchbookPlugin(): VitePlugin {
             import { shaderToyComponent } from '@/utils/renderers/shader-toy';
             import SketchLinks from '@/components/SketchLinks.vue';
 
-            export const glsl = \`${code}\`;
+            export const glsl = \`${source}\`;
 
-            export default shaderToyComponent(\`${code}\`, '${filePath}', SketchLinks);
+            export default shaderToyComponent(glsl, '${filePath}', SketchLinks);
 
             if (import.meta.hot) {
               import.meta.hot.accept((newModule) => {

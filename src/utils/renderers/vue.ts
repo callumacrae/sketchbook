@@ -53,7 +53,7 @@ export function toCanvasComponent<
     },
     setup(props) {
       const title = computed(() => {
-        return props.preview && metaLinks?.meta?.name || null;
+        return (props.preview && metaLinks?.meta?.name) || null;
       });
       useHead({ title });
     },
