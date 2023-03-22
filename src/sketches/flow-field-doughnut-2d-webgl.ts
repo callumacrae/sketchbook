@@ -106,6 +106,7 @@ uniform float u_noiseInTimeFactor;
 uniform float u_velocity;
 uniform float u_acceleration;
 uniform float u_lookAhead;
+uniform mediump usampler2D u_densityTexture;
 
 in vec2 a_position;
 in vec2 a_velocity;
@@ -113,7 +114,7 @@ in vec2 a_velocity;
 out vec2 v_position;
 out vec2 v_velocity;
 
-float angleForCoords(vec2 coords) {
+vec2 flowFieldDirection(vec2 coords) {
   float perfectAngle = atan(coords.y, coords.x) - 0.5 * PI;
 
   // This ensures that the field never points out of the circle
@@ -126,27 +127,51 @@ float angleForCoords(vec2 coords) {
     u_timestamp * u_noiseInTimeFactor
   )) * u_variance / 2.0;
 
-  return perfectAngle + angleOffset + noise;
+  float angle = perfectAngle + angleOffset + noise;
+
+  return vec2(cos(angle), sin(angle));
+}
+
+float textureFromUv(vec2 uv) {
+  uint density = texture(u_densityTexture, uv / 2.0 + 0.5).r;
+  return float(density);
+}
+
+vec2 separationDirection(vec2 coords) {
+  vec2 repel = vec2(0.0);
+
+  float searchRadius = 1.0 / 64.0;
+
+  float densityLeft = textureFromUv(coords - vec2(searchRadius, 0.0));
+  repel += vec2(1.0, 0.0) * densityLeft;
+
+  float densityRight = textureFromUv(coords + vec2(searchRadius, 0.0));
+  repel -= vec2(1.0, 0.0) * densityRight;
+
+  float densityTop = textureFromUv(coords - vec2(0.0, searchRadius));
+  repel += vec2(0.0, 1.0) * densityTop;
+
+  float densityBottom = textureFromUv(coords + vec2(0.0, searchRadius));
+  repel -= vec2(0.0, 1.0) * densityBottom;
+
+  return repel * 0.01;
 }
 
 void main() {
+  gl_PointSize = 5.0;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+
   float deltaAdjust = u_delta / 16.666;
 
   vec2 aheadPosition = a_position + a_velocity * u_lookAhead;
-  float aheadPositionAngle = angleForCoords(aheadPosition);
-  vec2 idealVelocity = vec2(
-    cos(aheadPositionAngle),
-    sin(aheadPositionAngle)
-  ) * u_velocity;
+  vec2 idealVelocity = flowFieldDirection(aheadPosition) * u_velocity;
 
-  vec2 newVelocity = mix(a_velocity, idealVelocity, u_acceleration);
-  vec2 newPosition = a_position + newVelocity * deltaAdjust;
+  vec2 nextVelocity = mix(a_velocity, idealVelocity, u_acceleration);
+  nextVelocity = mix(nextVelocity, separationDirection(aheadPosition), 0.02);
+  vec2 nextPosition = a_position + nextVelocity * deltaAdjust;
 
-  gl_PointSize = 5.0;
-  gl_Position = vec4(newPosition, 0.0, 1.0);
-
-  v_position = newPosition;
-  v_velocity = newVelocity;
+  v_position = nextPosition;
+  v_velocity = nextVelocity;
 }
 `;
 
