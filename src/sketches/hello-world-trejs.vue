@@ -1,17 +1,33 @@
 <script lang="ts" setup>
-import { shallowRef } from 'vue';
+import { shallowRef, watch } from 'vue';
 import { TresCanvas, useRenderLoop } from '@tresjs/core';
 import { OrbitControls } from '@tresjs/cientos';
 import type { TresInstance } from '@tresjs/core';
 
+const props = defineProps<{
+  preview: boolean;
+  animatingOverride: string | undefined;
+}>();
+
 const meshRef = shallowRef<TresInstance>(null);
 
-const { onLoop } = useRenderLoop();
+const { onLoop, pause, resume } = useRenderLoop();
 onLoop(({ delta }) => {
   if (!meshRef.value) return;
   meshRef.value.rotation.x += delta;
   meshRef.value.rotation.y += delta * 0.5;
 });
+
+watch(
+  () => props.animatingOverride,
+  (animatingOverride) => {
+    if (animatingOverride === 'false') {
+      pause();
+    } else {
+      resume();
+    }
+  }
+);
 </script>
 
 <template>
