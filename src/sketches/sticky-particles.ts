@@ -15,7 +15,8 @@ import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 export const meta = {
   name: 'Sticky particles',
   date: '2023-03-14',
-  tags: ['WebGL'],
+  tags: ['WebGL', 'Particles'],
+  favourite: true,
 };
 
 const glsl = String.raw;

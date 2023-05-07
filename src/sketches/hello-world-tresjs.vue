@@ -5,8 +5,8 @@ import { OrbitControls } from '@tresjs/cientos';
 import type { TresInstance } from '@tresjs/core';
 
 const props = defineProps<{
-  preview: boolean;
-  animatingOverride: string | undefined;
+  preview?: boolean;
+  animatingOverride?: string;
 }>();
 
 const meshRef = shallowRef<TresInstance>(null);
