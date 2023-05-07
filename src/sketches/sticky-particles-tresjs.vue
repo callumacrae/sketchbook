@@ -13,6 +13,7 @@ import NoiseMachine, {
   SimplexNoiseGenerator,
 } from '@/utils/noise';
 import * as random from '@/utils/random';
+import { doWorkOffscreen, ensureCanvas2DContext } from '@/utils/canvas/utils';
 
 const JAIL = 10000;
 
@@ -21,19 +22,37 @@ const props = defineProps<{
   animatingOverride?: string;
 }>();
 
-const particleCount = 1000;
+const width = window.innerWidth;
+const height = window.innerHeight;
+
+const particleCount = 5000;
 const particlePosition = new Float32Array(particleCount * 3);
 const particleVelocity = new Float32Array(particleCount);
 
 for (let i = 0; i < particleCount; i++) {
-  particlePosition[i * 3] = random.range(-1, 1);
   particlePosition[i * 3 + 1] = JAIL;
-  particlePosition[i * 3 + 2] = random.range(-1, 1);
   particleVelocity[i] = 0;
 }
 
 const addChanceNoiseMachine = initAddChanceNoiseMachine();
 const accelerationNoiseMachine = initAccelerationNoiseMachine();
+
+const canvasSize = Math.min(width, height);
+const textTexData = initBackground({
+  width: canvasSize,
+  height: canvasSize,
+  text: 'Vue.js',
+  textSize: 200,
+});
+const textAtUv = (u: number, v: number) => {
+  if (u < 0 || u > 1 || v < 0 || v > 1) return 0;
+
+  const { width, height } = textTexData;
+  const tx = Math.min(Math.floor(u * width), width - 1);
+  const ty = Math.min(Math.floor(v * height), height - 1);
+  const offset = (ty * width + tx) * 4;
+  return textTexData.data[offset];
+};
 
 const pointsRef = shallowRef<TresInstance | null>(null);
 const { onLoop, pause, resume } = useRenderLoop();
@@ -44,20 +63,32 @@ onLoop(({ delta, elapsed }) => {
   const deltaFactor = Math.min(delta * 60, 3);
   const acceleration =
     accelerationNoiseMachine.get(elapsed * 1000) * deltaFactor;
-  const addChance = addChanceNoiseMachine.get((elapsed * 1000) / deltaFactor);
+  const addChance =
+    addChanceNoiseMachine.get((elapsed * 1000) / deltaFactor) * 20;
 
   for (let i = 0; i < particleCount; i++) {
     const posYIndex = i * 3 + 1;
     if (particlePosition[posYIndex] === JAIL) {
       if (random.chance(addChance)) {
+        particlePosition[i * 3] = (random.range(-1, 1) * width) / height;
         particlePosition[posYIndex] = 1;
+        particlePosition[i * 3 + 2] = random.range(-1, 1) * 0.1;
         particleVelocity[i] = 0;
       } else {
         continue;
       }
     }
 
-    particleVelocity[i] += acceleration;
+    const resistance = textAtUv(
+      (particlePosition[i * 3] + 1) / 2,
+      1 - (particlePosition[posYIndex] + 1) / 2
+    );
+    if (resistance > 0.5) {
+      particleVelocity[i] = acceleration * 1.5;
+    } else {
+      particleVelocity[i] += acceleration;
+    }
+
     particlePosition[posYIndex] += particleVelocity[i] * deltaFactor;
 
     if (Math.abs(particlePosition[posYIndex]) > 1.2) {
@@ -81,6 +112,44 @@ watch(
     }
   }
 );
+
+function initBackground({
+  width,
+  height,
+  text,
+  textSize,
+}: {
+  width: number;
+  height: number;
+  text: string | [string, string];
+  textSize: number;
+}) {
+  // TODO: do we need to shrink for perf?
+  const canvasWidth = width;
+  const canvasHeight = height;
+
+  const canvas = doWorkOffscreen(canvasWidth, canvasHeight, (ctx) => {
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    ctx.fillStyle = 'white';
+    ctx.font = `100 ${textSize}px sans-serif`;
+    ctx.textAlign = 'center';
+
+    if (Array.isArray(text)) {
+      const textHeight = ctx.measureText(text[0]).actualBoundingBoxAscent;
+      ctx.fillText(text[0], canvasWidth / 2, canvasHeight / 2);
+      ctx.fillText(text[1], canvasWidth / 2, canvasHeight / 2 + textHeight);
+    } else {
+      const textHeight = ctx.measureText(text).actualBoundingBoxAscent;
+      ctx.fillText(text, canvasWidth / 2, canvasHeight / 2 + textHeight / 2);
+    }
+  });
+
+  const ctx = canvas.getContext('2d');
+  ensureCanvas2DContext(ctx);
+  return ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+}
 
 function initAddChanceNoiseMachine() {
   const noiseMachine = new NoiseMachine();
