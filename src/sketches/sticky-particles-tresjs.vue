@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { shallowRef, watch } from 'vue';
 import { TresCanvas, useRenderLoop } from '@tresjs/core';
+import { OrbitControls } from '@tresjs/cientos';
+import type { TresInstance } from '@tresjs/core';
 import * as THREE from 'three';
 
 const props = defineProps<{
@@ -8,24 +10,36 @@ const props = defineProps<{
   animatingOverride?: string;
 }>();
 
-const particleCount = 100;
+const particleCount = 1000;
 const particlePosition = new Float32Array(particleCount * 3);
 
 for (let i = 0; i < particleCount; i++) {
-  particlePosition[i] = Math.random() - 0.5;
-  particlePosition[i + 1] = Math.random() - 0.5;
-  particlePosition[i + 2] = Math.random() - 0.5;
+  particlePosition[i * 3] = Math.random() * 2 - 1;
+  particlePosition[i * 3 + 1] = Math.random() * 2 - 1;
+  particlePosition[i * 3 + 2] = Math.random() * 2 - 1;
 }
 
-const pointsRef = shallowRef(null);
+const pointsRef = shallowRef<TresInstance | null>(null);
 const { onLoop, pause, resume } = useRenderLoop();
 
 onLoop(({ delta }) => {
   if (!pointsRef.value) return;
-  // pointsRef.value.geometry.setAttribute(
-  //   'position',
-  //   new THREE.BufferAttribute(particlePosition, 3)
-  // );
+
+  const deltaFactor = Math.min(delta * 60, 3);
+
+  for (let i = 0; i < particleCount; i++) {
+    const yIndex = i * 3 + 1;
+    particlePosition[yIndex] -= 0.002 * deltaFactor;
+
+    if (particlePosition[yIndex] < -1) {
+      particlePosition[yIndex] += 2;
+    }
+  }
+
+  pointsRef.value.geometry.setAttribute(
+    'position',
+    new THREE.BufferAttribute(particlePosition, 3)
+  );
 });
 
 watch(
@@ -41,11 +55,12 @@ watch(
 </script>
 
 <template>
-  <TresCanvas window-size>
-    <TresPerspectiveCamera :position="[0, 0, 5]" />
+  <TresCanvas window-size clear-color="#34495E">
+    <TresPerspectiveCamera :fov="30" :position="[0, 0, 2.5]" />
+    <OrbitControls />
     <TresPoints ref="pointsRef">
       <TresBufferGeometry :position="[particlePosition, 3]" />
-      <TresPointsMaterial :size="5" :size-attenuation="false" color="red" />
+      <TresPointsMaterial :size="0.03" color="#41B883" />
     </TresPoints>
   </TresCanvas>
 </template>
