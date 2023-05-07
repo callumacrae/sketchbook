@@ -14,6 +14,8 @@ import NoiseMachine, {
 } from '@/utils/noise';
 import * as random from '@/utils/random';
 
+const JAIL = 10000;
+
 const props = defineProps<{
   preview?: boolean;
   animatingOverride?: string;
@@ -25,10 +27,13 @@ const particleVelocity = new Float32Array(particleCount);
 
 for (let i = 0; i < particleCount; i++) {
   particlePosition[i * 3] = random.range(-1, 1);
-  particlePosition[i * 3 + 1] = random.range(-1, 1);
+  particlePosition[i * 3 + 1] = JAIL;
   particlePosition[i * 3 + 2] = random.range(-1, 1);
   particleVelocity[i] = 0;
 }
+
+const addChanceNoiseMachine = initAddChanceNoiseMachine();
+const accelerationNoiseMachine = initAccelerationNoiseMachine();
 
 const pointsRef = shallowRef<TresInstance | null>(null);
 const { onLoop, pause, resume } = useRenderLoop();
@@ -37,17 +42,26 @@ onLoop(({ delta, elapsed }) => {
   if (!pointsRef.value) return;
 
   const deltaFactor = Math.min(delta * 60, 3);
-  const acceleration = accelerationNoiseMachine.get(elapsed * 1000) * 0.5;
+  const acceleration =
+    accelerationNoiseMachine.get(elapsed * 1000) * deltaFactor;
+  const addChance = addChanceNoiseMachine.get((elapsed * 1000) / deltaFactor);
 
   for (let i = 0; i < particleCount; i++) {
-    particleVelocity[i] += acceleration * deltaFactor;
-
     const posYIndex = i * 3 + 1;
+    if (particlePosition[posYIndex] === JAIL) {
+      if (random.chance(addChance)) {
+        particlePosition[posYIndex] = 1;
+        particleVelocity[i] = 0;
+      } else {
+        continue;
+      }
+    }
+
+    particleVelocity[i] += acceleration;
     particlePosition[posYIndex] += particleVelocity[i] * deltaFactor;
 
-    if (particlePosition[posYIndex] < -1) {
-      particlePosition[posYIndex] += 2;
-      particleVelocity[i] = 0;
+    if (Math.abs(particlePosition[posYIndex]) > 1.2) {
+      particlePosition[posYIndex] = JAIL;
     }
   }
 
@@ -138,17 +152,15 @@ function initAccelerationNoiseMachine() {
 
   return noiseMachine;
 }
-
-const accelerationNoiseMachine = initAccelerationNoiseMachine();
 </script>
 
 <template>
   <TresCanvas window-size clear-color="#34495E">
-    <TresPerspectiveCamera :fov="30" :position="[0, 0, 2.5]" />
+    <TresPerspectiveCamera :fov="5" :position="[0, 0, 20]" />
     <OrbitControls />
     <TresPoints ref="pointsRef">
       <TresBufferGeometry :position="[particlePosition, 3]" />
-      <TresPointsMaterial :size="0.03" color="#41B883" />
+      <TresPointsMaterial :size="0.2" color="#41B883" />
     </TresPoints>
   </TresCanvas>
 </template>
