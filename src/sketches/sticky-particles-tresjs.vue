@@ -26,9 +26,9 @@ const props = defineProps<{
 const width = window.innerWidth;
 const height = window.innerHeight;
 
-const particleCount = 5000;
-const particleSizeBase = 6;
-const particleSizeVariance = 2;
+const particleCount = 10000;
+const particleSizeBase = props.preview ? 3 : 7;
+const particleSizeVariance = props.preview ? 1 : 1.5;
 
 const particlePosition = new Float32Array(particleCount * 3);
 const particleVelocity = new Float32Array(particleCount);
@@ -80,14 +80,25 @@ class PointsWithSizeMaterial extends THREE.PointsMaterial {
 }
 extendTres({ PointsWithSizeMaterial });
 
+const lastRelease = shallowRef(-1000);
 onLoop(({ delta, elapsed }) => {
   if (!pointsRef.value) return;
 
   const deltaFactor = Math.min(delta * 60, 3);
   const acceleration =
-    accelerationNoiseMachine.get(elapsed * 1000) * deltaFactor;
-  const addChance =
-    addChanceNoiseMachine.get((elapsed * 1000) / deltaFactor) * 20;
+    accelerationNoiseMachine.get(elapsed * 1000) * deltaFactor * 2;
+
+  // Only release 60 times per second max to increase banding on 120fps monitors
+  const skipRelease = elapsed - lastRelease.value < 1 / 61;
+  const addChance = skipRelease
+    ? 0
+    : Math.min(
+        addChanceNoiseMachine.get((elapsed * 1000) / deltaFactor) * 35,
+        0.6
+      );
+  if (!skipRelease) {
+    lastRelease.value = elapsed;
+  }
 
   for (let i = 0; i < particleCount; i++) {
     const posYIndex = i * 3 + 1;
@@ -251,14 +262,16 @@ function initAccelerationNoiseMachine() {
 </script>
 
 <template>
-  <TresCanvas window-size clear-color="#34495E">
-    <TresPerspectiveCamera :fov="5" :position="[0, 0, 20]" />
-    <OrbitControls />
-    <TresPoints ref="pointsRef">
-      <TresBufferGeometry :position="[particlePosition, 3]" />
-      <TresPointsWithSizeMaterial :size-attenuation="false" color="#41B883" />
-    </TresPoints>
-  </TresCanvas>
+  <div :class="preview ? 'w-full h-full' : 'w-screen h-screen'">
+    <TresCanvas clear-color="#34495E">
+      <TresPerspectiveCamera :fov="5" :position="[0, 0, 20]" />
+      <OrbitControls />
+      <TresPoints ref="pointsRef">
+        <TresBufferGeometry :position="[particlePosition, 3]" />
+        <TresPointsWithSizeMaterial :size-attenuation="false" color="#41B883" />
+      </TresPoints>
+    </TresCanvas>
+  </div>
 </template>
 
 <script lang="ts">
