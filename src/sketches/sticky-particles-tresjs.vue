@@ -30,6 +30,22 @@ const particleCount = 10000;
 const particleSizeBase = props.preview ? 3 : 7;
 const particleSizeVariance = props.preview ? 1 : 1.5;
 
+const textValues: (string | [string, string])[] = [
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  'Evan You',
+  ['Michael', 'Thiessen'],
+  ['Jessica', 'Sachs'],
+  ['Eduardo San', 'Martin Morote'],
+  ['Alba Silvente', 'Fuentes'],
+  'Daniel Roe',
+  ['Markus', 'Oberlehner'],
+  ['Sebastien', 'Chopin'],
+  ['Lucie', 'Haberer'],
+  'Tim Benniks',
+];
+const textCycleTime = 7e3;
+
 const particlePosition = new Float32Array(particleCount * 3);
 const particleVelocity = new Float32Array(particleCount);
 const particleSize = new Float32Array(particleCount);
@@ -45,13 +61,10 @@ const addChanceNoiseMachine = initAddChanceNoiseMachine();
 const accelerationNoiseMachine = initAccelerationNoiseMachine();
 
 const initMemoizeBackground = useMemoize(initBackground);
-const { state: text, next: nextText } = useCycleList(['Vue.js', 'Tres.js']);
-useIntervalFn(nextText, 5000);
+const { state: text, next: nextText } = useCycleList(textValues);
+useIntervalFn(nextText, textCycleTime);
 const textTexData = computed(() => {
-  const canvasSize = Math.min(width, height);
   return initMemoizeBackground({
-    width: canvasSize,
-    height: canvasSize,
     text: text.value,
     textSize: 200,
   });
@@ -114,8 +127,8 @@ onLoop(({ delta, elapsed }) => {
     }
 
     const resistance = textAtUv(
-      (particlePosition[i * 3] + 1) / 2,
-      1 - (particlePosition[posYIndex] + 1) / 2
+      ((particlePosition[i * 3] / width) * height) / 2 + 0.5,
+      1 - (particlePosition[posYIndex] / 2 + 0.5)
     );
     if (resistance > 0.5) {
       particleVelocity[i] = acceleration * 1.5;
@@ -152,13 +165,9 @@ watch(
 );
 
 function initBackground({
-  width,
-  height,
   text,
   textSize,
 }: {
-  width: number;
-  height: number;
   text: string | [string, string];
   textSize: number;
 }) {
@@ -262,7 +271,10 @@ function initAccelerationNoiseMachine() {
 </script>
 
 <template>
-  <div :class="preview ? 'w-full h-full' : 'w-screen h-screen'">
+  <div
+    class="relative"
+    :class="preview ? 'w-full h-full' : 'w-screen h-screen'"
+  >
     <TresCanvas clear-color="#34495E">
       <TresPerspectiveCamera :fov="5" :position="[0, 0, 20]" />
       <OrbitControls />
@@ -271,6 +283,22 @@ function initAccelerationNoiseMachine() {
         <TresPointsWithSizeMaterial :size-attenuation="false" color="#41B883" />
       </TresPoints>
     </TresCanvas>
+    <div
+      v-if="!preview"
+      class="absolute bottom-0 right-0 m-4 text-white text-right font-handwriting text-lg text-gray-300"
+    >
+      <p>
+        created by
+        <a href="https://twitter.com/callumacrae" target="_blank">
+          @callumacrae
+        </a>
+      </p>
+      <p>
+        powered by <a href="https://vuejs.org/" target="_blank">Vue</a> +
+        <a href="https://tresjs.org/" target="_blank">TresJS</a>
+        ❤️
+      </p>
+    </div>
   </div>
 </template>
 
