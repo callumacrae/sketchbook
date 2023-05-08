@@ -151,6 +151,14 @@ onLoop(({ delta, elapsed }) => {
     'position',
     new THREE.BufferAttribute(particlePosition, 3)
   );
+
+  // Calling pause() in immediate watcher doesn't work as expected
+  // https://github.com/Tresjs/tres/issues/251
+  if (props.animatingOverride === 'false') {
+    setTimeout(() => {
+      pause();
+    }, 100);
+  }
 });
 
 watch(

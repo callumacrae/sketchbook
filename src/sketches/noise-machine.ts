@@ -2,10 +2,7 @@ import { easePolyIn, easePolyInOut } from 'd3-ease';
 import BezierEasing from 'bezier-easing';
 
 import TweakpanePlugin from '@/utils/plugins/tweakpane';
-import NoiseMachine, {
-  BandedNoiseGenerator,
-  SimplexNoiseGenerator,
-} from '@/utils/noise';
+import NoiseMachine, { SimplexNoiseGenerator } from '@/utils/noise';
 import type { SketchConfig, InitFn, FrameFn } from '@/utils/renderers/vanilla';
 
 export const meta = {
