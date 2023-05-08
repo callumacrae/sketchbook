@@ -22,6 +22,7 @@ export const meta = {
 const glsl = String.raw;
 
 export interface CanvasState {
+  lastRelease: number;
   addChanceNoiseMachine: NoiseMachine;
   accelerationNoiseMachine: NoiseMachine;
   programInfo: twgl.ProgramInfo;
@@ -39,7 +40,7 @@ enum VelocityMode {
 let urlText = new URLSearchParams(window.location.search).get('text');
 const userConfig = {
   text: urlText || 'Hello world',
-  textSize: 30,
+  textSize: window.innerWidth > 400 ? 30 : 25,
 
   particles: {
     count: 20000,
@@ -407,6 +408,7 @@ export const init: InitFn<CanvasState, UserConfig> = (props) => {
   });
 
   return {
+    lastRelease: -1000,
     addChanceNoiseMachine: initAddChanceNoiseMachine(),
     accelerationNoiseMachine: initAccelerationNoiseMachine(),
     programInfo,
@@ -442,6 +444,7 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
   }
 
   const {
+    lastRelease,
     addChanceNoiseMachine,
     accelerationNoiseMachine,
     programInfo,
@@ -450,8 +453,17 @@ export const frame: FrameFn<CanvasState, UserConfig> = (props) => {
     transformFeedback,
   } = state;
 
-  const addChance = addChanceNoiseMachine.get(timestamp);
+  // Only release 60 times per second max to increase banding on >60fps monitors
+  const skipRelease = timestamp - lastRelease < 1000 / 61;
+  // Ramp up release so that not everything is released at once
+  const rampedReleaseVal = Math.max(0.3, Math.min(timestamp / 4000, 1));
+  const addChance = skipRelease
+    ? 0
+    : addChanceNoiseMachine.get(timestamp) * rampedReleaseVal;
   const acceleration = accelerationNoiseMachine.get(timestamp);
+  if (!skipRelease) {
+    state.lastRelease = timestamp;
+  }
 
   const { background: bgColor, particles: particleColor } = userConfig.colors;
   gl.clearColor(bgColor.r, bgColor.g, bgColor.b, 1);
