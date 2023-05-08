@@ -1,10 +1,11 @@
 <script lang="ts" setup>
-import { shallowRef, watch } from 'vue';
+import { computed, shallowRef, watch } from 'vue';
 import { TresCanvas, useRenderLoop, extend as extendTres } from '@tresjs/core';
 import { OrbitControls } from '@tresjs/cientos';
 import * as THREE from 'three';
 import { easePolyIn, easePolyInOut } from 'd3-ease';
 import BezierEasing from 'bezier-easing';
+import { useCycleList, useIntervalFn, useMemoize } from '@vueuse/core';
 import type { TresInstance } from '@tresjs/core';
 
 import NoiseMachine, {
@@ -43,21 +44,25 @@ for (let i = 0; i < particleCount; i++) {
 const addChanceNoiseMachine = initAddChanceNoiseMachine();
 const accelerationNoiseMachine = initAccelerationNoiseMachine();
 
-const canvasSize = Math.min(width, height);
-const textTexData = initBackground({
-  width: canvasSize,
-  height: canvasSize,
-  text: 'Vue.js',
-  textSize: 200,
+const initMemoizeBackground = useMemoize(initBackground);
+const { state: text, next: nextText } = useCycleList(['Vue.js', 'Tres.js']);
+useIntervalFn(nextText, 5000);
+const textTexData = computed(() => {
+  const canvasSize = Math.min(width, height);
+  return initMemoizeBackground({
+    width: canvasSize,
+    height: canvasSize,
+    text: text.value,
+    textSize: 200,
+  });
 });
 const textAtUv = (u: number, v: number) => {
   if (u < 0 || u > 1 || v < 0 || v > 1) return 0;
 
-  const { width, height } = textTexData;
+  const { data, width, height } = textTexData.value;
   const tx = Math.min(Math.floor(u * width), width - 1);
   const ty = Math.min(Math.floor(v * height), height - 1);
-  const offset = (ty * width + tx) * 4;
-  return textTexData.data[offset];
+  return data[(ty * width + tx) * 4];
 };
 
 const pointsRef = shallowRef<TresInstance | null>(null);
