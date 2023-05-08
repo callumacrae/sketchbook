@@ -13,17 +13,12 @@ const meshRef = shallowRef<TresInstance | null>(null);
 
 const { onLoop, pause, resume } = useRenderLoop();
 onLoop(({ delta }) => {
+  // Workaround for https://github.com/Tresjs/tres/issues/251
+  if (props.animatingOverride === 'false') return;
+
   if (!meshRef.value) return;
   meshRef.value.rotation.x += delta;
   meshRef.value.rotation.y += delta * 0.5;
-
-  // Calling pause() in immediate watcher doesn't work as expected
-  // https://github.com/Tresjs/tres/issues/251
-  if (props.animatingOverride === 'false') {
-    setTimeout(() => {
-      pause();
-    }, 100);
-  }
 });
 
 watch(
