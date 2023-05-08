@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { shallowRef, watch } from 'vue';
-import { TresCanvas, useRenderLoop } from '@tresjs/core';
+import { TresCanvas, useRenderLoop, extend as extendTres } from '@tresjs/core';
 import { OrbitControls } from '@tresjs/cientos';
 import * as THREE from 'three';
 import { easePolyIn, easePolyInOut } from 'd3-ease';
@@ -26,12 +26,18 @@ const width = window.innerWidth;
 const height = window.innerHeight;
 
 const particleCount = 5000;
+const particleSizeBase = 6;
+const particleSizeVariance = 2;
+
 const particlePosition = new Float32Array(particleCount * 3);
 const particleVelocity = new Float32Array(particleCount);
+const particleSize = new Float32Array(particleCount);
 
 for (let i = 0; i < particleCount; i++) {
   particlePosition[i * 3 + 1] = JAIL;
   particleVelocity[i] = 0;
+  particleSize[i] =
+    particleSizeBase + random.range(-1, 1) * particleSizeVariance;
 }
 
 const addChanceNoiseMachine = initAddChanceNoiseMachine();
@@ -56,6 +62,18 @@ const textAtUv = (u: number, v: number) => {
 
 const pointsRef = shallowRef<TresInstance | null>(null);
 const { onLoop, pause, resume } = useRenderLoop();
+
+class PointsWithSizeMaterial extends THREE.PointsMaterial {
+  onBeforeCompile(shader: THREE.Shader) {
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        'uniform float size;',
+        `uniform float size; attribute float size_override;`
+      )
+      .replace('gl_PointSize = size;', 'gl_PointSize = size_override;');
+  }
+}
+extendTres({ PointsWithSizeMaterial });
 
 onLoop(({ delta, elapsed }) => {
   if (!pointsRef.value) return;
@@ -96,6 +114,10 @@ onLoop(({ delta, elapsed }) => {
     }
   }
 
+  pointsRef.value.geometry.setAttribute(
+    'size_override',
+    new THREE.BufferAttribute(particleSize, 1)
+  );
   pointsRef.value.geometry.setAttribute(
     'position',
     new THREE.BufferAttribute(particlePosition, 3)
@@ -229,7 +251,7 @@ function initAccelerationNoiseMachine() {
     <OrbitControls />
     <TresPoints ref="pointsRef">
       <TresBufferGeometry :position="[particlePosition, 3]" />
-      <TresPointsMaterial :size="0.2" color="#41B883" />
+      <TresPointsWithSizeMaterial :size-attenuation="false" color="#41B883" />
     </TresPoints>
   </TresCanvas>
 </template>
