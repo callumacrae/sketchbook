@@ -51,7 +51,7 @@ const textValues: (string | [string, string])[] = [
   ['Lucie', 'Haberer'],
   'Tim Benniks',
 ];
-const textCycleTime = 7e3;
+const textCycleTime = 10e3;
 
 const particlePosition = new Float32Array(particleCount * 3);
 const particleVelocity = new Float32Array(particleCount);
@@ -276,14 +276,14 @@ function initAccelerationNoiseMachine() {
   const noiseBase = new SimplexNoiseGenerator({
     inputFactor: 0.3,
     easing: (x) => easing3(easing2(easing1(x))),
-    factor: -0.0016,
+    factor: -0.001,
   });
   noiseMachine.add(noiseBase);
 
   // This noise adds a bit of variation to the previous slower one
   const fastNoise = new SimplexNoiseGenerator({
     inputFactor: 0.3,
-    factor: 0.001,
+    factor: 0.0004,
   });
   noiseMachine.add(fastNoise);
 
