@@ -93,18 +93,7 @@ const textAtUv = (u: number, v: number) => {
 const pointsRef = shallowRef<TresInstance | null>(null);
 const { onLoop, pause, resume } = useRenderLoop();
 
-watch(pointsRef, () => {
-  if (!pointsRef.value) return;
-  pointsRef.value.geometry.setAttribute(
-    'size_override',
-    new BufferAttribute(particleSize, 1)
-  );
-});
-
-const pointsMaterial = new PointsMaterial({
-  sizeAttenuation: false,
-  color: 0x41b883,
-});
+const pointsMaterial = new PointsMaterial();
 pointsMaterial.onBeforeCompile = (shader: Shader) => {
   shader.vertexShader = shader.vertexShader
     .replace(
@@ -302,8 +291,15 @@ function initAccelerationNoiseMachine() {
       <TresPerspectiveCamera :fov="5" :position="[0, 0, 20]" />
       <OrbitControls />
       <TresPoints ref="pointsRef">
-        <TresBufferGeometry :position="[particlePosition, 3]" />
-        <primitive :object="pointsMaterial" />
+        <TresBufferGeometry
+          :position="[particlePosition, 3]"
+          :size_override="[particleSize, 1]"
+        />
+        <primitive
+          :object="pointsMaterial"
+          :size-attenuation="false"
+          color="#41b883"
+        />
       </TresPoints>
     </TresCanvas>
     <div
