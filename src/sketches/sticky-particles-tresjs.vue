@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref, shallowRef, watch } from 'vue';
-import { TresCanvas, useRenderLoop, extend as extendTres } from '@tresjs/core';
+import { TresCanvas, useRenderLoop } from '@tresjs/core';
 import { OrbitControls } from '@tresjs/cientos';
 import { BufferAttribute, PointsMaterial, type Shader } from 'three';
 import { easePolyIn, easePolyInOut } from 'd3-ease';
@@ -101,17 +101,18 @@ watch(pointsRef, () => {
   );
 });
 
-class PointsWithSizeMaterial extends PointsMaterial {
-  onBeforeCompile(shader: Shader) {
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        'uniform float size;',
-        `uniform float size; attribute float size_override;`
-      )
-      .replace('gl_PointSize = size;', 'gl_PointSize = size_override;');
-  }
-}
-extendTres({ PointsWithSizeMaterial });
+const pointsMaterial = new PointsMaterial({
+  sizeAttenuation: false,
+  color: 0x41b883,
+});
+pointsMaterial.onBeforeCompile = (shader: Shader) => {
+  shader.vertexShader = shader.vertexShader
+    .replace(
+      'uniform float size;',
+      `uniform float size; attribute float size_override;`
+    )
+    .replace('gl_PointSize = size;', 'gl_PointSize = size_override;');
+};
 
 const lastRelease = ref(-1000);
 onLoop(({ delta, elapsed }) => {
@@ -302,7 +303,7 @@ function initAccelerationNoiseMachine() {
       <OrbitControls />
       <TresPoints ref="pointsRef">
         <TresBufferGeometry :position="[particlePosition, 3]" />
-        <TresPointsWithSizeMaterial :size-attenuation="false" color="#41B883" />
+        <primitive :object="pointsMaterial" />
       </TresPoints>
     </TresCanvas>
     <div
