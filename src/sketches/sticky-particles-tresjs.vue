@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-/// <reference types="@webgpu/types" />
-
 import { computed, ref, shallowRef, watch } from 'vue';
 import { TresCanvas, useRenderLoop } from '@tresjs/core';
 import { OrbitControls } from '@tresjs/cientos';
@@ -161,191 +159,6 @@ const textAtUv = (u: number, v: number) => {
   return data[(ty * width + tx) * 4];
 };
 
-let computeMaybe: any;
-const computeNextPosition = async ({
-  particlePosition,
-  aspectRatio,
-  acceleration,
-  addChance,
-  skipRelease,
-  deltaFactor,
-}: {
-  particlePosition: Float32Array;
-  aspectRatio: number;
-  acceleration: number;
-  addChance: number;
-  skipRelease: boolean;
-  deltaFactor: number;
-}) => {
-  if (computeMaybe) {
-    computeMaybe();
-    return;
-  }
-  for (let i = 0; i < particleCount; i++) {
-    if (particlePosition[i * 3 + 1] === JAIL) {
-      if (!skipRelease && random.chance(addChance)) {
-        particlePosition[i * 3] = random.range(-1, 1) * aspectRatio;
-        particlePosition[i * 3 + 1] = acceleration < 0 ? 1 : -1;
-        particlePosition[i * 3 + 2] = random.range(-1, 1) * 0.1;
-        particleVelocity[i] = 0;
-      } else {
-        continue;
-      }
-    }
-
-    const resistance = textAtUv(
-      particlePosition[i * 3] / aspectRatio / 2 + 0.5,
-      1 - (particlePosition[i * 3 + 1] / 2 + 0.5)
-    );
-    if (resistance > 0.5) {
-      particleVelocity[i] = acceleration * 1.5;
-    } else {
-      particleVelocity[i] += acceleration;
-    }
-
-    particlePosition[i * 3 + 1] += particleVelocity[i] * deltaFactor;
-
-    if (Math.abs(particlePosition[i * 3 + 1]) > 1.2) {
-      particlePosition[i * 3 + 1] = JAIL;
-    }
-  }
-};
-
-if (navigator.gpu) {
-  (async () => {
-    const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) return;
-    const device = await adapter.requestDevice();
-    if (!device) return;
-    const pipeline = device.createComputePipeline({
-      layout: 'auto',
-      compute: {
-        module: device.createShaderModule({
-          code: `
-            struct SimulationParams {
-              deltaTime: f32,
-            }
-
-            @binding(0) @group(0) var<uniform> sim_params: SimulationParams;
-            @binding(1) @group(0) var<storage, read_write> positions: array<vec2<f32>>;
-            @binding(2) @group(0) var<storage, read_write> velocities: array<f32>;
-
-            @compute @workgroup_size(64)
-            fn main(@builtin(global_invocation_id) global_invocation_id: vec3<u32>) {
-              var idx = global_invocation_id.x;
-
-              var position = positions[idx];
-              var velocity = velocities[idx];
-
-              var a = sim_params.deltaTime + position.y + position.x + velocity;
-              position.y += 0.01;
-              position.x += 0.001;
-              if (position.y > 1) {
-                position.y -= 2;
-              }
-              if (position.x > 1) {
-                position.x -= 2;
-              }
-              // velocity += sim_params.deltaTime * 0.1;
-              // position.y += velocity * sim_params.deltaTime;
-              // position.y = fract(position.y);
-              // position.x = 0.0;
-
-              positions[idx] = position;
-              velocities[idx] = velocity;
-            }
-          `,
-        }),
-        entryPoint: 'main',
-      },
-    });
-
-    const positionBuffer = device.createBuffer({
-      size: 2 * 4 * particleCount,
-      usage: GPUBufferUsage.COPY_SRC | GPUBufferUsage.STORAGE,
-    });
-    const positionOutBuffer = device.createBuffer({
-      size: positionBuffer.size,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-    });
-    const velocityBuffer = device.createBuffer({
-      size: 1 * 4 * particleCount,
-      usage: GPUBufferUsage.STORAGE,
-    });
-
-    const simulationUBOBufferSize =
-      1 * 4 + // deltaTime
-      0;
-    const simulationUBOBuffer = device.createBuffer({
-      size: simulationUBOBufferSize,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-
-    const computeBindGroup = device.createBindGroup({
-      layout: pipeline.getBindGroupLayout(0),
-      entries: [
-        {
-          binding: 0,
-          resource: {
-            buffer: simulationUBOBuffer,
-          },
-        },
-        {
-          binding: 1,
-          resource: {
-            buffer: positionBuffer,
-          },
-        },
-        {
-          binding: 2,
-          resource: {
-            buffer: velocityBuffer,
-          },
-        },
-        // {
-        //   binding: 2,
-        //   resource: texture.createView(),
-        // },
-      ],
-    });
-
-    computeMaybe = async () => {
-      const deltaTime = 1;
-      device.queue.writeBuffer(
-        simulationUBOBuffer,
-        0,
-        new Float32Array([deltaTime])
-      );
-
-      const commandEncoder = device.createCommandEncoder();
-      const computePass = commandEncoder.beginComputePass();
-      computePass.setPipeline(pipeline);
-      computePass.setBindGroup(0, computeBindGroup);
-      computePass.dispatchWorkgroups(Math.ceil(particleCount / 64));
-      computePass.end();
-
-      commandEncoder.copyBufferToBuffer(
-        positionBuffer,
-        0,
-        positionOutBuffer,
-        0,
-        positionBuffer.size
-      );
-
-      device.queue.submit([commandEncoder.finish()]);
-
-      await positionOutBuffer.mapAsync(GPUMapMode.READ);
-      const copyArrayBuffer = positionOutBuffer.getMappedRange(
-        0,
-        positionOutBuffer.size
-      );
-      const data = copyArrayBuffer.slice(0, positionOutBuffer.size);
-      positionOutBuffer.unmap();
-      particlePosition.set(new Float32Array(data));
-    };
-  })();
-}
-
 const pointsRef = shallowRef<TresInstance | null>(null);
 const { onLoop, pause, resume } = useRenderLoop();
 
@@ -360,7 +173,7 @@ pointsMaterial.onBeforeCompile = (shader: Shader) => {
 };
 
 const lastRelease = ref(-1000);
-onLoop(async ({ delta, elapsed }) => {
+onLoop(({ delta, elapsed }) => {
   // Workaround for https://github.com/Tresjs/tres/issues/251
   // The `lastRelease` check is to work around issue where if nothing is added
   // on first frame, everything breaks
@@ -382,17 +195,37 @@ onLoop(async ({ delta, elapsed }) => {
     lastRelease.value = elapsed;
   }
 
-  const aspectRatio =
+  const displayRatio =
     width.value && height.value ? width.value / height.value : 1;
 
-  await computeNextPosition({
-    particlePosition,
-    aspectRatio,
-    acceleration,
-    addChance,
-    skipRelease,
-    deltaFactor,
-  });
+  for (let i = 0; i < particleCount; i++) {
+    if (particlePosition[i * 3 + 1] === JAIL) {
+      if (!skipRelease && random.chance(addChance)) {
+        particlePosition[i * 3] = random.range(-1, 1) * displayRatio;
+        particlePosition[i * 3 + 1] = acceleration < 0 ? 1 : -1;
+        particlePosition[i * 3 + 2] = random.range(-1, 1) * 0.1;
+        particleVelocity[i] = 0;
+      } else {
+        continue;
+      }
+    }
+
+    const resistance = textAtUv(
+      particlePosition[i * 3] / displayRatio / 2 + 0.5,
+      1 - (particlePosition[i * 3 + 1] / 2 + 0.5)
+    );
+    if (resistance > 0.5) {
+      particleVelocity[i] = acceleration * 1.5;
+    } else {
+      particleVelocity[i] += acceleration;
+    }
+
+    particlePosition[i * 3 + 1] += particleVelocity[i] * deltaFactor;
+
+    if (Math.abs(particlePosition[i * 3 + 1]) > 1.2) {
+      particlePosition[i * 3 + 1] = JAIL;
+    }
+  }
 
   pointsRef.value.geometry.setAttribute(
     'position',
