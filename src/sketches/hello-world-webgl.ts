@@ -29,7 +29,7 @@ export const sketchConfig: Partial<SketchConfig<CanvasState, UserConfig>> = {
   plugins: [tweakpanePlugin],
 };
 
-const vertexShader = glsl`
+export const vertexShader = glsl`
 attribute vec4 a_position;
 
 void main() {
@@ -37,7 +37,7 @@ void main() {
 }
 `;
 
-const fragmentShader = glsl`
+export const fragmentShader = glsl`
 precision mediump float;
 
 uniform vec2 u_resolution;

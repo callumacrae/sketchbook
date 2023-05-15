@@ -41,16 +41,85 @@ const textValues: (string | [string, string])[] = [
   ['Vue.js', 'London'],
   ['Vue.js', 'Live'],
   'Evan You',
-  ['Michael', 'Thiessen'],
-  ['Jessica', 'Sachs'],
   ['Eduardo San', 'Martin Morote'],
-  ['Alba Silvente', 'Fuentes'],
-  'Daniel Roe',
+  ['Michael', 'Thiessen'],
   ['Markus', 'Oberlehner'],
-  ['Sebastien', 'Chopin'],
+  ['Alba Silvente', 'Fuentes'],
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  'Marc Backes',
+  ['Alvaro', 'Saburido'],
   ['Lucie', 'Haberer'],
+  'Daniel Roe',
+  ['Sebastien', 'Chopin'],
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  ['Jakub', 'Andrzejewski'],
+  ['Filip', 'Rakowski'],
+  ['Alexander', 'Lichter'],
+  ['Jessica', 'Sachs'],
   'Tim Benniks',
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  'Lisi Linhart',
+  ['Ramona', 'Schwering'],
+  ['Simone', 'Cuomo'],
+  'Daniel Kelly',
+  ['Joran', 'Quinten'],
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  ['Nikola', 'Begedin'],
+  ['Aleksandar', 'Gekov'],
+  ['Michael', 'Hoffmann'],
+  ['Erik', 'Hanchett'],
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  ['Denny', 'Biasiolli'],
+  'Adam Jahr',
+  ['Justin', 'Schroeder'],
+  ['Abdulrasaq', 'Mustapha'],
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  'Evan You',
+  ['Eduardo San', 'Martin Morote'],
+  ['Michael', 'Thiessen'],
+  ['Markus', 'Oberlehner'],
+  ['Alba Silvente', 'Fuentes'],
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  'Marc Backes',
+  ['Alvaro', 'Saburido'],
+  ['Lucie', 'Haberer'],
+  'Daniel Roe',
+  ['Sebastien', 'Chopin'],
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  ['Jakub', 'Andrzejewski'],
+  ['Filip', 'Rakowski'],
+  ['Alexander', 'Lichter'],
+  ['Jessica', 'Sachs'],
+  'Tim Benniks',
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  'Lisi Linhart',
+  ['Ramona', 'Schwering'],
+  ['Simone', 'Cuomo'],
+  'Daniel Kelly',
+  ['Joran', 'Quinten'],
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  ['Nikola', 'Begedin'],
+  ['Aleksandar', 'Gekov'],
+  ['Michael', 'Hoffmann'],
+  ['Erik', 'Hanchett'],
+  ['Vue.js', 'London'],
+  ['Vue.js', 'Live'],
+  ['Denny', 'Biasiolli'],
+  'Adam Jahr',
+  ['Justin', 'Schroeder'],
+  ['Abdulrasaq', 'Mustapha'],
 ];
+
 const textCycleTime = 10e3;
 
 const particlePosition = new Float32Array(particleCount * 3);
@@ -77,7 +146,7 @@ const textTextureData = computed(() => {
     width: width.value,
     height: height.value,
     text: text.value,
-    textSize: props.preview ? 80 : 250,
+    textSize: props.preview || width.value < 600 ? 80 : 250,
   });
 });
 const textAtUv = (u: number, v: number) => {
@@ -260,9 +329,9 @@ function initAccelerationNoiseMachine() {
   // tries to keep it from stay at zero too long
   const easing1 = BezierEasing(0.11, 0, 0, 1);
   // lower number = less likely to accelerate upwards
-  const easing2 = easePolyIn.exponent(0.7);
+  const easing2 = easePolyIn.exponent(0.4);
   // higher number = steeper gradient, less likely to sit around zero
-  const easing3 = easePolyInOut.exponent(6);
+  const easing3 = easePolyInOut.exponent(4);
   const noiseBase = new SimplexNoiseGenerator({
     inputFactor: 0.3,
     easing: (x) => easing3(easing2(easing1(x))),
@@ -273,7 +342,7 @@ function initAccelerationNoiseMachine() {
   // This noise adds a bit of variation to the previous slower one
   const fastNoise = new SimplexNoiseGenerator({
     inputFactor: 0.3,
-    factor: 0.0004,
+    factor: 0.0005,
   });
   noiseMachine.add(fastNoise);
 
@@ -304,7 +373,7 @@ function initAccelerationNoiseMachine() {
     </TresCanvas>
     <div
       v-if="!preview"
-      class="absolute bottom-0 right-0 m-4 text-white text-right font-handwriting text-lg text-gray-300"
+      class="absolute bottom-0 right-0 m-4 text-white text-right font-handwriting text-lg text-gray-400"
     >
       <p>
         created by
